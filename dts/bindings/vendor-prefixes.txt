@@ -212,6 +212,7 @@ elgin	Elgin S/A.
 elida	Shenzhen Elida Technology Co., Ltd.
 elimo	Elimo Engineering Ltd.
 embedsky	Guangdong Embedsky Technology Co., Ltd.
+embeint	Embeint Pty Ltd.
 embest	Shenzhen Embest Technology Co., Ltd.
 emlid	Emlid, Ltd.
 emmicro	EM Microelectronic
