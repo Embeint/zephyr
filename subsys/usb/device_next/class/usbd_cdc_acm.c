@@ -589,6 +589,7 @@ static int cdc_acm_fifo_fill(const struct device *dev,
 {
 	struct cdc_acm_uart_data *const data = dev->data;
 	uint32_t done;
+	int lock;
 
 	if (!check_wq_ctx(dev)) {
 		LOG_WRN("Invoked by inappropriate context");
@@ -596,7 +597,9 @@ static int cdc_acm_fifo_fill(const struct device *dev,
 		return 0;
 	}
 
+	lock = irq_lock();
 	done = ring_buf_put(data->tx_fifo.rb, tx_data, len);
+	irq_unlock(lock);
 	if (done) {
 		data->tx_fifo.altered = true;
 	}
@@ -811,12 +814,14 @@ poll_in_exit:
 static void cdc_acm_poll_out(const struct device *dev, const unsigned char c)
 {
 	struct cdc_acm_uart_data *const data = dev->data;
+	int lock;
 
 	if (atomic_test_and_set_bit(&data->state, CDC_ACM_LOCK)) {
 		LOG_ERR("IRQ callback is used");
 		return;
 	}
 
+	lock = irq_lock();
 	if (ring_buf_put(data->tx_fifo.rb, &c, 1)) {
 		goto poll_out_exit;
 	}
@@ -829,6 +834,7 @@ static void cdc_acm_poll_out(const struct device *dev, const unsigned char c)
 	}
 
 poll_out_exit:
+	irq_unlock(lock);
 	atomic_clear_bit(&data->state, CDC_ACM_LOCK);
 	cdc_acm_work_submit(&data->tx_fifo_work);
 }
