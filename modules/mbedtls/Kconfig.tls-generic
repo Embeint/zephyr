@@ -471,6 +471,10 @@ config MBEDTLS_PSA_CRYPTO_C
 	depends on MBEDTLS_CTR_DRBG_ENABLED || MBEDTLS_HMAC_DRBG_ENABLED
 	default y if UOSCORE || UEDHOC
 
+config MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG
+	bool "Platform Security Architecture external RNG source"
+	default MBEDTLS_ZEPHYR_ENTROPY if !BUILD_WITH_TFM
+
 config MBEDTLS_LMS
 	bool "Support LMS signature schemes"
 	depends on MBEDTLS_PSA_CRYPTO_C

@@ -97,6 +97,7 @@ zephyr_interface_library_named(mbedTLS)
 
     zephyr_library_sources(${mbedtls_base_src})
 
+    zephyr_library_sources_ifdef(CONFIG_MBEDTLS_PSA_CRYPTO_C psa.c)
     zephyr_library_sources_ifdef(CONFIG_MBEDTLS_DEBUG debug.c)
     zephyr_library_sources_ifdef(CONFIG_MBEDTLS_SHELL shell.c)
 
