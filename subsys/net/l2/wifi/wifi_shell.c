@@ -1879,7 +1879,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(wifi_commands,
 		  "< 0:band (-2:2.4GHz, -5:5GHz, -6:6GHz]\n"
 		  "[PSK: valid only for secure SSIDs]\n"
 		  "[Security type: valid only for secure SSIDs]\n"
-		  "0:None, 1:WPA2-PSK, 2:WPA2-PSK-256, 3:SAE, 4:WAPI, 5:EAP, 6:WEP, 7: WPA-PSK\n"
+		  "0:None, 1:WPA2-PSK, 2:WPA2-PSK-256, 3:SAE, 4:WAPI, 5:EAP, 6:WEP,"
+		  " 7: WPA-PSK, 8: WPA-Auto-Personal\n"
 		  "[MFP (optional: needs security type to be specified)]\n"
 		  ": 0:Disable, 1:Optional, 2:Required.\n",
 		  cmd_wifi_connect,
