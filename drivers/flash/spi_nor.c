@@ -19,6 +19,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys_clock.h>
 #include <zephyr/pm/device.h>
+#include <zephyr/pm/device_runtime.h>
 
 #include "spi_nor.h"
 #include "jesd216.h"
@@ -64,6 +65,12 @@ LOG_MODULE_REGISTER(spi_nor, CONFIG_FLASH_LOG_LEVEL);
 
 #define _INST_HAS_HOLD_OR(inst) DT_INST_NODE_HAS_PROP(inst, hold_gpios) ||
 #define ANY_INST_HAS_HOLD_GPIOS DT_INST_FOREACH_STATUS_OKAY(_INST_HAS_HOLD_OR) 0
+
+#ifdef CONFIG_SPI_NOR_ACTIVE_DWELL_MS
+#define ACTIVE_DWELL_MS CONFIG_SPI_NOR_ACTIVE_DWELL_MS
+#else
+#define ACTIVE_DWELL_MS 0
+#endif
 
 #define DEV_CFG(_dev_) ((const struct spi_nor_config * const) (_dev_)->config)
 
@@ -691,11 +698,19 @@ static int spi_nor_read(const struct device *dev, off_t addr, void *dest,
 		return -EINVAL;
 	}
 
+	/* Ensure flash is powered before read */
+	if (pm_device_runtime_get(dev) < 0) {
+		return -EIO;
+	}
+
 	acquire_device(dev);
 
 	ret = spi_nor_cmd_addr_read(dev, SPI_NOR_CMD_READ, addr, dest, size);
 
 	release_device(dev);
+
+	/* Release flash power requirement */
+	(void)pm_device_runtime_put_async(dev, K_MSEC(ACTIVE_DWELL_MS));
 	return ret;
 }
 
@@ -707,6 +722,10 @@ static int flash_spi_nor_ex_op(const struct device *dev, uint16_t code,
 
 	ARG_UNUSED(in);
 	ARG_UNUSED(out);
+
+	if (pm_device_runtime_get(dev) < 0) {
+		return -EIO;
+	}
 
 	acquire_device(dev);
 
@@ -723,6 +742,7 @@ static int flash_spi_nor_ex_op(const struct device *dev, uint16_t code,
 	}
 
 	release_device(dev);
+	(void)pm_device_runtime_put_async(dev, K_MSEC(ACTIVE_DWELL_MS));
 	return ret;
 }
 #endif
@@ -738,6 +758,11 @@ static int spi_nor_write(const struct device *dev, off_t addr,
 	/* should be between 0 and flash size */
 	if ((addr < 0) || ((size + addr) > flash_size)) {
 		return -EINVAL;
+	}
+
+	/* Ensure flash is powered before write */
+	if (pm_device_runtime_get(dev) < 0) {
+		return -EIO;
 	}
 
 	acquire_device(dev);
@@ -779,6 +804,9 @@ static int spi_nor_write(const struct device *dev, off_t addr,
 	}
 
 	release_device(dev);
+
+	/* Release flash power requirement */
+	(void)pm_device_runtime_put_async(dev, K_MSEC(ACTIVE_DWELL_MS));
 	return ret;
 }
 
@@ -800,6 +828,11 @@ static int spi_nor_erase(const struct device *dev, off_t addr, size_t size)
 	/* size must be a multiple of sectors */
 	if ((size % SPI_NOR_SECTOR_SIZE) != 0) {
 		return -EINVAL;
+	}
+
+	/* Ensure flash is powered before erase */
+	if (pm_device_runtime_get(dev) < 0) {
+		return -EIO;
 	}
 
 	acquire_device(dev);
@@ -861,6 +894,8 @@ static int spi_nor_erase(const struct device *dev, off_t addr, size_t size)
 
 	release_device(dev);
 
+	/* Release flash power requirement */
+	(void)pm_device_runtime_put_async(dev, K_MSEC(ACTIVE_DWELL_MS));
 	return ret;
 }
 
@@ -901,11 +936,17 @@ static int spi_nor_write_protection_set(const struct device *dev,
 static int spi_nor_sfdp_read(const struct device *dev, off_t addr,
 			     void *dest, size_t size)
 {
+	if (pm_device_runtime_get(dev) < 0) {
+		return -EIO;
+	}
+
 	acquire_device(dev);
 
 	int ret = read_sfdp(dev, addr, dest, size);
 
 	release_device(dev);
+
+	(void)pm_device_runtime_put_async(dev, K_MSEC(ACTIVE_DWELL_MS));
 
 	return ret;
 }
@@ -919,11 +960,17 @@ static int spi_nor_read_jedec_id(const struct device *dev,
 		return -EINVAL;
 	}
 
+	if (pm_device_runtime_get(dev) < 0) {
+		return -EIO;
+	}
+
 	acquire_device(dev);
 
 	int ret = spi_nor_cmd_read(dev, SPI_NOR_CMD_RDID, id, SPI_NOR_MAX_ID_LEN);
 
 	release_device(dev);
+
+	(void)pm_device_runtime_put_async(dev, K_MSEC(ACTIVE_DWELL_MS));
 
 	return ret;
 }
