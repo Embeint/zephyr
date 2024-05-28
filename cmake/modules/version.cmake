@@ -62,6 +62,32 @@ foreach(type file IN ZIP_LISTS VERSION_TYPE VERSION_FILE)
   string(REGEX MATCH "EXTRAVERSION = ([a-z0-9]*)" _ ${ver})
   set(${type}_VERSION_EXTRA ${CMAKE_MATCH_1})
 
+  # If user requested the tweak to be generated from the git hash
+  string(FIND ${ver} "VERSION_TWEAK = git" TWEAK_GIT)
+  if(NOT TWEAK_GIT EQUAL "-1")
+    cmake_path(GET file PARENT_PATH work_dir)
+    find_package(Git QUIET)
+    if(GIT_FOUND)
+      execute_process(
+        COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
+        WORKING_DIRECTORY                ${work_dir}
+        OUTPUT_VARIABLE                  COMMIT_HASH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_STRIP_TRAILING_WHITESPACE
+        ERROR_VARIABLE                   stderr
+        RESULT_VARIABLE                  return_code
+      )
+      if(return_code)
+        message(STATUS "git rev-parse failed: ${stderr}")
+      elseif(NOT "${stderr}" STREQUAL "")
+        message(STATUS "git rev-parse warned: ${stderr}")
+      else()
+        string(SUBSTRING ${COMMIT_HASH} 0 8 COMMIT_HASH_SHORT)
+        math(EXPR ${type}_VERSION_TWEAK "0x${COMMIT_HASH_SHORT}" OUTPUT_FORMAT DECIMAL)
+      endif()
+    endif()
+  endif()
+
   # Temporary convenience variables
   set(${type}_VERSION_WITHOUT_TWEAK ${${type}_VERSION_MAJOR}.${${type}_VERSION_MINOR}.${${type}_PATCHLEVEL})
   set(${type}_VERSION_WITH_TWEAK ${${type}_VERSION_MAJOR}.${${type}_VERSION_MINOR}.${${type}_PATCHLEVEL}+${${type}_VERSION_TWEAK})
