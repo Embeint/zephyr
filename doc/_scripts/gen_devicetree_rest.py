@@ -285,8 +285,6 @@ def write_dummy_index(bindings, out_dir):
 
     # header
     content = '\n'.join((
-        ':orphan:',
-        '',
         '.. _devicetree_binding_index:',
         '.. _dt_vendor_zephyr:',
         '',
@@ -310,8 +308,6 @@ def write_bindings_rst(vnd_lookup, out_dir):
     string_io = io.StringIO()
 
     print_block(f'''\
-    :orphan:
-
     .. _devicetree_binding_index:
 
     Bindings index
