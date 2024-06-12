@@ -55,6 +55,7 @@ static const struct tfm_read_service_range ranges[] = {
 #if defined(FICR_SIPINFO_ADDR)
 	{ .start = FICR_SIPINFO_ADDR, .size = FICR_SIPINFO_SIZE },
 #endif
+	{ .start = NRF_UICR_S_BASE, .size = sizeof(NRF_UICR_Type)}
 };
 
 #endif /* TFM_READ_RANGES_H__ */
