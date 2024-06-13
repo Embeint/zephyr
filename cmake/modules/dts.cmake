@@ -115,6 +115,8 @@ set(ZEPHYR_DTS                  ${PROJECT_BINARY_DIR}/zephyr.dts)
 set(DEVICETREE_GENERATED_H      ${BINARY_DIR_INCLUDE_GENERATED}/devicetree_generated.h)
 # List of bindings used in a build
 set(DEVICETREE_BINDINGS_USED    ${PROJECT_BINARY_DIR}/dts_bindings_used.txt)
+# The generated C header needed by TF-M <region_defs.h>
+set(DEVICETREE_TFM_GENERATED_H  ${BINARY_DIR_INCLUDE_GENERATED}/tfm_devicetree_generated.h)
 # Generated build system internals.
 set(DTS_POST_CPP                ${PROJECT_BINARY_DIR}/zephyr.dts.pre)
 set(DTS_DEPS                    ${PROJECT_BINARY_DIR}/zephyr.dts.d)
@@ -123,6 +125,9 @@ set(DTS_DEPS                    ${PROJECT_BINARY_DIR}/zephyr.dts.d)
 set(GEN_DRIVER_KCONFIG_SCRIPT   ${DT_SCRIPTS}/gen_driver_kconfig_dts.py)
 # Generated Kconfig symbols go here.
 set(DTS_KCONFIG                 ${KCONFIG_BINARY_DIR}/Kconfig.dts)
+
+# This generates DT information needed by the TF-M build system.
+set(GEN_TFM_DEFINES_SCRIPT      ${DT_SCRIPTS}/gen_tfm_defines.py)
 
 # The location of a file containing known vendor prefixes, relative to
 # each element of DTS_ROOT. Users can define their own in their own
@@ -297,6 +302,7 @@ function(dts_edt_pickle)
     ${GEN_EDT_SCRIPT}
     ${GEN_DEFINES_SCRIPT}
     ${GEN_DRIVER_KCONFIG_SCRIPT}
+    ${GEN_TFM_DEFINES_SCRIPT}
   )
 
   #
@@ -390,6 +396,29 @@ function(dts_import)
   zephyr_dt_import(EDT_PICKLE_FILE ${EDT_PICKLE} TARGET devicetree_target)
 endfunction()
 
+function(dts_gen_tfm_defines)
+  #
+  # Run GEN_TFM_DEFINES_SCRIPT for non-secure boards.
+  #
+
+  if(BOARD_QUALIFIERS MATCHES "\\/ns$")
+    execute_process(
+      COMMAND ${PYTHON_EXECUTABLE} ${GEN_TFM_DEFINES_SCRIPT}
+      --edt-pickle ${EDT_PICKLE}
+      --header-out ${DEVICETREE_TFM_GENERATED_H}.new
+      WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
+      RESULT_VARIABLE ret
+    )
+    if(NOT "${ret}" STREQUAL "0")
+      message(FATAL_ERROR "${GEN_TFM_DEFINES_SCRIPT} failed with return code: ${ret}")
+    endif()
+
+    file(COPY_FILE ${DEVICETREE_TFM_GENERATED_H}.new ${DEVICETREE_TFM_GENERATED_H} ONLY_IF_DIFFERENT)
+    file(REMOVE ${DEVICETREE_TFM_GENERATED_H}.new)
+    message(STATUS "Generated tfm_devicetree_generated.h: ${DEVICETREE_TFM_GENERATED_H}")
+  endif()
+endfunction()
+
 function(dts_dtc)
   #
   # Run dtc if it was found.
@@ -448,6 +477,7 @@ macro(dts_init)
   dts_gen_defines()
   dts_gen_driver_kconfig()
   dts_import()
+  dts_gen_tfm_defines()
   dts_dtc()
   dts_build_info_output()
 endmacro()
