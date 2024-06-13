@@ -51,6 +51,13 @@ menuconfig BUILD_WITH_TFM
 
 if BUILD_WITH_TFM
 
+config TFM_DEVICETREE_LAYOUT
+	bool "Use the memory layout from devicetree instead of TFM_BOARD"
+	depends on SOC_FAMILY_NRF
+	help
+		Use partition and memory layouts from the Zephyr devicetree
+		instead of the hardcoded values from {module}/platform/ext/target/{family}/partition.
+
 config TFM_KEY_FILE_S
 	string "Path to private key used to sign secure firmware images."
 	depends on BUILD_WITH_TFM
