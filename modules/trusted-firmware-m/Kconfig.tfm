@@ -218,7 +218,9 @@ config TFM_IMAGE_VERSION_S
 	help
 	  MCUBoot may be configured to prevent rollback prevention based on image
 	  versions of both the secure firmware and non-secure firmware. This sets
-	  the secure firmware's version for rollback prevention.
+	  the secure firmware's version for rollback prevention. This version is
+	  also used for merged secure + non-secure builds
+	  (TFM_MCUBOOT_IMAGE_NUMBER == 1).
 
 config TFM_IMAGE_VERSION_NS
 	string "Version of the Non-Secure Image"
