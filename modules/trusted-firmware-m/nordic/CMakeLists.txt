@@ -62,6 +62,17 @@ if(BL2)
                 "-DNRFX_QSPI_ENABLED=1"
         )
     endif()
+    if(BL2_SPI_NOR_DRIVERS)
+        target_sources(platform_bl2
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/cmsis_drivers/Driver_SPI_NOR.c
+            ${HAL_NORDIC_PATH}/nrfx/drivers/src/nrfx_spim.c
+        )
+        target_compile_definitions(platform_bl2
+            PRIVATE
+                "-DBL2_SPI_NOR_DRIVER_ENABLED=1"
+        )
+    endif()
 endif()
 
 target_sources(tfm_spm
