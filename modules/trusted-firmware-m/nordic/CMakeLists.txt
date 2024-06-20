@@ -33,6 +33,28 @@ target_sources(platform_s
     PRIVATE
         $<$<BOOL:${TFM_PARTITION_PLATFORM}>:${CMAKE_CURRENT_SOURCE_DIR}/src/tfm_platform_system.c>
 )
+if(NRF_CC3XX_PLATFORM_LIB)
+    add_library(nrf_cc3xx_platform STATIC IMPORTED GLOBAL)
+    set_target_properties(nrf_cc3xx_platform PROPERTIES
+        IMPORTED_LOCATION "${NRF_CC3XX_PLATFORM_LIB}"
+    )
+    target_include_directories(nrf_cc3xx_platform INTERFACE
+        "${NRF_CC3XX_PLATFORM_BASE}/include")
+    target_link_libraries(platform_s
+    INTERFACE
+        nrf_cc3xx_platform
+    )
+    target_compile_definitions(platform_s
+    PRIVATE
+        "-DMBEDTLS_PSA_CRYPTO_EXTERNAL_RNG=1"
+        "-DNRF_CC3XX_PLATFORM_LIB=1"
+    )
+    target_compile_definitions(tfm_spm
+    PRIVATE
+        "-DMBEDTLS_PSA_CRYPTO_EXTERNAL_RNG=1"
+        "-DNRF_CC3XX_PLATFORM_LIB=1"
+    )
+endif()
 
 target_include_directories(platform_s
     PUBLIC
