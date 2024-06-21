@@ -37,7 +37,11 @@
 			label = "image-0";
 			reg = <0x00010000 0x40000>;
 		};
-		slot0_ns_partition: partition@50000 {
+		slot0_s_partition: subpartition@10000 {
+			label = "image-0-secure";
+			reg = <0x00010000 0x40000>;
+		};
+		slot0_ns_partition: subpartition@50000 {
 			label = "image-0-nonsecure";
 			reg = <0x00050000 0x30000>;
 		};
@@ -45,7 +49,11 @@
 			label = "image-1";
 			reg = <0x00080000 0x40000>;
 		};
-		slot1_ns_partition: partition@c0000 {
+		slot1_s_partition: subpartition@80000 {
+			label = "image-1-secure";
+			reg = <0x00080000 0x40000>;
+		};
+		slot1_ns_partition: subpartition@c0000 {
 			label = "image-1-nonsecure";
 			reg = <0x000c0000 0x30000>;
 		};
