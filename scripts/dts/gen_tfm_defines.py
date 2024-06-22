@@ -237,7 +237,9 @@ def main():
             content += define_gen(flash_device_defines(idx, flash_dev))
     else:
         # Silent failure for boards that don't support devicetree defines
-        content += f"""\nExpected exactly one node with compat `{tfm_compat}`\n"""
+        content += (
+            f"""\n#error Expected exactly one node with compat `{tfm_compat}`\n"""
+        )
 
     with open(args.header_out, "w", encoding="utf-8") as f:
         f.write(content)
