@@ -17,6 +17,7 @@ struct wdt_nrfx_data {
 	wdt_callback_t m_callbacks[NRF_WDT_CHANNEL_NUMBER];
 	uint32_t m_timeout;
 	uint8_t m_allocated_channels;
+	bool enabled;
 };
 
 struct wdt_nrfx_config {
@@ -26,7 +27,7 @@ struct wdt_nrfx_config {
 static int wdt_nrf_setup(const struct device *dev, uint8_t options)
 {
 	const struct wdt_nrfx_config *config = dev->config;
-	const struct wdt_nrfx_data *data = dev->data;
+	struct wdt_nrfx_data *data = dev->data;
 	nrfx_err_t err_code;
 
 	nrfx_wdt_config_t wdt_config = {
@@ -53,6 +54,7 @@ static int wdt_nrf_setup(const struct device *dev, uint8_t options)
 
 	nrfx_wdt_enable(&config->wdt);
 
+	data->enabled = true;
 	return 0;
 }
 
@@ -130,6 +132,10 @@ static int wdt_nrf_feed(const struct device *dev, int channel_id)
 
 	if (channel_id > data->m_allocated_channels) {
 		return -EINVAL;
+	}
+	if (data->enabled == false) {
+		/* Watchdog is not running so does not need to be fed */
+		return -EAGAIN;
 	}
 
 	nrfx_wdt_channel_feed(&config->wdt,
