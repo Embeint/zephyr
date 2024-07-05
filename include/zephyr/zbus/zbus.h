@@ -73,29 +73,29 @@ struct zbus_channel_data {
 struct zbus_channel {
 #if defined(CONFIG_ZBUS_CHANNEL_NAME) || defined(__DOXYGEN__)
 	/** Channel name. */
-	const char *const name;
+	const char *name;
 #endif
 	/** Message reference. Represents the message's reference that points to the actual
 	 * shared memory region.
 	 */
-	void *const message;
+	void *message;
 
 	/** Message size. Represents the channel's message size. */
-	const size_t message_size;
+	size_t message_size;
 
 	/** User data available to extend zbus features. The channel must be claimed before
 	 * using this field.
 	 */
-	void *const user_data;
+	void *user_data;
 
 	/** Message validator. Stores the reference to the function to check the message
 	 * validity before actually performing the publishing. No invalid messages can be
 	 * published. Every message is valid when this field is empty.
 	 */
-	bool (*const validator)(const void *msg, size_t msg_size);
+	bool (*validator)(const void *msg, size_t msg_size);
 
 	/** Mutable channel data struct. */
-	struct zbus_channel_data *const data;
+	struct zbus_channel_data *data;
 };
 
 /**
@@ -137,26 +137,26 @@ struct zbus_observer_data {
 struct zbus_observer {
 #if defined(CONFIG_ZBUS_OBSERVER_NAME) || defined(__DOXYGEN__)
 	/** Observer name. */
-	const char *const name;
+	const char *name;
 #endif
 	/** Type indication. */
 	enum zbus_observer_type type;
 
 	/** Mutable observer data struct. */
-	struct zbus_observer_data *const data;
+	struct zbus_observer_data *data;
 
 	union {
 		/** Observer message queue. It turns the observer into a subscriber. */
-		struct k_msgq *const queue;
+		struct k_msgq *queue;
 
 		/** Observer callback function. It turns the observer into a listener. */
-		void (*const callback)(const struct zbus_channel *chan);
+		void (*callback)(const struct zbus_channel *chan);
 
 #if defined(CONFIG_ZBUS_MSG_SUBSCRIBER) || defined(__DOXYGEN__)
 		/** Observer message FIFO. It turns the observer into a message subscriber. It only
 		 * exists if the @kconfig{CONFIG_ZBUS_MSG_SUBSCRIBER} is enabled.
 		 */
-		struct k_fifo *const message_fifo;
+		struct k_fifo *message_fifo;
 #endif /* CONFIG_ZBUS_MSG_SUBSCRIBER */
 	};
 };
@@ -167,8 +167,8 @@ struct zbus_channel_observation_mask {
 };
 
 struct zbus_channel_observation {
-	const struct zbus_channel *const chan;
-	const struct zbus_observer *const obs;
+	const struct zbus_channel *chan;
+	const struct zbus_observer *obs;
 };
 
 #ifdef __cplusplus
@@ -396,8 +396,8 @@ struct zbus_channel_observation {
  */
 #define ZBUS_SUBSCRIBER_DEFINE_WITH_ENABLE(_name, _queue_size, _enable)       \
 	K_MSGQ_DEFINE(_zbus_observer_queue_##_name,                           \
-		      sizeof(const struct zbus_channel *),                    \
-		      _queue_size, sizeof(const struct zbus_channel *)        \
+		      sizeof(struct zbus_channel *),                          \
+		      _queue_size, sizeof(struct zbus_channel *)              \
 	);                                                                    \
 	static struct zbus_observer_data _CONCAT(_zbus_obs_data_, _name) = {  \
 		.enabled = _enable,                                           \
