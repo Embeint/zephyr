@@ -112,6 +112,10 @@ static int wdog_cmsdk_apb_install_timeout(const struct device *dev,
 
 	ARG_UNUSED(dev);
 
+	if (config->window.max == 0) {
+		return -EINVAL;
+	}
+
 	/* Reload value */
 	reload_s = config->window.max *
 			   DT_INST_PROP_BY_PHANDLE(0, clocks, clock_frequency);
