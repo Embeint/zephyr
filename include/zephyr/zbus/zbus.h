@@ -56,6 +56,13 @@ struct zbus_channel_data {
 	 */
 	sys_slist_t observers;
 #endif /* CONFIG_ZBUS_RUNTIME_OBSERVERS */
+
+#if defined(CONFIG_ZBUS_CHANNEL_PUBLISH_STATS) || defined(__DOXYGEN__)
+	/** Kernel timestamp of the last publish action on this channel */
+	k_ticks_t publish_timestamp;
+	/** Number of times data has been published to this channel */
+	uint32_t publish_count;
+#endif /* CONFIG_ZBUS_CHANNEL_PUBLISH_STATS */
 };
 
 /**
@@ -755,6 +762,89 @@ static inline void *zbus_chan_user_data(const struct zbus_channel *chan)
 	return chan->user_data;
 }
 
+#if defined(CONFIG_ZBUS_CHANNEL_PUBLISH_STATS) || defined(__DOXYGEN__)
+
+/**
+ * @brief Update the publishing statistics for a channel
+ *
+ * This function updates the publishing statistics for the @ref zbus_chan_claim ->
+ * @ref zbus_chan_finish workflow, which cannot automatically determine whether
+ * new data has been published or not.
+ *
+ * @warning This function must only be used directly for already locked channels.
+ *
+ * @param chan The channel's reference.
+ */
+static inline void zbus_chan_update_publish_metadata(const struct zbus_channel *chan)
+{
+	__ASSERT(chan != NULL, "chan is required");
+
+	chan->data->publish_timestamp = k_uptime_ticks();
+	chan->data->publish_count += 1;
+}
+
+/**
+ * @brief Get the time a channel was last published to.
+ *
+ * @note Will return 0 if channel has not yet been published to.
+ *
+ * @param chan The channel's reference.
+ *
+ * @return The kernel timestamp of the last publishing action.
+ */
+static inline k_ticks_t zbus_chan_publish_time(const struct zbus_channel *chan)
+{
+	__ASSERT(chan != NULL, "chan is required");
+
+	return chan->data->publish_timestamp;
+}
+
+/**
+ * @brief Get the number of times a channel has been published to.
+ *
+ * @note Will return 0 if channel has not yet been published to.
+ *
+ * @param chan The channel's reference.
+ *
+ * @return The number of times a channel has been published to.
+ */
+static inline uint32_t zbus_chan_publish_count(const struct zbus_channel *chan)
+{
+	__ASSERT(chan != NULL, "chan is required");
+
+	return chan->data->publish_count;
+}
+
+/**
+ * @brief Get the average period between publishes to a channel.
+ *
+ * @note Will return 0 if channel has not yet been published to.
+ *
+ * @param chan The channel's reference.
+ *
+ * @return Average duration in milliseconds between publishes.
+ */
+static inline uint32_t zbus_chan_avg_publish_period(const struct zbus_channel *chan)
+{
+	__ASSERT(chan != NULL, "chan is required");
+
+	/* Not yet published, period = 0ms */
+	if (chan->data->publish_count == 0) {
+		return 0;
+	}
+	/* Average period across application runtime */
+	return k_uptime_get() / chan->data->publish_count;
+}
+
+#else
+
+static inline void zbus_chan_update_publish_metadata(const struct zbus_channel *chan)
+{
+	(void)chan;
+}
+
+#endif /* CONFIG_ZBUS_CHANNEL_PUBLISH_STATS */
+
 #if defined(CONFIG_ZBUS_RUNTIME_OBSERVERS) || defined(__DOXYGEN__)
 
 /**
@@ -768,7 +858,8 @@ static inline void *zbus_chan_user_data(const struct zbus_channel *chan)
  *                or one of the special values K_NO_WAIT and K_FOREVER.
  *
  * @retval 0 Observer added to the channel.
- * @retval -EALREADY The observer is already present in the channel's runtime observers list.
+ * @retval -EALREADY The observer is already present in the channel's runtime observers
+ * list.
  * @retval -ENOMEM Returned without waiting.
  * @retval -EAGAIN Waiting period timed out.
  * @retval -EINVAL Some parameter is invalid.
