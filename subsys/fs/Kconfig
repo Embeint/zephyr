@@ -15,6 +15,15 @@ module = FS
 module-str = fs
 source "subsys/logging/Kconfig.template.log_config"
 
+config FILE_SYSTEM_RAW_API
+	bool "Use raw filesystem APIs instead of <zephyr/fs/fs.h>"
+	help
+	  Link in the underlying file system libraries as usual, but
+	  don't compile in the Zephyr file system abstraction layer.
+	  This can be useful to avoid linking in the entire filesystem
+	  implementation via `struct fs_file_system_t` if only a subset
+	  is used.
+
 config APP_LINK_WITH_FS
 	bool "Link 'app' with FS"
 	default y
