@@ -7,3 +7,11 @@ description: |
 compatible: "zephyr,sdmmc-disk"
 
 include: [sd-device.yaml]
+
+properties:
+  disk-name:
+    type: string
+    required: true
+    default: "SD"
+    description: |
+      Disk name. Default value comes from the ELM FAT mount point
