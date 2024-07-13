@@ -215,6 +215,7 @@ arduino_serial: &uart1 {
 		sdmmc {
 			compatible = "zephyr,sdmmc-disk";
 			status = "okay";
+			disk-name = "SD";
 		};
 
 		spi-max-frequency = <8000000>;

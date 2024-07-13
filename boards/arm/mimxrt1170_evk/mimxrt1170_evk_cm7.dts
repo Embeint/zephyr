@@ -105,6 +105,7 @@ nxp_mipi_i2c: &lpi2c5 {
 	sdmmc {
 		compatible = "zephyr,sdmmc-disk";
 		status = "okay";
+		disk-name = "SD";
 	};
 };
 
