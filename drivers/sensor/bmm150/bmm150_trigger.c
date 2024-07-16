@@ -151,25 +151,31 @@ int bmm150_trigger_mode_init(const struct device *dev)
 	data->dev = dev;
 #endif
 
-	ret = gpio_pin_configure_dt(&cfg->drdy_int, GPIO_INPUT);
-	if (ret < 0) {
-		return ret;
-	}
-
 	gpio_init_callback(&data->gpio_cb,
-			   bmm150_gpio_callback,
-			   BIT(cfg->drdy_int.pin));
+			bmm150_gpio_callback,
+			BIT(cfg->drdy_int.pin));
 
-	ret = gpio_add_callback(cfg->drdy_int.port, &data->gpio_cb);
-	if (ret < 0) {
-		return ret;
+	return gpio_add_callback(cfg->drdy_int.port, &data->gpio_cb);
+}
+
+int bmm150_trigger_mode_power_ctrl(const struct device *dev, bool enable)
+{
+	const struct bmm150_config *cfg = dev->config;
+	int ret;
+
+	if (enable) {
+		ret = gpio_pin_configure_dt(&cfg->drdy_int, GPIO_INPUT);
+		if (ret < 0) {
+			return ret;
+		}
+		ret = gpio_pin_interrupt_configure_dt(&cfg->drdy_int,
+						GPIO_INT_EDGE_TO_ACTIVE);
+	} else {
+		ret  = gpio_pin_interrupt_configure_dt(&cfg->drdy_int, GPIO_INT_DISABLE);
+		if (ret < 0) {
+			return ret;
+		}
+		ret = gpio_pin_configure_dt(&cfg->drdy_int, GPIO_DISCONNECTED);
 	}
-
-	ret = gpio_pin_interrupt_configure_dt(&cfg->drdy_int,
-					      GPIO_INT_EDGE_TO_ACTIVE);
-	if (ret < 0) {
-		return ret;
-	}
-
-	return 0;
+	return ret;
 }
