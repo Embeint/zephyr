@@ -107,7 +107,6 @@ static const struct sensor_driver_api voltage_api = {
 	.channel_get = get,
 };
 
-#ifdef CONFIG_PM_DEVICE
 static int pm_action(const struct device *dev, enum pm_device_action action)
 {
 	const struct voltage_config *config = dev->config;
@@ -131,13 +130,17 @@ static int pm_action(const struct device *dev, enum pm_device_action action)
 			LOG_ERR("failed to set GPIO for PM suspend");
 		}
 		break;
+	case PM_DEVICE_ACTION_TURN_ON:
+		ret = gpio_pin_configure_dt(&config->gpio_power, GPIO_OUTPUT_INACTIVE);
+		if (ret != 0) {
+			LOG_ERR("failed to configure GPIO for PM on");
+		}
 	default:
 		return -ENOTSUP;
 	}
 
 	return ret;
 }
-#endif
 
 static int voltage_init(const struct device *dev)
 {
@@ -155,11 +158,6 @@ static int voltage_init(const struct device *dev)
 			LOG_ERR("Power GPIO is not ready");
 			return -ENODEV;
 		}
-
-		ret = gpio_pin_configure_dt(&config->gpio_power, GPIO_OUTPUT_ACTIVE);
-		if (ret != 0) {
-			LOG_ERR("failed to initialize GPIO for reset");
-		}
 	}
 
 	ret = adc_channel_setup_dt(&config->voltage.port);
@@ -174,7 +172,7 @@ static int voltage_init(const struct device *dev)
 		return ret;
 	}
 
-	return 0;
+	return pm_device_driver_init(dev, pm_action);
 }
 
 #define VOLTAGE_INIT(inst)                                                                         \
