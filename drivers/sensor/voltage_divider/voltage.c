@@ -135,6 +135,7 @@ static int pm_action(const struct device *dev, enum pm_device_action action)
 		if (ret != 0) {
 			LOG_ERR("failed to configure GPIO for PM on");
 		}
+		break;
 	default:
 		return -ENOTSUP;
 	}
