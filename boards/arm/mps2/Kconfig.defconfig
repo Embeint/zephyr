@@ -16,19 +16,19 @@ config ZTEST_STACK_SIZE
 if COVERAGE_GCOV
 
 config MAIN_STACK_SIZE
-	default 4096
+	default 8192
 
 config IDLE_STACK_SIZE
-	default 4096
+	default 8192
 
 config PRIVILEGED_STACK_SIZE
-	default 4096
+	default 8192
 
 config ISR_STACK_SIZE
-	default 4096
+	default 8192
 
 config TEST_EXTRA_STACK_SIZE
-	default 4096
+	default 8192
 
 endif # COVERAGE_GCOV
 
