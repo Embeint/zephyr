@@ -34,6 +34,7 @@ _west_cmds() {
   'zephyr-export[export Zephyr installation as a CMake config package]'
   'spdx[create SPDX bill of materials]'
   'blobs[work with binary blobs]'
+  'vscode[generate vscode workspace configuration]'
   )
 
   local -a all_cmds=(${builtin_cmds} ${zephyr_ext_cmds})
@@ -355,6 +356,14 @@ _west_blob_fetch () {
 
 _west_blob_clean () {
   _arguments -S "1:west proj:_get_west_projs"
+}
+
+_west_vscode() {
+  local -a opts=(
+  '(-d --build-dir)'{-d,--build-dir}'[build directory to use]:build dir:_directories'
+  '--workspace[vscode workspace directory]:workspace dir:_directories'
+  )
+  _arguments -S $opts
 }
 
 # don't run the completion function when being source-ed or eval-ed

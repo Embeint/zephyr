@@ -1142,6 +1142,29 @@ __comp_west_twister()
 	esac
 }
 
+__comp_west_vscode()
+{
+	local dir_opts="
+		--workspace
+		--build-dir -d
+	"
+
+	all_opts="$dir_opts"
+
+	case "$prev" in
+		$(__west_to_extglob "$dir_opts") )
+			__set_comp_dirs
+			return
+			;;
+	esac
+
+	case "$cur" in
+		-*)
+			__set_comp $all_opts
+			;;
+	esac
+}
+
 __comp_west()
 {
 	local previous_extglob_setting=$(shopt -p extglob)
@@ -1176,6 +1199,7 @@ __comp_west()
 		spdx
 		blobs
 		twister
+		vscode
 	)
 
 	local cmds=(${builtin_cmds[*]} ${zephyr_ext_cmds[*]})
