@@ -923,6 +923,29 @@ __comp_west_blobs()
 	esac
 }
 
+__comp_west_vscode()
+{
+	local dir_opts="
+		--workspace
+		--build-dir -d
+	"
+
+	all_opts="$dir_opts"
+
+	case "$prev" in
+		$(__west_to_extglob "$dir_opts") )
+			__set_comp_dirs
+			return
+			;;
+	esac
+
+	case "$cur" in
+		-*)
+			__set_comp $all_opts
+			;;
+	esac
+}
+
 
 __comp_west()
 {
@@ -956,6 +979,7 @@ __comp_west()
 		zephyr-export
 		spdx
 		blobs
+		vscode
 	)
 
 	local cmds=(${builtin_cmds[*]} ${zephyr_ext_cmds[*]})
