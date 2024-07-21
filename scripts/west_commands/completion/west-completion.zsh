@@ -36,6 +36,11 @@ _west_cmds() {
   'spdx[create SPDX bill of materials]'
   'blobs[work with binary blobs]'
   'sdk[manage SDKs]'
+  'vscode[generate vscode workspace configuration]'
+  'cloudgen[generate TDF,RPC and KV definitions]'
+  'release-build[build an Infuse-IoT application release]'
+  'release-flash[flash an Infuse-IoT application release]'
+  'release-diff[generate binary diffs between Infuse-IoT application releases]'
   )
 
   local -a all_cmds=(${builtin_cmds} ${zephyr_ext_cmds})
@@ -380,6 +385,48 @@ _west_blob_fetch () {
 
 _west_blob_clean () {
   _arguments -S "1:west proj:_get_west_projs"
+}
+
+_west_vscode() {
+  local -a opts=(
+  '(-d --build-dir)'{-d,--build-dir}'[build directory to use]:build dir:_directories'
+  '--workspace[vscode workspace directory]:workspace dir:_directories'
+  )
+  _arguments -S $opts
+}
+
+_west_cloudgen() {
+  local -a opts=(
+  '(-d --defs)'{-d,--defs}'[Definition directory]:definition directory:_directories'
+  '(-o --output)'{-o,--output}'[Output directory]:output directory:_directories'
+  )
+  _arguments -S $opts
+}
+
+_west_release_build() {
+  local -a opts=(
+  '(-r --release)'{-r,--release}'[release configuration file]:release filename:_files'
+  '--ignore-git[Ignore git check failures]'
+  '--skip-git[Do not run remote git operations]'
+  )
+  _arguments -S $opts
+}
+
+_west_release_flash() {
+  local -a opts=(
+  '(-r --release)'{-r,--release}'[release directory]:release directory:_directories'
+  '--erase[Provide --erase to "west flash"]'
+  )
+  _arguments -S $opts
+}
+
+_west_release_diff() {
+  local -a opts=(
+  '(-i --input)'{-i,--input}'[Original release directories]:input directory:_directories'
+  '(-o --output)'{-o,--output}'[Upgrade release directory]:output directory:_directories'
+  '--tool-compare[Output patch file comparison with other tools]'
+  )
+  _arguments -S $opts
 }
 
 # don't run the completion function when being source-ed or eval-ed

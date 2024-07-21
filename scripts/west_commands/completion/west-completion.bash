@@ -1195,6 +1195,129 @@ __comp_west_sdk()
 	esac
 }
 
+__comp_west_vscode()
+{
+	local dir_opts="
+		--workspace
+		--build-dir -d
+	"
+
+	all_opts="$dir_opts"
+
+	case "$prev" in
+		$(__west_to_extglob "$dir_opts") )
+			__set_comp_dirs
+			return
+			;;
+	esac
+
+	case "$cur" in
+		-*)
+			__set_comp $all_opts
+			;;
+	esac
+}
+
+__comp_west_cloudgen()
+{
+	local dir_opts="
+		--defs -d
+		--output -o
+	"
+
+	all_opts="$dir_opts"
+
+	case "$prev" in
+		$(__west_to_extglob "$dir_opts") )
+			__set_comp_dirs
+			return
+			;;
+	esac
+
+	case "$cur" in
+		-*)
+			__set_comp $all_opts
+			;;
+	esac
+}
+
+__comp_west_release_build()
+{
+	local file_opts="
+		--release -r
+	"
+	local bool_opts="
+		--ignore-git
+		--skip-git
+	"
+
+	all_opts="$file_opts $bool_opts"
+
+	case "$prev" in
+		$(__west_to_extglob "$file_opts") )
+			__set_comp_files
+			return
+			;;
+	esac
+
+	case "$cur" in
+		-*)
+			__set_comp $all_opts
+			;;
+	esac
+}
+
+__comp_west_release_flash()
+{
+	local dir_opts="
+		--release -r
+	"
+	local bool_opts="
+		--erase
+	"
+
+	all_opts="$dir_opts $bool_opts"
+
+	case "$prev" in
+		$(__west_to_extglob "$dir_opts") )
+			__set_comp_dirs
+			return
+			;;
+	esac
+
+	case "$cur" in
+		-*)
+			__set_comp $all_opts
+			;;
+	esac
+}
+
+__comp_west_release_diff()
+{
+	local dir_opts="
+		--input -i
+		--output -o
+	"
+	local bool_opts="
+		--tool-compare
+	"
+
+	all_opts="$dir_opts $bool_opts"
+
+	case "$prev" in
+		$(__west_to_extglob "$dir_opts") )
+			__set_comp_dirs
+			return
+			;;
+	esac
+
+	case "$cur" in
+		-*)
+			__set_comp $all_opts
+			;;
+	esac
+}
+
 __comp_west()
 {
 	local previous_extglob_setting=$(shopt -p extglob)
@@ -1230,6 +1353,11 @@ __comp_west()
 		blobs
 		twister
 		sdk
+		vscode
+		cloudgen
+		release-build
+		release-diff
+		release-flash
 	)
 
 	local cmds=(${builtin_cmds[*]} ${zephyr_ext_cmds[*]})
