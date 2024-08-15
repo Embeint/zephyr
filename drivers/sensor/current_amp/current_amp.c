@@ -43,7 +43,7 @@ static int get(const struct device *dev, enum sensor_channel chan, struct sensor
 	const struct current_sense_amplifier_dt_spec *config = dev->config;
 	struct current_sense_amplifier_data *data = dev->data;
 	int32_t raw_val = data->raw;
-	int32_t i_ma;
+	int32_t i_ua;
 	int ret;
 
 	__ASSERT_NO_MSG(val != NULL);
@@ -58,14 +58,24 @@ static int get(const struct device *dev, enum sensor_channel chan, struct sensor
 		return ret;
 	}
 
-	i_ma = raw_val;
+#ifdef CONFIG_CURRENT_AMP_HIGH_RANGE
+	int32_t i_ma = raw_val;
+
 	current_sense_amplifier_scale_dt(config, &i_ma);
+	i_ua = 1000 * i_ma;
+#else
+	/* Limited to +-32.7V */
+	__ASSERT(raw_val <= INT16_MAX, "Voltage outside of range");
+	__ASSERT(raw_val >= INT16_MIN, "Voltage outside of range");
 
-	LOG_DBG("%d/%d, %dmV, current:%dmA", data->raw,
-		(1 << data->sequence.resolution) - 1, raw_val, i_ma);
+	i_ua = current_sense_amplifier_scale_ua_dt(config, raw_val);
+#endif
 
-	val->val1 = i_ma / 1000;
-	val->val2 = (i_ma % 1000) * 1000;
+	LOG_DBG("%d/%d, %dmV, current:%dmA", data->raw, (1 << data->sequence.resolution) - 1,
+		raw_val, i_ua / 1000);
+
+	val->val1 = i_ua / 1000000;
+	val->val2 = i_ua % 1000000;
 
 	return 0;
 }
