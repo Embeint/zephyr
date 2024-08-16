@@ -415,7 +415,9 @@ static int bt_spi_open(const struct device *dev, bt_hci_recv_t recv)
 			0, K_NO_WAIT);
 
 	/* Device will let us know when it's ready */
-	k_sem_take(&sem_initialised, K_FOREVER);
+	if (k_sem_take(&sem_initialised, K_SECONDS(CONFIG_BT_SPI_BOOT_TIMEOUT_SEC)) < 0) {
+		return -EIO;
+	}
 
 	return 0;
 }
