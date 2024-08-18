@@ -47,7 +47,7 @@ static inline void sd_delay(unsigned int millis)
  * Helper function to retry sending command to SD card
  * Will retry command if return code equals SD_RETRY
  */
-static inline int sd_retry(int(*cmd)(struct sd_card *card),
+static inline int sd_retry(int(*cmd)(struct sd_card *card), int(*reset)(struct sd_card *card),
 	struct sd_card *card,
 	int retries)
 {
@@ -64,6 +64,11 @@ static inline int sd_retry(int(*cmd)(struct sd_card *card),
 		 */
 		if (ret != SD_RETRY) {
 			break;
+		}
+
+		/* Run reset function if provided */
+		if (reset != NULL) {
+			(void)reset(card);
 		}
 	}
 	return ret == SD_RETRY ? -ETIMEDOUT : ret;

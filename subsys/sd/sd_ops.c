@@ -69,7 +69,7 @@ int sdmmc_wait_ready(struct sd_card *card)
 	do {
 		if (!sdhc_card_busy(card->sdhc)) {
 			/* Check card status */
-			ret = sd_retry(sdmmc_read_status, card, CONFIG_SD_RETRY_COUNT);
+			ret = sd_retry(sdmmc_read_status, NULL, card, CONFIG_SD_RETRY_COUNT);
 			if (ret == 0) {
 				return 0;
 			}
