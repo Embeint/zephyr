@@ -202,6 +202,7 @@ static int32_t ARM_SPI_NOR_Flash_Initialize(ARM_Flash_SignalEvent_t cb_event)
 	const uint32_t spim_pinctrl[] = {
 		DT_FOREACH_CHILD_VARGS(DT_PINCTRL_BY_NAME(FLASH_SPI_NOR_BUS, default, 0),
 				       DT_FOREACH_PROP_ELEM, psels, SPIM_PIN_INIT)};
+	nrf_gpio_pin_drive_t drive = GPIO_PIN_CNF_DRIVE_H0H1;
 	uint8_t reg;
 	int rc;
 
@@ -214,6 +215,7 @@ static int32_t ARM_SPI_NOR_Flash_Initialize(ARM_Flash_SignalEvent_t cb_event)
 		 *   Configure CS GPIO
 		 *   Extract SPIM pins from devicetree pinctrl encoding
 		 *   Initialise SPIM instance in blocking mode
+		 *   Force output pins to high drive mode (Cannot be specified in nrfx_spim_init)
 		 */
 		nrfy_gpio_cfg_output(FLASH_SPI_NOR_CS_PIN);
 		nrfy_gpio_pin_set(FLASH_SPI_NOR_CS_PIN);
@@ -221,6 +223,9 @@ static int32_t ARM_SPI_NOR_Flash_Initialize(ARM_Flash_SignalEvent_t cb_event)
 		if (nrfx_spim_init(&spi_instance, &spim_config, NULL, NULL) != NRFX_SUCCESS) {
 			return ARM_DRIVER_ERROR_PARAMETER;
 		}
+		nrfy_gpio_reconfigure(FLASH_SPI_NOR_CS_PIN, NULL, NULL, NULL, &drive, NULL);
+		nrfy_gpio_reconfigure(spim_config.mosi_pin, NULL, NULL, NULL, &drive, NULL);
+		nrfy_gpio_reconfigure(spim_config.sck_pin, NULL, NULL, NULL, &drive, NULL);
 
 		/* Flash chip setup:
 		 *   Release from deep power down
