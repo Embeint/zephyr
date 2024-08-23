@@ -19,11 +19,13 @@ LOG_MODULE_REGISTER(voltage, CONFIG_SENSOR_LOG_LEVEL);
 struct voltage_config {
 	struct voltage_divider_dt_spec voltage;
 	struct gpio_dt_spec gpio_power;
+	uint32_t sample_delay_us;
 	int32_t ocv_lookup_table[BATTERY_OCV_TABLE_LEN];
 };
 
 struct voltage_data {
 	struct adc_sequence sequence;
+	k_timeout_t earliest_sample;
 	int32_t voltage_mv;
 	uint32_t soc;
 };
@@ -47,6 +49,9 @@ static int fetch(const struct device *dev, enum sensor_channel chan)
 
 	data->sequence.buffer = &adc_raw;
 	data->sequence.buffer_size = sizeof(adc_raw);
+
+	/* Wait until sampling is valid */
+	k_sleep(data->earliest_sample);
 
 	/* Read the ADC */
 	ret = adc_read(config->voltage.port.dev, &data->sequence);
@@ -110,6 +115,7 @@ static const struct sensor_driver_api voltage_api = {
 static int pm_action(const struct device *dev, enum pm_device_action action)
 {
 	const struct voltage_config *config = dev->config;
+	struct voltage_data *data = dev->data;
 	int ret;
 
 	if (config->gpio_power.port == NULL) {
@@ -123,6 +129,8 @@ static int pm_action(const struct device *dev, enum pm_device_action action)
 		if (ret != 0) {
 			LOG_ERR("failed to set GPIO for PM resume");
 		}
+		data->earliest_sample = K_TIMEOUT_ABS_TICKS(
+			k_uptime_ticks() + k_us_to_ticks_ceil32(config->sample_delay_us));
 		break;
 	case PM_DEVICE_ACTION_SUSPEND:
 		ret = gpio_pin_set_dt(&config->gpio_power, 0);
@@ -148,6 +156,9 @@ static int voltage_init(const struct device *dev)
 	const struct voltage_config *config = dev->config;
 	struct voltage_data *data = dev->data;
 	int ret;
+
+	/* Default value to use if `power-gpios` does not exist */
+	data->earliest_sample = K_TIMEOUT_ABS_TICKS(0);
 
 	if (!adc_is_ready_dt(&config->voltage.port)) {
 		LOG_ERR("ADC is not ready");
@@ -182,6 +193,7 @@ static int voltage_init(const struct device *dev)
 	static const struct voltage_config voltage_##inst##_config = {                             \
 		.voltage = VOLTAGE_DIVIDER_DT_SPEC_GET(DT_DRV_INST(inst)),                         \
 		.gpio_power = GPIO_DT_SPEC_INST_GET_OR(inst, power_gpios, {0}),                    \
+		.sample_delay_us = DT_INST_PROP(inst, power_on_sample_delay_us),                   \
 		.ocv_lookup_table =                                                                \
 			BATTERY_OCV_TABLE_DT_GET(DT_DRV_INST(inst), ocv_capacity_table_0),         \
 	};                                                                                         \
