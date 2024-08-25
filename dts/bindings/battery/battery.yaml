@@ -32,6 +32,10 @@ properties:
       Unlike the linux equivalent this array is required to be 11 elements
       long, representing the voltages for 0-100% charge in 10% steps.
 
+  charge-full-design-microamp-hours:
+    type: int
+    description: battery design capacity
+
   re-charge-voltage-microvolt:
     type: int
     description: limit to automatically start charging again
