@@ -94,8 +94,14 @@ static int sd_common_init(struct sd_card *card)
 {
 	int ret;
 
-	/* Perform voltage check using SD CMD8, reset using CMD0 on errors */
-	ret = sd_retry(sd_send_interface_condition, sd_idle, card, CONFIG_SD_RETRY_COUNT);
+	/* Reset card with CMD0 */
+	ret = sd_idle(card);
+	if (ret) {
+		LOG_ERR("Card error on CMD0");
+		return ret;
+	}
+	/* Perform voltage check using SD CMD8 */
+	ret = sd_retry(sd_send_interface_condition, card, CONFIG_SD_RETRY_COUNT);
 	if (ret == -ETIMEDOUT) {
 		LOG_INF("Card does not support CMD8, assuming legacy card");
 		return sd_idle(card);
