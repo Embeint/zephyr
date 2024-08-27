@@ -105,8 +105,14 @@ int i2c_nrfx_twim_msg_transfer(const struct device *dev, uint8_t flags, uint8_t 
 int twim_nrfx_pm_action(const struct device *dev, enum pm_device_action action)
 {
 	const struct i2c_nrfx_twim_common_config *config = dev->config;
+	int rc = 0;
 
 	switch (action) {
+	case PM_DEVICE_ACTION_TURN_ON:
+		if (!config->no_boot_recover) {
+			rc = i2c_nrfx_twim_recover_bus(dev);
+		}
+		break;
 	case PM_DEVICE_ACTION_RESUME:
 		(void)pinctrl_apply_state(config->pcfg, PINCTRL_STATE_DEFAULT);
 		nrfx_twim_enable(&config->twim);
@@ -119,7 +125,7 @@ int twim_nrfx_pm_action(const struct device *dev, enum pm_device_action action)
 		return -ENOTSUP;
 	}
 
-	return 0;
+	return rc;
 }
 
 int i2c_nrfx_twim_common_init(const struct device *dev)
