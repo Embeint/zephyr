@@ -283,6 +283,7 @@ static int i2c_nrfx_twim_rtio_deinit(const struct device *dev)
 				.pcfg = PINCTRL_DT_DEV_CONFIG_GET(I2C(idx)),                       \
 				IF_ENABLED(USES_MSG_BUF(idx), (.msg_buf = MSG_BUF_SYM(idx),))      \
 				.max_transfer_size = MAX_TRANSFER_SIZE(idx),                       \
+				.no_boot_recover = DT_PROP(I2C(idx), zephyr_no_boot_recover),      \
 			},                                                                         \
 		.ctx = &_i2c##idx##_twim_rtio,                                                     \
 	};                                                                                         \
