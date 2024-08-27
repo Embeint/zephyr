@@ -161,5 +161,6 @@ int i2c_nrfx_twim_common_init(const struct device *dev)
 	nrfx_twim_enable(&config->twim);
 #endif
 
-	return 0;
+	/* Recover bus on boot */
+	return i2c_nrfx_twim_recover_bus(dev);
 }
