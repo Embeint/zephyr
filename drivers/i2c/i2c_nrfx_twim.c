@@ -314,6 +314,7 @@ static DEVICE_API(i2c, i2c_nrfx_twim_driver_api) = {
 		IF_ENABLED(USES_MSG_BUF(inst),						      \
 			(.msg_buf = twim_##inst##_msg_buf,))				      \
 		.max_transfer_size = MAX_TRANSFER_SIZE(inst),				      \
+		.boot_recover = DT_PROP(I2C(idx), zephyr_boot_recover),                       \
 		.mem_reg = DMM_DEV_TO_REG(DT_DRV_INST(inst)),				      \
 	};										      \
 	PM_DEVICE_DT_INST_DEFINE(inst, twim_nrfx_pm_action, I2C_PM_ISR_SAFE(inst));	      \

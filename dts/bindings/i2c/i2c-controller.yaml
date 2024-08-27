@@ -25,3 +25,10 @@ properties:
     type: int
     default: 4
     description: Size of the completion queue for blocking requests
+  zephyr,boot-recover:
+    type: boolean
+    description: |
+      Recover the I2C bus on boot. This can be useful to ensure the I2C bus is
+      in a known good state, in case the device rebooted in the middle of an I2C
+      transaction. This MUST NOT be enabled if the I2C bus lines do not idle
+      high on boot (e.g. if the bus is pulled up by a switched regulator).
