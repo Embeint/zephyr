@@ -40,6 +40,7 @@ struct i2c_nrfx_twim_common_config {
 	const struct pinctrl_dev_config *pcfg;
 	uint8_t *msg_buf;
 	uint16_t max_transfer_size;
+	bool no_boot_recover;
 };
 
 int i2c_nrfx_twim_common_init(const struct device *dev);
