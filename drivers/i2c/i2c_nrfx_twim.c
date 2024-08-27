@@ -257,6 +257,7 @@ static DEVICE_API(i2c, i2c_nrfx_twim_driver_api) = {
 			(.msg_buf = twim_##idx##_msg_buf,))		       \
 		.max_transfer_size = BIT_MASK(				       \
 				DT_PROP(I2C(idx), easydma_maxcnt_bits)),       \
+		.no_boot_recover = DT_PROP(I2C(idx), zephyr_no_boot_recover),  \
 	};								       \
 	PM_DEVICE_DT_DEFINE(I2C(idx), twim_nrfx_pm_action,                     \
 			PM_DEVICE_ISR_SAFE);                                   \
