@@ -36,9 +36,30 @@ if (CONFIG_BUILD_WITH_TFM)
     list(APPEND TFM_CMAKE_ARGS -DBL2=TRUE)
     list(APPEND TFM_CMAKE_ARGS -DBL2_SPI_NOR_DRIVERS=${CONFIG_TFM_BL2_SPI_NOR_FLASH})
     list(APPEND TFM_CMAKE_ARGS -DBL2_QSPI_DRIVERS=${CONFIG_TFM_BL2_QSPI_FLASH})
-    list(APPEND TFM_CMAKE_ARGS -DMCUBOOT_IMAGE_VERSION_S=${CONFIG_TFM_IMAGE_VERSION_S})
-    list(APPEND TFM_CMAKE_ARGS -DMCUBOOT_IMAGE_VERSION_NS=${CONFIG_TFM_IMAGE_VERSION_NS})
     list(APPEND TFM_CMAKE_ARGS -DMCUBOOT_SIGNATURE_TYPE=${CONFIG_TFM_MCUBOOT_SIGNATURE_TYPE})
+
+    if (CONFIG_TFM_BL2_IMAGE_VERSION_TWEAK_FROM_GIT)
+      set(VERSION_TYPE APP)
+      set(VERSION_FILE ${APPLICATION_SOURCE_DIR}/VERSION)
+      cmake_path(GET VERSION_FILE PARENT_PATH work_dir)
+
+      include(${ZEPHYR_BASE}/cmake/modules/version.cmake)
+      include(${ZEPHYR_BASE}/cmake/git.cmake)
+
+      git_commit_hash(${work_dir} app_hash)
+      git_commit_hash_short("${app_hash}" app_hash_short app_hash_short_uint32)
+
+      # Replace tweak with the git hash
+      string(REGEX REPLACE "\\+.*" "+${app_hash_short_uint32}" version_s "${CONFIG_TFM_IMAGE_VERSION_S}")
+      string(REGEX REPLACE "\\+.*" "+${app_hash_short_uint32}" version_ns "${CONFIG_TFM_IMAGE_VERSION_NS}")
+
+      list(APPEND TFM_CMAKE_ARGS -DMCUBOOT_IMAGE_VERSION_S=${version_s})
+      list(APPEND TFM_CMAKE_ARGS -DMCUBOOT_IMAGE_VERSION_NS=${version_ns})
+    else()
+      list(APPEND TFM_CMAKE_ARGS -DMCUBOOT_IMAGE_VERSION_S=${CONFIG_TFM_IMAGE_VERSION_S})
+      list(APPEND TFM_CMAKE_ARGS -DMCUBOOT_IMAGE_VERSION_NS=${CONFIG_TFM_IMAGE_VERSION_NS})
+    endif()
+
 
     # TF-M's config/check_config.cmake requires MCUBOOT_BUILTIN_KEY=OFF for RSA
     # and MCUBOOT_USE_PSA_CRYPTO for EC-P. The others are dependencies needed
