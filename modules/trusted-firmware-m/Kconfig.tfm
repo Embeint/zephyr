@@ -221,6 +221,11 @@ config TFM_BL2
 	  TFM is designed to run with MCUboot in a certain configuration.
 	  This config adds MCUboot to the build - built via TFM's build system.
 
+config TFM_BL2_IMAGE_VERSION_TWEAK_FROM_GIT
+	bool "Use the current application repo git commit hash as the version tweak"
+	depends on TFM_BL2
+	default y
+
 config TFM_BL2_SPI_NOR_FLASH
 	bool "External SPI-NOR flash drivers for BL2"
 	depends on TFM_BL2
