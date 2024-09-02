@@ -8,6 +8,7 @@
 #define TFM_READ_RANGES_H__
 
 #include <tfm_ioctl_core_api.h>
+#include <flash_layout.h>
 
 #include <nrf.h>
 
@@ -54,6 +55,10 @@ static const struct tfm_read_service_range ranges[] = {
 #endif
 #if defined(FICR_SIPINFO_ADDR)
 	{ .start = FICR_SIPINFO_ADDR, .size = FICR_SIPINFO_SIZE },
+#endif
+#if defined(BL2)
+	/* Value of BOOT_HEADER_SIZE_V1 */
+	{ .start = FLASH_AREA_0_OFFSET, .size = 32},
 #endif
 	{ .start = NRF_UICR_S_BASE, .size = sizeof(NRF_UICR_Type)}
 };
