@@ -12,6 +12,7 @@
 #include <zephyr/device.h>
 #include <zephyr/init.h>
 #include <soc.h>
+#include <soc_secure.h>
 #include <zephyr/drivers/flash.h>
 #include <string.h>
 #include <nrfx_nvmc.h>
@@ -116,6 +117,26 @@ static inline bool is_uicr_addr_valid(off_t addr, size_t len)
 #endif /* CONFIG_SOC_FLASH_NRF_UICR */
 }
 
+static inline bool is_secure_memory(off_t addr, size_t len)
+{
+#ifdef CONFIG_TFM_DEVICETREE_LAYOUT
+
+#define TFM_CONFIG        DT_COMPAT_GET_ANY_STATUS_OKAY(arm_trusted_firmware_m)
+#define ONBOARD_FLASH     DT_CHILD(TFM_CONFIG, onboard_flash)
+#define NONSECURE_IMG     DT_PROP(ONBOARD_FLASH, img_primary_nonsecure)
+#define NONSECURE_STORAGE DT_PROP(ONBOARD_FLASH, partition_nonsecure_storage)
+
+#define SECURE_NODE DT_NODELABEL(slot0_partition)
+	bool is_nonsecure = is_within_bounds(addr, len, (off_t)DT_REG_ADDR(NONSECURE_IMG),
+					     DT_REG_SIZE(NONSECURE_IMG)) ||
+			    is_within_bounds(addr, len, (off_t)DT_REG_ADDR(NONSECURE_STORAGE),
+					     DT_REG_SIZE(NONSECURE_STORAGE));
+	return !is_nonsecure;
+#else
+	return false;
+#endif
+}
+
 #if CONFIG_SOC_FLASH_NRF_UICR && IS_ENABLED(NRF91_ERRATA_7_ENABLE_WORKAROUND)
 static inline void nrf91_errata_7_enter(void)
 {
@@ -166,8 +187,10 @@ static int flash_nrf_read(const struct device *dev, off_t addr,
 	}
 #endif
 
+	if (is_secure_memory(addr, len)) {
+		return soc_secure_mem_read(data, (void *)addr, len);
+	}
 	nrf_nvmc_buffer_read(data, (uint32_t)addr, len);
-
 	return 0;
 }
 
