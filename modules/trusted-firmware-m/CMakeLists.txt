@@ -50,14 +50,11 @@ if (CONFIG_BUILD_WITH_TFM)
       git_commit_hash_short("${app_hash}" app_hash_short app_hash_short_uint32)
 
       # Replace tweak with the git hash
-      string(REGEX REPLACE "\\+.*" "+${app_hash_short_uint32}" version_s "${CONFIG_TFM_IMAGE_VERSION_S}")
-      string(REGEX REPLACE "\\+.*" "+${app_hash_short_uint32}" version_ns "${CONFIG_TFM_IMAGE_VERSION_NS}")
-
-      list(APPEND TFM_CMAKE_ARGS -DMCUBOOT_IMAGE_VERSION_S=${version_s})
-      list(APPEND TFM_CMAKE_ARGS -DMCUBOOT_IMAGE_VERSION_NS=${version_ns})
+      string(REGEX REPLACE "\\+.*" "+${app_hash_short_uint32}" VERSION_S "${CONFIG_TFM_IMAGE_VERSION_S}")
+      string(REGEX REPLACE "\\+.*" "+${app_hash_short_uint32}" VERSION_NS "${CONFIG_TFM_IMAGE_VERSION_NS}")
     else()
-      list(APPEND TFM_CMAKE_ARGS -DMCUBOOT_IMAGE_VERSION_S=${CONFIG_TFM_IMAGE_VERSION_S})
-      list(APPEND TFM_CMAKE_ARGS -DMCUBOOT_IMAGE_VERSION_NS=${CONFIG_TFM_IMAGE_VERSION_NS})
+      set(VERSION_S ${CONFIG_TFM_IMAGE_VERSION_S})
+      set(VERSION_NS ${CONFIG_TFM_IMAGE_VERSION_NS})
     endif()
 
 
@@ -490,7 +487,7 @@ if (CONFIG_BUILD_WITH_TFM)
       -k ${CONFIG_TFM_KEY_FILE_${SUFFIX}}
       --public-key-format ${TFM_PUBLIC_KEY_FORMAT}
       --align 1
-      -v ${CONFIG_TFM_IMAGE_VERSION_${SUFFIX}}
+      -v ${VERSION_${SUFFIX}}
       ${pad_args}
       ${HEX_ADDR_ARGS_${SUFFIX}}
       ${ADD_${SUFFIX}_IMAGE_MIN_VER}
