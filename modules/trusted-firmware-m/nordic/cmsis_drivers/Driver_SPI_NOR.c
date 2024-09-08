@@ -217,6 +217,11 @@ static int32_t ARM_SPI_NOR_Flash_Initialize(ARM_Flash_SignalEvent_t cb_event)
 	spim_config.frequency = spim_config_max_frequency(MIN(MAX_FREQ_FLASH, MAX_FREQ_BUS));
 
 	if (spi_nor_is_inited == false) {
+#ifdef SPI_NOR_ENABLE_PIN
+		nrfy_gpio_pin_set(SPI_NOR_ENABLE_PIN);
+		nrfy_gpio_cfg_output(SPI_NOR_ENABLE_PIN);
+#endif
+
 		/* Hardware setup:
 		 *   Configure CS GPIO
 		 *   Extract SPIM pins from devicetree pinctrl encoding
