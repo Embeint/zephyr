@@ -469,7 +469,7 @@ if (CONFIG_BUILD_WITH_TFM)
 
   function(tfm_sign OUT_ARG SUFFIX PAD INPUT_FILE OUTPUT_FILE)
     if(PAD)
-      set(pad_args --pad --pad-header)
+      set(pad_args --pad-header)
     endif()
     # Secure + Non-secure images are signed the same way as a secure only
     # build, but with a different layout file.
