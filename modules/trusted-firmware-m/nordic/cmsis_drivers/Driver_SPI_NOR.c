@@ -31,11 +31,17 @@
 
 #define NRFX_SPIM_INITIALIZER()                                                                    \
 	{                                                                                          \
-		.sck_pin = NRF_SPIM_PIN_NOT_CONNECTED, .mosi_pin = NRF_SPIM_PIN_NOT_CONNECTED,     \
-		.miso_pin = NRF_SPIM_PIN_NOT_CONNECTED, .ss_pin = NRF_SPIM_PIN_NOT_CONNECTED,      \
-		.ss_active_high = false, .irq_priority = NRFX_SPIM_DEFAULT_CONFIG_IRQ_PRIORITY,    \
-		.orc = 0xFF, .frequency = 0, .mode = NRF_SPIM_MODE_0,                              \
-		.bit_order = NRF_SPIM_BIT_ORDER_MSB_FIRST, .miso_pull = NRF_GPIO_PIN_NOPULL,       \
+		.sck_pin = NRF_SPIM_PIN_NOT_CONNECTED,                                             \
+		.mosi_pin = NRF_SPIM_PIN_NOT_CONNECTED,                                            \
+		.miso_pin = NRF_SPIM_PIN_NOT_CONNECTED,                                            \
+		.ss_pin = NRF_SPIM_PIN_NOT_CONNECTED,                                              \
+		.ss_active_high = false,                                                           \
+		.irq_priority = NRFX_SPIM_DEFAULT_CONFIG_IRQ_PRIORITY,                             \
+		.orc = 0xFF,                                                                       \
+		.frequency = 0,                                                                    \
+		.mode = NRF_SPIM_MODE_0,                                                           \
+		.bit_order = NRF_SPIM_BIT_ORDER_MSB_FIRST,                                         \
+		.miso_pull = NRF_GPIO_PIN_NOPULL,                                                  \
 	}
 
 static const nrfx_spim_t spi_instance = {
@@ -321,6 +327,12 @@ static int32_t ARM_SPI_NOR_Flash_ProgramData(uint32_t addr, const void *data, ui
 		addr += to_write;
 		out_ptr += to_write;
 		cnt -= to_write;
+
+		/* Wait until flash chip is ready again */
+		rc = spi_nor_wait_until_ready();
+		if (rc < 0) {
+			return ARM_DRIVER_ERROR;
+		}
 	}
 	/* Disable writing */
 	(void)spi_nor_cmd_write(SPI_NOR_CMD_WRDI);
@@ -342,6 +354,10 @@ static int32_t ARM_SPI_NOR_Flash_EraseSector(uint32_t addr)
 		return ARM_DRIVER_ERROR;
 	}
 	rc = spi_nor_cmd_addr_write(SPI_NOR_CMD_SE, addr, NULL, 0);
+	/* Wait until sector erase completes */
+	if (spi_nor_wait_until_ready() < 0) {
+		rc = -1;
+	}
 	(void)spi_nor_cmd_write(SPI_NOR_CMD_WRDI);
 	return rc == 0 ? ARM_DRIVER_OK : ARM_DRIVER_ERROR;
 }
