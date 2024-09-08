@@ -221,6 +221,56 @@ def define_gen(mapping):
     return content
 
 
+def validate_partitions(tfm_config):
+    def nodes_overlap(a, b):
+        return bool(max(0, min(a[1], b[1]) - max(a[0], b[0])))
+
+    err = ""
+    # Validate that primary image does not overlap storage regions
+    for flash_dev in tfm_config.children.values():
+        if "img-primary-secure" not in flash_dev.props:
+            continue
+
+        bl2 = flash_dev.props["img-bl2"].val
+        s = flash_dev.props["img-primary-secure"].val
+        ns = flash_dev.props["img-primary-nonsecure"].val
+        bl2_interval = [bl2.regs[0].addr, bl2.regs[0].addr + bl2.regs[0].size - 1]
+        s_interval = [s.regs[0].addr, s.regs[0].addr + s.regs[0].size - 1]
+        ns_interval = [ns.regs[0].addr, ns.regs[0].addr + ns.regs[0].size - 1]
+
+        if nodes_overlap(bl2_interval, s_interval):
+            err += "'img-bl2' and 'img-primary-secure' overlap!\n"
+            err += f"\t(0x{bl2_interval[0]:x}-0x{bl2_interval[1]:x}) (0x{s_interval[0]:x}-0x{s_interval[1]:x})\n"
+        if nodes_overlap(s_interval, ns_interval):
+            err += "'img-primary-secure' and 'img-primary-nonsecure' overlap!\n"
+            err += f"\t(0x{s_interval[0]:x}-0x{s_interval[1]:x}) (0x{p_interval[0]:x}-0x{p_interval[1]:x})\n"
+
+        partitions_to_check = [
+            "partition-ps",
+            "partition-its",
+            "partition-otp",
+            "partition-nonsecure-storage",
+        ]
+        for partition in partitions_to_check:
+            if partition not in flash_dev.props:
+                continue
+            p = flash_dev.props[partition].val
+            p_interval = [p.regs[0].addr, p.regs[0].addr + p.regs[0].size - 1]
+
+            if nodes_overlap(bl2_interval, p_interval):
+                err += f"'img-bl2' and '{partition}' overlap!\n"
+                err += f"\t(0x{bl2_interval[0]:x}-0x{bl2_interval[1]:x}) (0x{p_interval[0]:x}-0x{p_interval[1]:x})\n"
+            if nodes_overlap(s_interval, p_interval):
+                err += f"'img-primary-secure' and '{partition}' overlap!\n"
+                err += f"\t(0x{s_interval[0]:x}-0x{s_interval[1]:x}) (0x{p_interval[0]:x}-0x{p_interval[1]:x})\n"
+            if nodes_overlap(ns_interval, p_interval):
+                err += f"'img-primary-nonsecure' and '{partition}' overlap!\n"
+                err += f"\t(0x{ns_interval[0]:x}-0x{ns_interval[1]:x}) (0x{p_interval[0]:x}-0x{p_interval[1]:x})\n"
+
+    if err != "":
+        sys.exit(err)
+
+
 def main():
     args = parse_args()
     tfm_compat = "arm,trusted-firmware-m"
@@ -232,6 +282,7 @@ def main():
 
     content = file_header(args)
     if len(tfm) == 1:
+        validate_partitions(tfm[0])
         content += define_gen(common_defines(tfm[0].props))
         for idx, flash_dev in enumerate(tfm[0].children.values()):
             content += define_gen(flash_device_defines(idx, flash_dev))
