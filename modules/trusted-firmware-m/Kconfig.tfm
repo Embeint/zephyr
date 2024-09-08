@@ -213,6 +213,19 @@ config TFM_IMAGE_VERSION_NS
 	  versions of both the secure firmware and non-secure firmware. This sets
 	  the non-secure firmware's version for rollback prevention.
 
+config TFM_IMAGE_SECURITY_COUNTER
+	int "Security counter value used for hardware rollback protection"
+	depends on TFM_BL2
+	range 1 1024
+	default 1
+	help
+	  By default, TFM enables hardware rollback protection, which requires a security counter
+	  to be embedded in the image trailer. The default behaviour of constructing this counter
+	  from the image version breaks the TFM `boot_nv_security_counter_update` implementation
+	  once the version number is greater than `0.0.1024`. As such, explicitly specify the
+	  desired security counter value. As per the MCUboot docs, this does not need to be
+	  incremented on every firmware update.
+
 config TFM_BL2
 	bool "Add MCUboot to TFM"
 	depends on !TFM_BL2_NOT_SUPPORTED
