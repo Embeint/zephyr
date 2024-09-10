@@ -1,4 +1,4 @@
-# BMP280 temperature and pressure sensor configuration options
+# BME280 temperature and pressure sensor configuration options
 
 # Copyright (c) 2016 Intel Corporation
 # Copyright (c) 2017 IpTronix S.r.l.
@@ -16,6 +16,11 @@ menuconfig BME280
 	  Enable driver for BME280 I2C-based or SPI-based temperature and pressure sensor.
 
 if BME280
+
+config BME280_BMP280
+	bool "Use BME280 driver for BMP280"
+	depends on DT_HAS_BOSCH_BMP280_ENABLED
+	default y
 
 choice BME280_MODE
 	prompt "BME280 sampling mode"
