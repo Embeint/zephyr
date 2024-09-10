@@ -324,14 +324,16 @@ static int bme280_chip_init(const struct device *dev)
 		return err;
 	}
 
-	err = bme280_reg_read(dev, BME280_REG_ID, &chip_id, 1);
-	if (err < 0) {
-		LOG_DBG("ID read failed: %d", err);
-		return err;
+	/* Give the ID read a few chances to succeed */
+	for (int i = 0; i < 5; i++) {
+		err = bme280_reg_read(dev, BME280_REG_ID, &chip_id, 1);
+		if ((err == 0) && (chip_id == EXPECTED_CHIP_ID)) {
+			break;
+		}
 	}
-	if (chip_id != EXPECTED_CHIP_ID) {
-		LOG_DBG("bad chip id 0x%x", chip_id);
-		return -ENOTSUP;
+	if ((err != 0) || (chip_id != EXPECTED_CHIP_ID)) {
+		LOG_DBG("bad chip id %d 0x%x", err, chip_id);
+		return -ENODEV;
 	}
 
 	err = bme280_reg_write(dev, BME280_REG_RESET, BME280_CMD_SOFT_RESET);
