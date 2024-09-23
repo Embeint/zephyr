@@ -22,3 +22,10 @@ properties:
     description: |
       Maximum number of bits available in the EasyDMA MAXCNT register. This
       property must be set at SoC level DTS files.
+
+  zephyr,no-boot-recover:
+    type: boolean
+    description: |
+      Don't attempt to recover the bus on boot. This can be required if connected
+      sensors are not powered but the I2C bus is directly connected. One example
+      of this design is the Thingy53.

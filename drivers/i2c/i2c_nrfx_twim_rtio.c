@@ -207,6 +207,7 @@ int i2c_nrfx_twim_rtio_init(const struct device *dev)
 				IF_ENABLED(USES_MSG_BUF(idx), (.msg_buf = twim_##idx##_msg_buf,))  \
 					.max_transfer_size =                                       \
 					BIT_MASK(DT_PROP(I2C(idx), easydma_maxcnt_bits)),          \
+				.no_boot_recover = DT_PROP(I2C(idx), zephyr_no_boot_recover),      \
 			},                                                                         \
 		.ctx = &_i2c##idx##_twim_rtio,                                                     \
 	};                                                                                         \
