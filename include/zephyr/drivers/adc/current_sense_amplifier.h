@@ -31,7 +31,7 @@ struct current_sense_amplifier_dt_spec {
 #define CURRENT_SENSE_AMPLIFIER_DT_SPEC_GET(node_id)                                               \
 	{                                                                                          \
 		.port = ADC_DT_SPEC_GET(node_id),                                                  \
-		.sense_milli_ohms = DT_PROP(node_id, sense_resistor_micro_ohms) / 1000,            \
+		.sense_milli_ohms = DT_PROP(node_id, sense_resistor_milli_ohms),                   \
 		.sense_gain_mult = DT_PROP(node_id, sense_gain_mult),                              \
 		.sense_gain_div = DT_PROP(node_id, sense_gain_div),                                \
 		.power_gpio = GPIO_DT_SPEC_GET_OR(node_id, power_gpios, {0}),                      \
