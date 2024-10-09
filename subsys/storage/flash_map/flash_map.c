@@ -18,6 +18,7 @@
 #include "flash_map_priv.h"
 #include <zephyr/drivers/flash.h>
 #include <zephyr/init.h>
+#include <zephyr/sys/crc.h>
 
 void flash_area_foreach(flash_area_cb_t user_cb, void *user_data)
 {
@@ -62,6 +63,41 @@ int flash_area_read(const struct flash_area *fa, off_t off, void *dst,
 
 	return flash_read(fa->fa_dev, fa->fa_off + off, dst, len);
 }
+
+#ifdef CONFIG_CRC
+int flash_area_crc32(const struct flash_area *fa, off_t off, size_t len,
+		     uint32_t *crc32, void *working_mem,
+		     size_t working_mem_len)
+{
+	off_t remaining = len, current = 0;
+	uint32_t crc = 0x00;
+	size_t to_read;
+	int rc;
+
+	if (!is_in_flash_area_bounds(fa, off, len)) {
+		return -EINVAL;
+	}
+
+	while (remaining) {
+		to_read = MIN(remaining, working_mem_len);
+
+		/* Read next chunk into working memory */
+		rc = flash_area_read(fa, off + current, working_mem, to_read);
+		if (rc < 0) {
+			return rc;
+		}
+
+		/* Update CRC */
+		crc = crc32_ieee_update(crc, working_mem, to_read);
+
+		/* Increment pointers*/
+		remaining -= to_read;
+		current += to_read;
+	}
+	*crc32 = crc;
+	return 0;
+}
+#endif
 
 int flash_area_write(const struct flash_area *fa, off_t off, const void *src,
 		     size_t len)
