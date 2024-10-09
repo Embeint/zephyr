@@ -623,6 +623,7 @@ if(CONFIG_BUILD_WITH_TFM)
   set(S_NS_CONFIRMED_HEX_FILE ${CMAKE_BINARY_DIR}/zephyr/tfm_s_zephyr_ns_confirmed.hex)
   set(S_NS_SIGNED_CONFIRMED_HEX_FILE ${CMAKE_BINARY_DIR}/zephyr/tfm_s_zephyr_ns_confirmed_signed.hex)
   set(S_NS_HEX_FILE ${CMAKE_BINARY_DIR}/zephyr/tfm_s_zephyr_ns.hex)
+  set(S_NS_BIN_FILE ${CMAKE_BINARY_DIR}/zephyr/tfm_s_zephyr_ns.bin)
   set(S_NS_SIGNED_HEX_FILE ${CMAKE_BINARY_DIR}/zephyr/tfm_s_zephyr_ns_signed.hex)
   set(S_NS_SIGNED_BIN_FILE ${CMAKE_BINARY_DIR}/zephyr/tfm_s_zephyr_ns_signed.bin)
   set(NS_SIGNED_HEX_FILE ${CMAKE_BINARY_DIR}/zephyr/zephyr_ns_signed.hex)
@@ -675,6 +676,7 @@ if(CONFIG_BUILD_WITH_TFM)
         $<$<NOT:$<BOOL:${CONFIG_TFM_BL1}>>:$<TARGET_PROPERTY:tfm,BL2_HEX_FILE>>
         ${S_NS_SIGNED_CONFIRMED_HEX_FILE}
 
+      COMMAND ${CMAKE_OBJCOPY} --input-target=ihex --output-target=binary ${S_NS_FILE} ${S_NS_BIN_FILE}
       COMMAND ${CMAKE_OBJCOPY} --input-target=ihex --output-target=binary ${S_NS_SIGNED_FILE} ${S_NS_SIGNED_BIN_FILE}
     )
 
@@ -697,6 +699,7 @@ if(CONFIG_BUILD_WITH_TFM)
       ${S_NS_CONFIRMED_HEX_FILE}
       ${S_NS_SIGNED_CONFIRMED_HEX_FILE}
       ${S_NS_HEX_FILE}
+      ${S_NS_BIN_FILE}
       ${S_NS_SIGNED_HEX_FILE}
       ${S_NS_SIGNED_BIN_FILE}
       ${MERGED_HEX_FILE}
