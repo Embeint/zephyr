@@ -172,6 +172,24 @@ int flash_area_read(const struct flash_area *fa, off_t off, void *dst,
 		    size_t len);
 
 /**
+ * @brief Calculate the CRC32-IEEE over data in a flash area
+ *
+ * @note Depends on @kconfig{CONFIG_CRC}
+ *
+ * @param[in]  fa  Flash area
+ * @param[in]  off Offset relative from beginning of flash area to start CRC from
+ * @param[in]  len Number of bytes to calculate CRC over
+ * @param[out] crc32_ieee Output storage for CRC32-IEEE result
+ * @param[in]  working_mem Working memory buffer to read data into
+ * @param[in]  working_mem_len Length of working memory buffer
+ *
+ * @return  0 on success, negative errno code on fail.
+ */
+int flash_area_crc32(const struct flash_area *fa, off_t off, size_t len,
+		     uint32_t *crc32_ieee, void *working_mem,
+		     size_t working_mem_len);
+
+/**
  * @brief Write data to flash area
  *
  * Write data to flash area. Area write boundaries are asserted before write
