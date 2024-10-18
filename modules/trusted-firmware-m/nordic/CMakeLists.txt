@@ -7,6 +7,26 @@
 cmake_policy(SET CMP0076 NEW)
 set(CMAKE_CURRENT_SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR})
 
+function(ecdsa_keygen keyfile outfile var_name)
+    if(IS_ABSOLUTE ${keyfile})
+        set(KEY_FILE ${keyfile})
+    else()
+        message(FATAL_ERROR "${keyfile} is not an absolute path")
+    endif()
+
+    add_custom_command(
+        OUTPUT ${outfile}
+        COMMAND
+        python3
+        ${CMAKE_CURRENT_SOURCE_DIR}/ecdsa_pubkey_gen.py
+        --key ${KEY_FILE}
+        --out ${outfile}
+        --name ${var_name}
+        --align 4
+        DEPENDS ${KEY_FILE}
+    )
+endfunction()
+
 if(DEVICETREE_LAYOUT)
     set(partition_includes
         ${CMAKE_CURRENT_SOURCE_DIR}/include/partition_dts
@@ -55,6 +75,19 @@ if(NRF_CC3XX_PLATFORM_LIB)
         "-DNRF_CC3XX_PLATFORM_LIB=1"
     )
 endif()
+if(DEBUG_PORT_DISABLE_ON_SECURED)
+    target_compile_definitions(platform_s
+    PRIVATE
+        "-DDEBUG_PORT_DISABLE_ON_SECURED=1"
+    )
+endif()
+
+if (NOT ${PLATFORM_DEFAULT_PROVISIONING})
+    target_sources(platform_s
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/provisioning_tfm.c
+    )
+endif()
 
 target_include_directories(platform_s
     PUBLIC
@@ -65,6 +98,25 @@ target_include_directories(platform_s
 )
 
 if(BL2)
+    if (NOT ${PLATFORM_DEFAULT_PROVISIONING})
+        set(TFM_KEY_FILE_S_EXPORTED ${CMAKE_CURRENT_BINARY_DIR}/bl2_rotpk_0.c)
+        set(TFM_KEY_FILE_NS_EXPORTED ${CMAKE_CURRENT_BINARY_DIR}/bl2_rotpk_1.c)
+
+        ecdsa_keygen(${MCUBOOT_KEY_S} ${TFM_KEY_FILE_S_EXPORTED} bl2_rotpk_0)
+        ecdsa_keygen(${MCUBOOT_KEY_NS} ${TFM_KEY_FILE_NS_EXPORTED} bl2_rotpk_1)
+        add_custom_target(exported_keyfiles DEPENDS ${TFM_KEY_FILE_S_EXPORTED} ${TFM_KEY_FILE_NS_EXPORTED})
+        add_dependencies(platform_bl2 exported_keyfiles)
+
+        target_compile_definitions(platform_bl2
+            PRIVATE
+                BL2_ECDSA_PUBKEY_S="${TFM_KEY_FILE_S_EXPORTED}"
+                BL2_ECDSA_PUBKEY_NS="${TFM_KEY_FILE_NS_EXPORTED}"
+        )
+        target_sources(platform_bl2
+            PRIVATE
+                ${CMAKE_CURRENT_SOURCE_DIR}/src/provisioning_bl2.c
+        )
+    endif()
     target_include_directories(platform_bl2
         PUBLIC
             include
@@ -101,6 +153,13 @@ target_sources(tfm_spm
     PRIVATE
         src/tfm_hal_platform.c
 )
+
+if(TFM_PARTITION_CRYPTO)
+    target_sources(platform_crypto_keys
+        PRIVATE
+            $<$<BOOL:NOT ${PLATFORM_DEFAULT_CRYPTO_KEYS}>:src/crypto_keys.c>
+    )
+endif()
 
 if (TFM_PARTITION_PLATFORM)
 install(FILES       include/tfm_ioctl_api.h

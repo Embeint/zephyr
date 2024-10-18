@@ -12,6 +12,10 @@ config TFM_CRYPTO_PSA_CC3XX_EXTERNAL_RNG
 	depends on SOC_SERIES_NRF53X || SOC_SERIES_NRF91X
 	default y
 
+config TFM_CRYPTO_DEFAULT_KEYS
+	bool "Use default crypto keys implementation"
+	default y if !SOC_SERIES_NRF53X && !SOC_SERIES_NRF91X
+
 config TFM_CRYPTO_RNG_MODULE_ENABLED
 	bool "Random number generator crypto module"
 	default y
