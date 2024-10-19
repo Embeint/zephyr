@@ -173,6 +173,14 @@ config TFM_PARTITION_PLATFORM_CUSTOM_REBOOT
 	  Instead the application will have to override the weak ARM
 	  implementation of sys_arch_reset().
 
+config TFM_LCS_SECURED_DISABLE_DEBUG_PORT
+	bool "Disable the debug port when transitioning to the SECURED lifecycle state"
+	depends on SOC_FAMILY_NORDIC_NRF
+	help
+	  If this option is enabled, the debug access port is disabled when the
+	  device transitions into the SECURED lifecycle state. This is a requirement
+	  for the Platform Root-of-Trust Security Lifecycle.
+
 config TFM_DUMMY_PROVISIONING
 	bool "Provision with dummy values. NOT to be used in production"
 	select TFM_INITIAL_ATTESTATION_KEY
