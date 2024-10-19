@@ -7,10 +7,19 @@ if BUILD_WITH_TFM
 
 if TFM_PARTITION_CRYPTO
 
-config TFM_CRYPTO_PSA_CC3XX_EXTERNAL_RNG
+config TFM_CRYPTO_CC3XX_EXTERNAL_RNG_ENABLED
 	bool "Cryptocell CC3XX based RNG"
 	depends on SOC_SERIES_NRF53X || SOC_SERIES_NRF91X
 	default y
+
+config TFM_CRYPTO_NV_SEED_DEFAULT_DISABLE
+	bool "Provide a custom implementation of NV seed"
+	default y if TFM_CRYPTO_CC3XX_EXTERNAL_RNG_ENABLED
+
+config TFM_CRYPTO_KEYS_DEFAULT_DISABLE
+	bool "Provide a custom implementation of crypto_keys"
+	depends on !TFM_DUMMY_PROVISIONING
+	default y if SOC_FAMILY_NORDIC_NRF
 
 config TFM_CRYPTO_RNG_MODULE_ENABLED
 	bool "Random number generator crypto module"
