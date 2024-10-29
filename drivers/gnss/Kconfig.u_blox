@@ -1,0 +1,79 @@
+# Infuse-IoT GNSS drivers
+
+config GNSS_UBX_MODEM
+	bool
+	select NET_BUF
+	help
+	  UBX protocol wrappers
+
+if GNSS_UBX_MODEM
+
+config GNSS_UBX_M10
+	bool
+	help
+	  U-blox M10 command interface (CFG-VALSET for configuration)
+
+config GNSS_UBX_M8
+	bool
+	help
+	  U-blox M8 command interface (Dedicated messages for configuration)
+
+module = GNSS_UBX_MODEM
+module-str = u-blox GNSS
+source "subsys/logging/Kconfig.template.log_config"
+
+config GNSS_U_BLOX_PIPE_SIZE
+	int "UBX modem pipe size"
+	range 128 2048
+	default 512
+	help
+	  Maximum number of bytes that can be stored in the pipe buffer.
+
+config GNSS_U_BLOX_MAX_MSG_SIZE
+	int "UBX modem pipe size"
+	range 128 512
+	default 256
+	help
+	  Maximum size of a UBX message that driver can handle.
+
+config GNSS_U_BLOX_NO_API_COMPAT
+	bool "Drop compatibility with the Zephyr GNSS API"
+	help
+	  If working with the UBX modem backend directly, all API compatibility
+	  except for timepulse can be disabled for ~2kB ROM savings.
+
+config GNSS_U_BLOX_SATELLITES_COUNT
+	int "Maximum satellite count"
+	depends on GNSS_SATELLITES
+	default 24
+	help
+	  Maximum number of satellite vehicles that the driver can report from
+	  the GNSS device. This does not affect the number of devices that the
+	  device is actually tracking, just how many of those can be reported
+	  in the satellites callback.
+
+endif # GNSS_UBX_MODEM
+
+config GNSS_U_BLOX_M10_I2C
+	bool "U-BLOX M10 I2C GNSS Module"
+	default y
+	depends on GNSS
+	depends on DT_HAS_U_BLOX_M10_I2C_ENABLED
+	select I2C
+	select I2C_RTIO
+	select MODEM_MODULES
+	select MODEM_BACKEND_U_BLOX_I2C
+	select GNSS_UBX_MODEM
+	select GNSS_UBX_M10
+
+config GNSS_U_BLOX_M8_SPI
+	bool "U-BLOX M8 SPI GNSS Module"
+	default y
+	depends on GNSS
+	depends on DT_HAS_U_BLOX_M8_SPI_ENABLED
+	select SPI
+	select SPI_ASYNC
+	select MODEM_MODULES
+	select MODEM_BACKEND_U_BLOX_SPI
+	select GNSS_UBX_MODEM
+	select GNSS_UBX_M8
