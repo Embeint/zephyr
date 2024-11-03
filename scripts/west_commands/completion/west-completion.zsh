@@ -368,9 +368,7 @@ _west_vscode() {
 
 _west_infuse_release() {
   local -a opts=(
-  '(-b --board)'{-b,--board}'[board to build for]:board:_get_west_boards'
-  '(-d --source-dir)'{-d,--source-dir}'[application directory]:source dir:_directories'
-  '(-s --sign)'{-s,--sign}'[bootloader signing key]:key filename:_files'
+  '(-r --release)'{-r,--release}'[release configuration file]:release filename:_files'
   '--ignore-git[Ignore git check failures]'
   '--skip-git[Do not run remote git operations]'
   )

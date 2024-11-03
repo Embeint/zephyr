@@ -1167,33 +1167,19 @@ __comp_west_vscode()
 
 __comp_west_infuse_release()
 {
-	local dir_opts="
-		--source-dir -d
-	"
 	local file_opts="
-		--sign -s
-	"
-	local special_opts="
-		--board -b
+		--release -r
 	"
 	local bool_opts="
 		--ignore-git
 		--skip-git
 	"
 
-	all_opts="$dir_opts $file_opts $special_opts $bool_opts"
+	all_opts="$file_opts $bool_opts"
 
 	case "$prev" in
-		--board|-b)
-			__set_comp_west_boards
-			return
-			;;
 		$(__west_to_extglob "$file_opts") )
 			__set_comp_files
-			return
-			;;
-		$(__west_to_extglob "$dir_opts") )
-			__set_comp_dirs
 			return
 			;;
 	esac
