@@ -1165,7 +1165,7 @@ __comp_west_vscode()
 	esac
 }
 
-__comp_west_infuse_release()
+__comp_west_release_build()
 {
 	local file_opts="
 		--release -r
@@ -1187,6 +1187,40 @@ __comp_west_infuse_release()
 	case "$cur" in
 		-*)
 			__set_comp $all_opts
+			;;
+	esac
+}
+
+__comp_west_release_flash()
+{
+	local dir_opts="
+		--release -r
+	"
+	local bool_opts="
+		--erase
+	"
+
+	all_opts="$dir_opts $bool_opts"
+
+	case "$prev" in
+		$(__west_to_extglob "$dir_opts") )
+			__set_comp_dirs
+			return
+			;;
+	esac
+
+	case "$cur" in
+		-*)
+			__set_comp $all_opts
+			;;
+	esac
+}
+
+__comp_west_release_diff()
+{
+	case "$cur" in
+		*)
+			__set_comp_dirs
 			;;
 	esac
 }
@@ -1226,7 +1260,9 @@ __comp_west()
 		blobs
 		twister
 		vscode
-		infuse-release
+		release-build
+		release-diff
+		release-flash
 	)
 
 	local cmds=(${builtin_cmds[*]} ${zephyr_ext_cmds[*]})

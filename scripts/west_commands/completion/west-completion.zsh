@@ -35,6 +35,8 @@ _west_cmds() {
   'spdx[create SPDX bill of materials]'
   'blobs[work with binary blobs]'
   'vscode[generate vscode workspace configuration]'
+  'release-build[build an Infuse-IoT application release]'
+  'release-flash[flash an Infuse-IoT application release]'
   )
 
   local -a all_cmds=(${builtin_cmds} ${zephyr_ext_cmds})
@@ -366,13 +368,25 @@ _west_vscode() {
   _arguments -S $opts
 }
 
-_west_infuse_release() {
+_west_release_build() {
   local -a opts=(
   '(-r --release)'{-r,--release}'[release configuration file]:release filename:_files'
   '--ignore-git[Ignore git check failures]'
   '--skip-git[Do not run remote git operations]'
   )
   _arguments -S $opts
+}
+
+_west_release_flash() {
+  local -a opts=(
+  '(-r --release)'{-r,--release}'[release directory]:release directory:_directories'
+  '--erase[Provide --erase to "west flash"]'
+  )
+  _arguments -S $opts
+}
+
+_west_release_diff() {
+  _arguments -S $opts "1:old:_directories" "2:new:_directories"
 }
 
 # don't run the completion function when being source-ed or eval-ed
