@@ -58,7 +58,7 @@ static const struct tfm_read_service_range ranges[] = {
 #endif
 #if defined(BL2)
 	/* Value of BOOT_HEADER_SIZE_V1 */
-	{ .start = FLASH_AREA_0_OFFSET, .size = 32},
+	{ .start = FLASH_AREA_0_OFFSET, .size = FLASH_AREA_0_SIZE},
 #endif
 	{ .start = NRF_UICR_S_BASE, .size = sizeof(NRF_UICR_Type)}
 };
