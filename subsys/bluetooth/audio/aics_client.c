@@ -620,13 +620,12 @@ static int store_attr_handle_and_subscribe(struct bt_aics_client *client_inst, s
 }
 
 static uint8_t aics_discover_func(struct bt_conn *conn, const struct bt_gatt_attr *attr,
-				  struct bt_gatt_discover_params *params)
+				  struct bt_gatt_discover_params *params, int err)
 {
 	struct bt_aics_client *client_inst =
 		CONTAINER_OF(params, struct bt_aics_client, discover_params);
 	struct bt_aics *inst = CONTAINER_OF(client_inst, struct bt_aics, cli);
 	const struct bt_gatt_chrc *chrc;
-	int err;
 
 	if (!attr) {
 		LOG_DBG("Discovery complete for AICS %p", inst);

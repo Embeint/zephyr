@@ -233,9 +233,8 @@ static void subscribe_func(struct bt_conn *conn, uint8_t err,
 }
 
 static uint8_t discover_func(struct bt_conn *conn, const struct bt_gatt_attr *attr,
-			     struct bt_gatt_discover_params *params)
+			     struct bt_gatt_discover_params *params, int err)
 {
-	int err;
 	char uuid_str[BT_UUID_STR_LEN];
 	struct conn_info *conn_info_ref;
 
