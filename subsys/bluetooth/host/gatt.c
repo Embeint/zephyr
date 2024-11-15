@@ -3833,7 +3833,7 @@ discover:
 	}
 
 done:
-	params->func(conn, NULL, params);
+	params->func(conn, NULL, params, 0);
 }
 
 static void gatt_find_type_rsp(struct bt_conn *conn, int err,
@@ -3847,7 +3847,10 @@ static void gatt_find_type_rsp(struct bt_conn *conn, int err,
 
 	LOG_DBG("err %d", err);
 
-	if (err || (length % sizeof(struct bt_att_handle_group) != 0)) {
+	if (length % sizeof(struct bt_att_handle_group) != 0) {
+		err = -EPROTO;
+	}
+	if (err) {
 		goto done;
 	}
 
@@ -3880,7 +3883,7 @@ static void gatt_find_type_rsp(struct bt_conn *conn, int err,
 			.handle = start_handle,
 		};
 
-		if (params->func(conn, &attr, params) == BT_GATT_ITER_STOP) {
+		if (params->func(conn, &attr, params, 0) == BT_GATT_ITER_STOP) {
 			return;
 		}
 	}
@@ -3889,7 +3892,7 @@ static void gatt_find_type_rsp(struct bt_conn *conn, int err,
 
 	return;
 done:
-	params->func(conn, NULL, params);
+	params->func(conn, NULL, params, err);
 }
 
 static int gatt_find_type_encode(struct net_buf *buf, size_t len,
@@ -3965,7 +3968,7 @@ static void read_included_uuid_cb(struct bt_conn *conn, int err,
 
 	if (length != 16U) {
 		LOG_ERR("Invalid data len %u", length);
-		params->func(conn, NULL, params);
+		params->func(conn, NULL, params, -EINVAL);
 		return;
 	}
 
@@ -3991,7 +3994,7 @@ static void read_included_uuid_cb(struct bt_conn *conn, int err,
 		.handle = handle,
 	};
 
-	if (params->func(conn, &attr, params) == BT_GATT_ITER_STOP) {
+	if (params->func(conn, &attr, params, 0) == BT_GATT_ITER_STOP) {
 		return;
 	}
 next:
@@ -4034,6 +4037,7 @@ static uint16_t parse_include(struct bt_conn *conn, const void *pdu,
 		struct bt_uuid_16 u16;
 		struct bt_uuid_128 u128;
 	} u;
+	int err = -EPROTO;
 
 	if (length < sizeof(*rsp)) {
 		LOG_WRN("Parse err");
@@ -4107,7 +4111,7 @@ static uint16_t parse_include(struct bt_conn *conn, const void *pdu,
 			.handle = handle,
 		};
 
-		if (params->func(conn, &attr, params) == BT_GATT_ITER_STOP) {
+		if (params->func(conn, &attr, params, 0) == BT_GATT_ITER_STOP) {
 			return 0;
 		}
 	}
@@ -4117,8 +4121,9 @@ static uint16_t parse_include(struct bt_conn *conn, const void *pdu,
 		return handle;
 	}
 
+	err = 0;
 done:
-	params->func(conn, NULL, params);
+	params->func(conn, NULL, params, err);
 	return 0;
 }
 
@@ -4133,6 +4138,7 @@ static uint16_t parse_characteristic(struct bt_conn *conn, const void *pdu,
 		struct bt_uuid_16 u16;
 		struct bt_uuid_128 u128;
 	} u;
+	int err = -EPROTO;
 
 	if (length < sizeof(*rsp)) {
 		LOG_WRN("Parse err");
@@ -4195,7 +4201,7 @@ static uint16_t parse_characteristic(struct bt_conn *conn, const void *pdu,
 			.handle = handle,
 		};
 
-		if (params->func(conn, &attr, params) == BT_GATT_ITER_STOP) {
+		if (params->func(conn, &attr, params, 0) == BT_GATT_ITER_STOP) {
 			return 0;
 		}
 	}
@@ -4205,8 +4211,9 @@ static uint16_t parse_characteristic(struct bt_conn *conn, const void *pdu,
 		return handle;
 	}
 
+	err = 0;
 done:
-	params->func(conn, NULL, params);
+	params->func(conn, NULL, params, err);
 	return 0;
 }
 
@@ -4217,6 +4224,7 @@ static uint16_t parse_read_std_char_desc(struct bt_conn *conn, const void *pdu,
 	const struct bt_att_read_type_rsp *rsp;
 	uint16_t handle = 0U;
 	uint16_t uuid_val;
+	int err = -EPROTO;
 
 	if (params->uuid->type != BT_UUID_TYPE_16) {
 		goto done;
@@ -4309,7 +4317,7 @@ static uint16_t parse_read_std_char_desc(struct bt_conn *conn, const void *pdu,
 			.handle = handle,
 		};
 
-		if (params->func(conn, &attr, params) == BT_GATT_ITER_STOP) {
+		if (params->func(conn, &attr, params, 0) == BT_GATT_ITER_STOP) {
 			return 0;
 		}
 	}
@@ -4319,8 +4327,9 @@ static uint16_t parse_read_std_char_desc(struct bt_conn *conn, const void *pdu,
 		return handle;
 	}
 
+	err = 0;
 done:
-	params->func(conn, NULL, params);
+	params->func(conn, NULL, params, err);
 	return 0;
 }
 
@@ -4334,7 +4343,7 @@ static void gatt_read_type_rsp(struct bt_conn *conn, int err,
 	LOG_DBG("err %d", err);
 
 	if (err) {
-		params->func(conn, NULL, params);
+		params->func(conn, NULL, params, err == BT_ATT_ERR_ATTRIBUTE_NOT_FOUND ? 0 : err);
 		return;
 	}
 
@@ -4400,6 +4409,7 @@ static uint16_t parse_service(struct bt_conn *conn, const void *pdu,
 		struct bt_uuid_16 u16;
 		struct bt_uuid_128 u128;
 	} u;
+	int err = -EPROTO;
 
 	if (length < sizeof(*rsp)) {
 		LOG_WRN("Parse err");
@@ -4466,7 +4476,7 @@ static uint16_t parse_service(struct bt_conn *conn, const void *pdu,
 		attr.handle = start_handle;
 		attr.user_data = &value;
 
-		if (params->func(conn, &attr, params) == BT_GATT_ITER_STOP) {
+		if (params->func(conn, &attr, params, 0) == BT_GATT_ITER_STOP) {
 			return 0;
 		}
 	}
@@ -4476,8 +4486,9 @@ static uint16_t parse_service(struct bt_conn *conn, const void *pdu,
 		return end_handle;
 	}
 
+	err = 0;
 done:
-	params->func(conn, NULL, params);
+	params->func(conn, NULL, params, err);
 	return 0;
 }
 
@@ -4491,7 +4502,7 @@ static void gatt_read_group_rsp(struct bt_conn *conn, int err,
 	LOG_DBG("err %d", err);
 
 	if (err) {
-		params->func(conn, NULL, params);
+		params->func(conn, NULL, params, err == BT_ATT_ERR_ATTRIBUTE_NOT_FOUND ? 0 : err);
 		return;
 	}
 
@@ -4559,6 +4570,7 @@ static void gatt_find_info_rsp(struct bt_conn *conn, int err,
 	if (err) {
 		goto done;
 	}
+	err = -EPROTO;
 
 	if (length < sizeof(*rsp)) {
 		LOG_WRN("Parse err");
@@ -4643,7 +4655,7 @@ static void gatt_find_info_rsp(struct bt_conn *conn, int err,
 			.handle = handle,
 		};
 
-		if (params->func(conn, &attr, params) == BT_GATT_ITER_STOP) {
+		if (params->func(conn, &attr, params, 0) == BT_GATT_ITER_STOP) {
 			return;
 		}
 	}
@@ -4653,7 +4665,7 @@ static void gatt_find_info_rsp(struct bt_conn *conn, int err,
 	return;
 
 done:
-	params->func(conn, NULL, params);
+	params->func(conn, NULL, params, err);
 }
 
 static int gatt_find_info_encode(struct net_buf *buf, size_t len,
@@ -5403,7 +5415,8 @@ static int gatt_write_ccc(struct bt_conn *conn,
 #if defined(CONFIG_BT_GATT_AUTO_DISCOVER_CCC)
 static uint8_t gatt_ccc_discover_cb(struct bt_conn *conn,
 				    const struct bt_gatt_attr *attr,
-				    struct bt_gatt_discover_params *params)
+				    struct bt_gatt_discover_params *params,
+				    int err)
 {
 	struct bt_gatt_subscribe_params *sub_params = params->sub_params;
 
