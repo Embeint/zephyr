@@ -71,10 +71,9 @@ static uint16_t chrc_handle;
 
 static uint8_t discover_func(struct bt_conn *conn,
 			     const struct bt_gatt_attr *attr,
-			     struct bt_gatt_discover_params *params)
+			     struct bt_gatt_discover_params *params,
+			     int err)
 {
-	int err;
-
 	if (attr == NULL) {
 		if (chrc_handle == 0) {
 			TEST_FAIL("Did not discover chrc (%x)", chrc_handle);
