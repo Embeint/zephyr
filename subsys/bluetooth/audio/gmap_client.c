@@ -179,11 +179,10 @@ static int gmap_read_bgr_feat(struct bt_gmap_client *gmap_cli, uint16_t handle)
 }
 
 static uint8_t bgr_feat_discover_func(struct bt_conn *conn, const struct bt_gatt_attr *attr,
-				      struct bt_gatt_discover_params *params)
+				      struct bt_gatt_discover_params *params, int err)
 {
 	struct bt_gmap_client *gmap_cli = client_by_conn(conn);
 	const struct bt_gatt_chrc *chrc;
-	int err;
 
 	__ASSERT(gmap_cli != NULL, "no instance for conn %p", (void *)conn);
 
@@ -278,11 +277,10 @@ static int gmap_read_bgs_feat(struct bt_gmap_client *gmap_cli, uint16_t handle)
 }
 
 static uint8_t bgs_feat_discover_func(struct bt_conn *conn, const struct bt_gatt_attr *attr,
-				      struct bt_gatt_discover_params *params)
+				      struct bt_gatt_discover_params *params, int err)
 {
 	struct bt_gmap_client *gmap_cli = client_by_conn(conn);
 	const struct bt_gatt_chrc *chrc;
-	int err;
 
 	__ASSERT(gmap_cli != NULL, "no instance for conn %p", (void *)conn);
 
@@ -379,11 +377,10 @@ static int gmap_read_ugt_feat(struct bt_gmap_client *gmap_cli, uint16_t handle)
 }
 
 static uint8_t ugt_feat_discover_func(struct bt_conn *conn, const struct bt_gatt_attr *attr,
-				      struct bt_gatt_discover_params *params)
+				      struct bt_gatt_discover_params *params, int err)
 {
 	struct bt_gmap_client *gmap_cli = client_by_conn(conn);
 	const struct bt_gatt_chrc *chrc;
-	int err;
 
 	__ASSERT(gmap_cli != NULL, "no instance for conn %p", (void *)conn);
 
@@ -482,11 +479,10 @@ static int gmap_read_ugg_feat(struct bt_gmap_client *gmap_cli, uint16_t handle)
 }
 
 static uint8_t ugg_feat_discover_func(struct bt_conn *conn, const struct bt_gatt_attr *attr,
-				      struct bt_gatt_discover_params *params)
+				      struct bt_gatt_discover_params *params, int err)
 {
 	struct bt_gmap_client *gmap_cli = client_by_conn(conn);
 	const struct bt_gatt_chrc *chrc;
-	int err;
 
 	__ASSERT(gmap_cli != NULL, "no instance for conn %p", (void *)conn);
 
@@ -586,11 +582,10 @@ static int gmap_read_role(struct bt_gmap_client *gmap_cli, uint16_t handle)
 }
 
 static uint8_t role_discover_func(struct bt_conn *conn, const struct bt_gatt_attr *attr,
-				  struct bt_gatt_discover_params *params)
+				  struct bt_gatt_discover_params *params, int err)
 {
 	struct bt_gmap_client *gmap_cli = client_by_conn(conn);
 	const struct bt_gatt_chrc *chrc;
-	int err;
 
 	__ASSERT(gmap_cli != NULL, "no instance for conn %p", (void *)conn);
 
@@ -629,11 +624,10 @@ static int gmap_discover_role(struct bt_gmap_client *gmap_cli)
 }
 
 static uint8_t gmas_discover_func(struct bt_conn *conn, const struct bt_gatt_attr *attr,
-				  struct bt_gatt_discover_params *params)
+				  struct bt_gatt_discover_params *params, int err)
 {
 	struct bt_gmap_client *gmap_cli = client_by_conn(conn);
 	const struct bt_gatt_service_val *svc;
-	int err;
 
 	__ASSERT(gmap_cli != NULL, "no instance for conn %p", (void *)conn);
 
