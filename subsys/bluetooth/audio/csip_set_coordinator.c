@@ -669,7 +669,8 @@ static int csip_set_coordinator_discover_sets(struct bt_csip_set_coordinator_ins
 
 static uint8_t discover_func(struct bt_conn *conn,
 			     const struct bt_gatt_attr *attr,
-			     struct bt_gatt_discover_params *params)
+			     struct bt_gatt_discover_params *params,
+			     int err)
 {
 	struct bt_gatt_chrc *chrc;
 	struct bt_csip_set_coordinator_inst *client = &client_insts[bt_conn_index(conn)];
@@ -683,8 +684,6 @@ static uint8_t discover_func(struct bt_conn *conn,
 
 		if (CONFIG_BT_CSIP_SET_COORDINATOR_MAX_CSIS_INSTANCES > 1 &&
 		    (client->cur_inst->idx + 1) < client->inst_count) {
-			int err;
-
 			client->cur_inst = &client->svc_insts[client->cur_inst->idx + 1];
 			client->discover_params.uuid = NULL;
 			client->discover_params.start_handle = client->cur_inst->start_handle;
@@ -699,8 +698,6 @@ static uint8_t discover_func(struct bt_conn *conn,
 			}
 
 		} else {
-			int err;
-
 			client->cur_inst = NULL;
 			client->busy = false;
 			err = csip_set_coordinator_discover_sets(client);
@@ -754,8 +751,6 @@ static uint8_t discover_func(struct bt_conn *conn,
 			}
 
 			if (sub_params->value != 0) {
-				int err;
-
 				/* With ccc_handle == 0 it will use auto discovery */
 				sub_params->ccc_handle = 0;
 				sub_params->end_handle = client->cur_inst->end_handle;
@@ -779,7 +774,8 @@ static uint8_t discover_func(struct bt_conn *conn,
 
 static uint8_t primary_discover_func(struct bt_conn *conn,
 				     const struct bt_gatt_attr *attr,
-				     struct bt_gatt_discover_params *params)
+				     struct bt_gatt_discover_params *params,
+				     int err)
 {
 	struct bt_gatt_service_val *prim_service;
 	struct bt_csip_set_coordinator_inst *client = &client_insts[bt_conn_index(conn)];
@@ -790,8 +786,6 @@ static uint8_t primary_discover_func(struct bt_conn *conn,
 		(void)memset(params, 0, sizeof(*params));
 
 		if (client->inst_count != 0) {
-			int err;
-
 			client->cur_inst = &client->svc_insts[0];
 			client->discover_params.uuid = NULL;
 			client->discover_params.start_handle = client->cur_inst->start_handle;
