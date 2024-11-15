@@ -312,7 +312,8 @@ static void csis_client_discover_cb(struct bt_conn *conn,
 
 static uint8_t bt_cap_common_discover_included_cb(struct bt_conn *conn,
 						  const struct bt_gatt_attr *attr,
-						  struct bt_gatt_discover_params *params)
+						  struct bt_gatt_discover_params *params,
+						  int err)
 {
 	if (attr == NULL) {
 		LOG_DBG("CAS CSIS include not found");
@@ -336,7 +337,6 @@ static uint8_t bt_cap_common_discover_included_cb(struct bt_conn *conn,
 				.discover = csis_client_discover_cb,
 			};
 			static bool csis_cbs_registered;
-			int err;
 
 			LOG_DBG("CAS CSIS not known, discovering");
 
@@ -364,7 +364,7 @@ static uint8_t bt_cap_common_discover_included_cb(struct bt_conn *conn,
 }
 
 static uint8_t bt_cap_common_discover_cas_cb(struct bt_conn *conn, const struct bt_gatt_attr *attr,
-					     struct bt_gatt_discover_params *params)
+					     struct bt_gatt_discover_params *params, int err)
 {
 	if (attr == NULL) {
 		cap_common_discover_complete(conn, -ENODATA, NULL, NULL);
@@ -372,7 +372,6 @@ static uint8_t bt_cap_common_discover_cas_cb(struct bt_conn *conn, const struct 
 		const struct bt_gatt_service_val *prim_service = attr->user_data;
 		struct bt_cap_common_client *client =
 			CONTAINER_OF(params, struct bt_cap_common_client, param);
-		int err;
 
 		client->conn = bt_conn_ref(conn);
 

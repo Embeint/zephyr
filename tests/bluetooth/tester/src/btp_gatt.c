@@ -1000,7 +1000,8 @@ static void discover_destroy(struct bt_gatt_discover_params *params)
 
 static uint8_t disc_prim_cb(struct bt_conn *conn,
 			 const struct bt_gatt_attr *attr,
-			 struct bt_gatt_discover_params *params)
+			 struct bt_gatt_discover_params *params,
+			 int err)
 {
 	struct bt_gatt_service_val *data;
 	struct btp_gatt_disc_prim_rp *rp = (void *) gatt_buf.buf;
@@ -1131,7 +1132,8 @@ static uint8_t disc_prim_uuid(const void *cmd, uint16_t cmd_len,
 
 static uint8_t find_included_cb(struct bt_conn *conn,
 				const struct bt_gatt_attr *attr,
-				struct bt_gatt_discover_params *params)
+				struct bt_gatt_discover_params *params,
+				int err)
 {
 	struct bt_gatt_include *data;
 	struct btp_gatt_find_included_rp *rp = (void *) gatt_buf.buf;
@@ -1212,7 +1214,8 @@ static uint8_t find_included(const void *cmd, uint16_t cmd_len,
 
 static uint8_t disc_chrc_cb(struct bt_conn *conn,
 			    const struct bt_gatt_attr *attr,
-			    struct bt_gatt_discover_params *params)
+			    struct bt_gatt_discover_params *params,
+			    int err)
 {
 	struct bt_gatt_chrc *data;
 	struct btp_gatt_disc_chrc_rp *rp = (void *) gatt_buf.buf;
@@ -1344,7 +1347,8 @@ static uint8_t disc_chrc_uuid(const void *cmd, uint16_t cmd_len,
 
 static uint8_t disc_all_desc_cb(struct bt_conn *conn,
 				const struct bt_gatt_attr *attr,
-				struct bt_gatt_discover_params *params)
+				struct bt_gatt_discover_params *params,
+				int err)
 {
 	struct btp_gatt_disc_all_desc_rp *rp = (void *) gatt_buf.buf;
 	struct btp_gatt_descriptor *descriptor;
@@ -1950,7 +1954,8 @@ fail:
 
 static uint8_t discover_func(struct bt_conn *conn,
 			     const struct bt_gatt_attr *attr,
-			     struct bt_gatt_discover_params *params)
+			     struct bt_gatt_discover_params *params,
+			     int err)
 {
 	struct bt_gatt_subscribe_params *subscription;
 
