@@ -49,6 +49,7 @@ static int fetch(const struct device *dev, enum sensor_channel chan)
 
 	data->sequence.buffer = &adc_raw;
 	data->sequence.buffer_size = sizeof(adc_raw);
+	data->sequence.calibrate = true;
 
 	/* Wait until sampling is valid */
 	k_sleep(data->earliest_sample);
