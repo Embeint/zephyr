@@ -100,45 +100,53 @@ static int tmp108_sample_fetch(const struct device *dev,
 			       enum sensor_channel chan)
 {
 	struct tmp108_data *drv_data = dev->data;
+	uint16_t config, converting_mask;
 	int result;
 
 	if (chan != SENSOR_CHAN_ALL && chan != SENSOR_CHAN_AMBIENT_TEMP) {
 		return -ENOTSUP;
 	}
 
-	/* If one shot mode is set, query chip for reading
-	 * should be finished 30 ms later
-	 */
-	if (drv_data->one_shot_mode == true) {
-
-		result = tmp108_write_config(dev,
-					     TI_TMP108_MODE_MASK(dev),
-					     TI_TMP108_MODE_ONE_SHOT(dev));
-
-		if (result < 0) {
-			return result;
-		}
-
-		/* Schedule read to start in 30 ms if mode change was successful
-		 * the typical wakeup time given in the data sheet is 27
-		 */
-		result = k_work_schedule(&drv_data->scheduled_work,
-					 K_MSEC(TMP108_WAKEUP_TIME_IN_MS(dev)));
-
-		if (result < 0) {
-			return result;
-		}
-
-		return 0;
+	if (!drv_data->one_shot_mode) {
+		/* Read the latest temperature result */
+		return ti_tmp108_read_temp(dev);
 	}
 
-	result =  ti_tmp108_read_temp(dev);
-
+	/* Trigger the conversion */
+	result = tmp108_write_config(dev,
+					TI_TMP108_MODE_MASK(dev),
+					TI_TMP108_MODE_ONE_SHOT(dev));
 	if (result < 0) {
 		return result;
 	}
 
-	return 0;
+	/* Typical conversion time:
+	 *   TMP108: 27ms
+	 *   AS6212: 36ms
+	 * Maximum conversion time:
+	 *   TMP108: 35ms
+	 *   AS6212: 51ms
+	 */
+	k_sleep(K_MSEC(25));
+	converting_mask = TI_TMP108_CONF_M1(dev) | TI_TMP108_CONF_M0(dev);
+
+	for (int i = 25; i < 100; i += 5) {
+		/* Read the config register */
+		result = tmp108_reg_read(dev, TI_TMP108_REG_CONF, &config);
+		if (result < 0) {
+			return result;
+		}
+		if ((config & converting_mask) == 0) {
+			/* Conversion has finished */
+			LOG_DBG("Conversion complete after %d ms", i);
+			return ti_tmp108_read_temp(dev);
+		}
+		/* Wait before reading again */
+		k_sleep(K_MSEC(5));
+	}
+
+	/* Conversion timed out */
+	return -EAGAIN;
 }
 
 static int tmp108_channel_get(const struct device *dev,
@@ -366,8 +374,6 @@ static int tmp108_init(const struct device *dev)
 		LOG_ERR("I2C dev %s not ready", cfg->i2c_spec.bus->name);
 		return -ENODEV;
 	}
-
-	drv_data->scheduled_work.work.handler = tmp108_trigger_handle_one_shot;
 
 	/* save this driver instance for passing to other functions */
 	drv_data->tmp108_dev = dev;
