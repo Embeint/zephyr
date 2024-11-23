@@ -375,7 +375,7 @@ static int setup_interrupts(const struct device *dev)
 static int tmp108_init(const struct device *dev)
 {
 	const struct tmp108_config *cfg = dev->config;
-	int result = 0;
+	struct tmp108_data *drv_data = dev->data;
 
 	if (!device_is_ready(cfg->i2c_spec.bus)) {
 		LOG_ERR("I2C dev %s not ready", cfg->i2c_spec.bus->name);
@@ -383,7 +383,6 @@ static int tmp108_init(const struct device *dev)
 	}
 
 #ifdef CONFIG_TMP108_ALERT_INTERRUPTS
-	struct tmp108_data *drv_data = dev->data;
 
 	/* save this driver instance for passing to other functions */
 	drv_data->tmp108_dev = dev;
@@ -394,11 +393,11 @@ static int tmp108_init(const struct device *dev)
 		return result;
 	}
 #endif
-	/* clear and set configuration registers back to default values */
-	result = tmp108_write_config(dev,
+	/* Configure the device into one-shot mode by default */
+	drv_data->one_shot_mode = true;
+	return tmp108_write_config(dev,
 				     0x0000,
-				     TMP108_CONF_RST(dev));
-	return result;
+				     TMP108_CONF_RST(dev) | TI_TMP108_MODE_ONE_SHOT(dev));
 }
 
 #define TMP108_DEFINE(inst, t)                                                                     \
