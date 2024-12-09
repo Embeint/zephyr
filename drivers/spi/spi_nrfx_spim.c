@@ -197,6 +197,20 @@ static int driver_api_transceive_async(const struct device *dev,
 }
 #endif
 
+static int driver_api_acquire(const struct device *dev,
+			      const struct spi_config *spi_cfg)
+{
+	struct driver_data *dev_data = dev->data;
+
+	if (spi_context_configured(&dev_data->ctx, spi_cfg)) {
+		return -EINVAL;
+	}
+
+	spi_context_lock(&dev_data->ctx, false, NULL, NULL, spi_cfg);
+
+	return 0;
+}
+
 static int driver_api_release(const struct device *dev,
 			      const struct spi_config *spi_cfg)
 {
@@ -218,6 +232,7 @@ static DEVICE_API(spi, driver_api) = {
 #ifdef CONFIG_SPI_RTIO
 	.iodev_submit = spi_rtio_iodev_default_submit,
 #endif
+	.acquire = driver_api_acquire,
 	.release = driver_api_release,
 };
 
