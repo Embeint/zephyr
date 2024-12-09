@@ -645,6 +645,15 @@ static int spi_mcux_transceive_async(const struct device *dev, const struct spi_
 }
 #endif /* CONFIG_SPI_ASYNC */
 
+static int spi_mcux_acquire(const struct device *dev, const struct spi_config *config)
+{
+	struct spi_mcux_data *data = dev->data;
+
+	spi_context_lock(&data->ctx, false, NULL, NULL, config);
+
+	return 0;
+}
+
 static int spi_mcux_release(const struct device *dev, const struct spi_config *spi_cfg)
 {
 	struct spi_mcux_data *data = dev->data;
@@ -817,6 +826,7 @@ static const struct spi_driver_api spi_mcux_driver_api = {
 #ifdef CONFIG_SPI_RTIO
 	.iodev_submit = spi_mcux_iodev_submit,
 #endif
+	.acquire = spi_mcux_acquire,
 	.release = spi_mcux_release,
 };
 
