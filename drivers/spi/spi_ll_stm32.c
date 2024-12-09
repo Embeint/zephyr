@@ -712,6 +712,16 @@ static int spi_stm32_configure(const struct device *dev,
 	return 0;
 }
 
+static int spi_stm32_acquire(const struct device *dev,
+			     const struct spi_config *config)
+{
+	struct spi_stm32_data *data = dev->data;
+
+	spi_context_lock(&data->ctx, false, NULL, NULL, config);
+
+	return 0;
+}
+
 static int spi_stm32_release(const struct device *dev,
 			     const struct spi_config *config)
 {
@@ -1157,6 +1167,7 @@ static const struct spi_driver_api api_funcs = {
 #ifdef CONFIG_SPI_ASYNC
 	.transceive_async = spi_stm32_transceive_async,
 #endif
+	.acquire = spi_stm32_acquire,
 	.release = spi_stm32_release,
 };
 
