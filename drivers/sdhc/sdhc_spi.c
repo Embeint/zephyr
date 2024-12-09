@@ -104,6 +104,8 @@ struct sdhc_spi_data {
 	uint8_t scratch[MAX_CMD_READ];
 };
 
+static int sdhc_spi_send_cmd(const struct device *dev, struct sdhc_command *cmd, bool data_present);
+
 /* Receives a block of bytes */
 static int sdhc_spi_rx(const struct device *spi_dev, struct spi_config *spi_cfg,
 	uint8_t *buf, int len)
@@ -149,7 +151,7 @@ static int sdhc_spi_init_card(const struct device *dev)
 	const struct sdhc_spi_config *config = dev->config;
 	struct sdhc_spi_data *data = dev->data;
 	struct spi_config *spi_cfg = data->spi_cfg;
-	int ret, ret2;
+	int ret;
 
 	if (spi_cfg->frequency == 0) {
 		/* Use default 400KHZ frequency */
@@ -164,15 +166,31 @@ static int sdhc_spi_init_card(const struct device *dev)
 	/* the initial 74 clocks must be sent while CS is high */
 	spi_cfg->operation |= SPI_CS_ACTIVE_HIGH;
 	ret = sdhc_spi_rx(config->spi_dev, spi_cfg, data->scratch, 10);
+	spi_cfg->operation &= ~SPI_CS_ACTIVE_HIGH;
+
+	/* Send CMD0 immediately to force the transition to SPI mode before bus is unlocked.
+	 * Failing to do this can result in the SD card seeing transactions to other devices
+	 * on the same SPI bus and incorrectly deciding that it should be in SD mode.
+	 */
+	if (ret == 0) {
+		struct sdhc_command cmd0 = {
+			.opcode = SD_GO_IDLE_STATE,
+			.arg = 0,
+			.response_type = (SD_RSP_TYPE_NONE | SD_SPI_RSP_TYPE_R1),
+			.timeout_ms = 1000,
+			.retries = 1,
+		};
+
+		ret = sdhc_spi_send_cmd(dev, &cmd0, false);
+	}
 
 	/* Release lock on SPI bus */
-	ret2 = spi_release(config->spi_dev, spi_cfg);
-	spi_cfg->operation &= ~SPI_CS_ACTIVE_HIGH;
+	(void)spi_release(config->spi_dev, spi_cfg);
 
 	/* Release request for SPI bus to be active */
 	(void)pm_device_runtime_put(config->spi_dev);
 
-	return ret ? ret : ret2;
+	return ret;
 }
 
 /* Checks if SPI SD card is sending busy signal */
@@ -728,7 +746,11 @@ static int sdhc_spi_set_io(const struct device *dev, struct sdhc_io *ios)
 	if (data->power_mode != ios->power_mode) {
 		if (ios->power_mode == SDHC_POWER_ON) {
 			if (cfg->pwr_gpio.port) {
+				LOG_DBG("Locking SPI bus");
+				(void)spi_acquire(cfg->spi_dev, data->spi_cfg);
+
 				if (gpio_pin_set_dt(&cfg->pwr_gpio, 1)) {
+					(void)spi_release(cfg->spi_dev, data->spi_cfg);
 					return -EIO;
 				}
 
@@ -741,7 +763,7 @@ static int sdhc_spi_set_io(const struct device *dev, struct sdhc_io *ios)
 				LOG_INF("Powered up");
 			}
 
-			/* Send 74 clock cycles to start card */
+			/* Initialisation sequence for SPI mode */
 			if (sdhc_spi_init_card(dev) != 0) {
 				LOG_ERR("Card SCLK init sequence failed");
 				return -EIO;
