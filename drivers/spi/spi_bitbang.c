@@ -257,6 +257,16 @@ static int spi_bitbang_transceive_async(const struct device *dev,
 }
 #endif
 
+int spi_bitbang_acquire(const struct device *dev,
+			const struct spi_config *config)
+{
+	struct spi_bitbang_data *data = dev->data;
+	struct spi_context *ctx = &data->ctx;
+
+	spi_context_lock(ctx, false, NULL, NULL, config);
+	return 0;
+}
+
 int spi_bitbang_release(const struct device *dev,
 			  const struct spi_config *config)
 {
@@ -269,6 +279,7 @@ int spi_bitbang_release(const struct device *dev,
 
 static DEVICE_API(spi, spi_bitbang_api) = {
 	.transceive = spi_bitbang_transceive,
+	.acquire = spi_bitbang_acquire,
 	.release = spi_bitbang_release,
 #ifdef CONFIG_SPI_ASYNC
 	.transceive_async = spi_bitbang_transceive_async,
