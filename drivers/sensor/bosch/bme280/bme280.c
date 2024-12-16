@@ -40,6 +40,13 @@ LOG_MODULE_REGISTER(BME280, CONFIG_SENSOR_LOG_LEVEL);
  */
 #define BME280_MEASUREMENT_TIMEOUT_MS 150
 
+/* Equation 9.1, with the fractional parts rounded down */
+#define BME280_EXPECTED_SAMPLE_TIME                                                                \
+	1 + BME280_TEMP_SAMPLE_TIME + BME280_PRESS_SAMPLE_TIME + BME280_HUMIDITY_SAMPLE_TIME
+
+BUILD_ASSERT(BME280_EXPECTED_SAMPLE_TIME < BME280_MEASUREMENT_TIMEOUT_MS,
+	     "Expected duration over timeout duration");
+
 struct bme280_config {
 	union bme280_bus bus;
 	const struct bme280_bus_io *bus_io;
@@ -162,6 +169,7 @@ int bme280_sample_fetch_helper(const struct device *dev,
 {
 	struct bme280_data *dev_data = dev->data;
 	int32_t adc_press, adc_temp;
+	uint32_t poll_timeout;
 	uint8_t buf[8];
 	int ret;
 
@@ -181,9 +189,14 @@ int bme280_sample_fetch_helper(const struct device *dev,
 	if (ret < 0) {
 		return ret;
 	}
+	/* Wait until the expected measurement time elapses */
+	k_sleep(K_MSEC(BME280_EXPECTED_SAMPLE_TIME));
+	poll_timeout = BME280_MEASUREMENT_TIMEOUT_MS - BME280_EXPECTED_SAMPLE_TIME;
+#else
+	poll_timeout = BME280_MEASUREMENT_TIMEOUT_MS;
 #endif
 
-	ret = bme280_wait_until_ready(dev, K_MSEC(BME280_MEASUREMENT_TIMEOUT_MS));
+	ret = bme280_wait_until_ready(dev, K_MSEC(poll_timeout));
 	if (ret < 0) {
 		return ret;
 	}
