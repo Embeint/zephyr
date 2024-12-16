@@ -256,7 +256,8 @@ static const struct i2c_driver_api i2c_nrfx_twim_driver_api = {
 				DT_PROP(I2C(idx), easydma_maxcnt_bits)),       \
 		.no_boot_recover = DT_PROP(I2C(idx), zephyr_no_boot_recover),  \
 	};								       \
-	PM_DEVICE_DT_DEFINE(I2C(idx), twim_nrfx_pm_action);		       \
+	PM_DEVICE_DT_DEFINE(I2C(idx), twim_nrfx_pm_action,                     \
+			PM_DEVICE_ISR_SAFE);                                   \
 	I2C_DEVICE_DT_DEFINE(I2C(idx),					       \
 		      i2c_nrfx_twim_init,				       \
 		      PM_DEVICE_DT_GET(I2C(idx)),			       \
