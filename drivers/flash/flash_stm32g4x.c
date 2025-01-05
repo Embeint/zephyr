@@ -285,7 +285,10 @@ static __unused int write_optb(const struct device *dev, uint32_t mask,
 		return rc;
 	}
 
-	return 0;
+	/* Apply the option byte update */
+	regs->CR |= FLASH_CR_OBL_LAUNCH;
+
+	return flash_stm32_wait_flash_idle(dev);
 }
 
 #if defined(CONFIG_FLASH_STM32_WRITE_PROTECT)
