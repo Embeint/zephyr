@@ -157,12 +157,16 @@ ZBUS_CHAN_DEFINE(chan4,                  /* Name */
 		 ZBUS_MSG_INIT(0) /* Initial value major 0, minor 1, build 1023 */
 );
 
+static bool execution_sequence_running;
 static int execution_sequence_idx;
 static uint8_t execution_sequence[8] = {0};
 
 #define CALLBACK_DEF(_lis, _idx)                                                                   \
 	static void _CONCAT(prio_cb, _idx)(const struct zbus_channel *chan)                        \
 	{                                                                                          \
+		if (!execution_sequence_running) {                                                 \
+			return;                                                                    \
+		}                                                                                  \
 		execution_sequence[execution_sequence_idx] = _idx;                                 \
 		++execution_sequence_idx;                                                          \
 	}                                                                                          \
@@ -190,6 +194,7 @@ ZTEST(basic, test_specification_based__zbus_obs_priority)
 	struct sensor_data_msg sd = {.a = 70, .b = 116};
 
 	execution_sequence_idx = 0;
+	execution_sequence_running = true;
 
 	zassert_equal(0, zbus_chan_add_obs(&chan4, &prio_lis4, K_MSEC(200)), NULL);
 	zassert_equal(0, zbus_chan_add_obs(&chan4, &prio_lis3, K_MSEC(200)), NULL);
@@ -204,6 +209,8 @@ ZTEST(basic, test_specification_based__zbus_obs_priority)
 	zassert_equal(execution_sequence[5], 3, NULL);
 	zassert_equal(execution_sequence[6], 2, NULL);
 	zassert_equal(execution_sequence[7], 1, NULL);
+
+	execution_sequence_running = false;
 }
 
 ZTEST_SUITE(basic, NULL, NULL, NULL, NULL, NULL);
