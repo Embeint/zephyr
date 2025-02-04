@@ -9,8 +9,23 @@
 #include "tfm_platform_hal_ioctl.h"
 #include "tfm_ioctl_core_api.h"
 
+#include "exception_info.h"
+
+#define SECURE_FAULT_VALID_KEY 0xA89371E1
+
+struct {
+	uint32_t valid_key;
+	struct exception_info_t info;
+} secure_fault_info __NO_INIT;
+
 void tfm_platform_hal_system_reset(void)
 {
+	/* Preserve fault information */
+	tfm_exception_info_get_context(&secure_fault_info.info);
+	/* Presume data was populated if either of these values are not zero */
+	if (secure_fault_info.info.EXC_RETURN != 0 || secure_fault_info.info.xPSR != 0) {
+		secure_fault_info.valid_key = SECURE_FAULT_VALID_KEY;
+	}
 	/* Reset the system */
 	NVIC_SystemReset();
 }
