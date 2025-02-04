@@ -123,6 +123,10 @@ config TFM_CMAKE_BUILD_TYPE_DEBUG
 
 endchoice
 
+config TFM_PLATFORM_DEFAULT_SYSTEM_RESET_HALT
+	bool "Use the default platform reset halt implementations"
+	default y
+
 config TFM_ISOLATION_LEVEL
 	int "Isolation level setting." if (TFM_PROFILE_TYPE_NOT_SET && TFM_IPC)
 	range 1 3
