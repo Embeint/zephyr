@@ -127,6 +127,12 @@ config TFM_PLATFORM_DEFAULT_SYSTEM_RESET_HALT
 	bool "Use the default platform reset halt implementations"
 	default y if !SOC_FAMILY_NORDIC_NRF
 
+config TFM_PLATFORM_FAULT_INFO_QUERY
+	bool "Query secure fault state from the non-secure application"
+	depends on !TFM_PLATFORM_DEFAULT_SYSTEM_RESET_HALT
+	depends on SOC_FAMILY_NORDIC_NRF
+	default y
+
 config TFM_ISOLATION_LEVEL
 	int "Isolation level setting." if (TFM_PROFILE_TYPE_NOT_SET && TFM_IPC)
 	range 1 3

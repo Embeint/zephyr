@@ -290,6 +290,10 @@ if (CONFIG_BUILD_WITH_TFM)
     list(APPEND TFM_CMAKE_ARGS -DDEVICETREE_LAYOUT=ON)
   endif()
 
+  if(CONFIG_TFM_PLATFORM_FAULT_INFO_QUERY)
+    list(APPEND TFM_CMAKE_ARGS -DTFM_PLATFORM_FAULT_INFO_QUERY=ON)
+  endif()
+
   if(CONFIG_TFM_MCUBOOT_DATA_SHARING)
     list(APPEND TFM_CMAKE_ARGS -DMCUBOOT_DATA_SHARING=ON)
   endif()
@@ -433,6 +437,10 @@ if (CONFIG_BUILD_WITH_TFM)
   # Non-Secure interface to request system reboot
   if (CONFIG_TFM_PARTITION_PLATFORM AND NOT CONFIG_TFM_PARTITION_PLATFORM_CUSTOM_REBOOT)
     zephyr_library_sources(src/reboot.c)
+  endif()
+
+  if (CONFIG_TFM_PLATFORM_FAULT_INFO_QUERY)
+    zephyr_library_sources(src/fault_info_query.c)
   endif()
 
   zephyr_library_sources_ifdef(CONFIG_TFM_PARTITION_PLATFORM                 ${TFM_INTERFACE_SOURCE_DIR}/tfm_platform_api.c)
