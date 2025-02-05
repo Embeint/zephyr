@@ -57,6 +57,12 @@ target_sources(platform_s
         $<$<BOOL:${TFM_PARTITION_PLATFORM}>:${CMAKE_CURRENT_SOURCE_DIR}/src/tfm_platform_system.c>
         $<$<BOOL:NOT ${PLATFORM_DEFAULT_NV_SEED}>:src/nv_seed_nrf.c>
 )
+if(TFM_PLATFORM_FAULT_INFO_QUERY)
+    target_compile_definitions(platform_s
+    PRIVATE
+        "-DTFM_PLATFORM_FAULT_INFO_QUERY=1"
+    )
+endif()
 if(NRF_CC3XX_PLATFORM_LIB)
     add_library(nrf_cc3xx_platform STATIC IMPORTED GLOBAL)
     set_target_properties(nrf_cc3xx_platform PROPERTIES
