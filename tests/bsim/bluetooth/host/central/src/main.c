@@ -7,6 +7,7 @@
 #include "bstests.h"
 #include "babblekit/testcase.h"
 #include <zephyr/bluetooth/conn.h>
+#include <zephyr/bluetooth/hci.h>
 
 static K_SEM_DEFINE(sem_connected, 0, 1);
 
@@ -43,6 +44,7 @@ static void test_central_connect_timeout_with_timeout(uint32_t timeout_ms)
 		.window_coded = 0,
 		.timeout = timeout_ms / 10,
 	};
+	struct net_buf *bufs[CONFIG_BT_BUF_CMD_TX_COUNT];
 
 	k_sem_reset(&sem_connected);
 
@@ -50,6 +52,21 @@ static void test_central_connect_timeout_with_timeout(uint32_t timeout_ms)
 
 	err = bt_conn_le_create(&peer, &create_param, BT_LE_CONN_PARAM_DEFAULT, &conn);
 	TEST_ASSERT(err == 0, "Failed starting initiator (err %d)", err);
+
+	if (stack_load) {
+		/* Claim all the buffers so that the stack cannot handle the timeout */
+		for (int i = 0; i < CONFIG_BT_BUF_CMD_TX_COUNT; i++) {
+			bufs[i] = bt_hci_cmd_create(BT_HCI_LE_ADV_ENABLE, 0);
+			TEST_ASSERT(bufs[i] != NULL, "Failed to claim all command buffers");
+		}
+		/* Hold all the buffers until after we expect the connection to timeout */
+		err = k_sem_take(&sem_connected, K_MSEC(expected_conn_timeout_ms + 50));
+		TEST_ASSERT(err == -EAGAIN, "Callback ran with no buffers available", err);
+		/* Release all the buffers back to the stack */
+		for (int i = 0; i < CONFIG_BT_BUF_CMD_TX_COUNT; i++) {
+			net_buf_unref(bufs[i]);
+		}
+	}
 
 	err = k_sem_take(&sem_connected, K_MSEC(2 * expected_conn_timeout_ms));
 	TEST_ASSERT(err == 0, "Failed getting connected timeout within %d s (err %d)",
@@ -76,8 +93,9 @@ static void test_central_connect_timeout(void)
 	err = bt_enable(NULL);
 	TEST_ASSERT(err == 0, "Can't enable Bluetooth (err %d)", err);
 
-	test_central_connect_timeout_with_timeout(0);
-	test_central_connect_timeout_with_timeout(1000);
+	test_central_connect_timeout_with_timeout(0, false);
+	test_central_connect_timeout_with_timeout(1000, false);
+	test_central_connect_timeout_with_timeout(2000, true);
 
 	TEST_PASS("Correct timeout");
 }
