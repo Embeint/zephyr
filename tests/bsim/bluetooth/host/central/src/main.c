@@ -24,7 +24,7 @@ static struct bt_conn_cb conn_cb = {
 	.connected = connected_cb,
 };
 
-static void test_central_connect_timeout_with_timeout(uint32_t timeout_ms)
+static void test_central_connect_timeout_with_timeout(uint32_t timeout_ms, bool stack_load)
 {
 	int err;
 	struct bt_conn *conn;
