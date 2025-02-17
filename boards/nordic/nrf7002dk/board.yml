@@ -7,3 +7,5 @@ board:
       variants:
         - name: nrf7001
           cpucluster: cpuapp
+        - name: ns
+          cpucluster: cpuapp
