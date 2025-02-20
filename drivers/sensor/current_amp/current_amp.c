@@ -87,6 +87,10 @@ static int get(const struct device *dev, enum sensor_channel chan, struct sensor
 		return -ENOTSUP;
 	}
 
+	if (v_uv < config->noise_threshold) {
+		return sensor_value_from_micro(val, 0);
+	}
+
 #ifdef INST_HAS_EXTENDED_RANGE
 	ret = adc_raw_to_x_dt_chan(adc_raw_to_microvolts, &config->port, data->sample_channel_cfg,
 				   &v_uv);
