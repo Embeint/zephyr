@@ -78,8 +78,8 @@ static int get(const struct device *dev, enum sensor_channel chan, struct sensor
 {
 	const struct current_sense_amplifier_dt_spec *config = dev->config;
 	struct current_sense_amplifier_data *data = dev->data;
-	int32_t raw_val = data->raw;
-	int32_t i_ma;
+	int32_t v_uv = data->raw;
+	int32_t i_ua;
 	int ret;
 
 	__ASSERT_NO_MSG(val != NULL);
@@ -89,23 +89,19 @@ static int get(const struct device *dev, enum sensor_channel chan, struct sensor
 	}
 
 #ifdef INST_HAS_EXTENDED_RANGE
-	ret = adc_raw_to_millivolts_dt_alternate(&config->port, data->sample_channel_cfg, &raw_val);
+	ret = adc_raw_to_x_dt_chan(adc_raw_to_microvolts, &config->port, data->sample_channel_cfg,
+				   &v_uv);
 #else
-	ret = adc_raw_to_millivolts_dt(&config->port, &raw_val);
+	ret = adc_raw_to_microvolts_dt(&config->port, &v_uv);
 #endif
 	if (ret != 0) {
 		LOG_ERR("raw_to_mv: %d", ret);
 		return ret;
 	}
 
-	i_ma = raw_val;
-	current_sense_amplifier_scale_dt(config, &i_ma);
-
-	LOG_DBG("%d/%d, %dmV, current:%dmA", data->raw,
-		(1 << data->sequence.resolution) - 1, raw_val, i_ma);
-
-	val->val1 = i_ma / 1000;
-	val->val2 = (i_ma % 1000) * 1000;
+	i_ua = current_sense_amplifier_scale_ua_dt(config, v_uv);
+	LOG_DBG("%d/%d, %d uV, current:%d uA", data->raw, (1 << data->sequence.resolution) - 1,
+		v_uv, i_ua);
 
 	return 0;
 }
