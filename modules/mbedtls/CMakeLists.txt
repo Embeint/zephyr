@@ -117,6 +117,10 @@ if(CONFIG_MBEDTLS)
 
   endif()
 
+  if(CONFIG_MBEDTLS_PSA_ITS_BACKEND_MBEDTLS_FILE)
+    zephyr_include_directories(psa/include)
+  endif()
+
   if(CONFIG_MBEDTLS_SSL_PROTO_TLS1_2 OR CONFIG_MBEDTLS_SSL_PROTO_TLS1_3)
     if(NOT CONFIG_MBEDTLS_HAVE_TIME_DATE)
       message(WARNING "
