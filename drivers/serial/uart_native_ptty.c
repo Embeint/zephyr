@@ -40,6 +40,12 @@ static int np_uart_tty_poll_in(const struct device *dev,
 			       unsigned char *p_char);
 static void np_uart_poll_out(const struct device *dev,
 				      unsigned char out_char);
+#ifdef CONFIG_UART_ASYNC_API
+static void np_uart_tx_done_work(struct k_work *work);
+static int np_uart_callback_set(const struct device *dev, uart_callback_t callback,
+				void *user_data);
+static int np_uart_tx(const struct device *dev, const uint8_t *buf, size_t len, int32_t timeout);
+#endif /* CONFIG_UART_ASYNC_API */
 
 static bool auto_attach;
 static bool wait_pts;
@@ -48,6 +54,14 @@ static char *auto_attach_cmd = CONFIG_NATIVE_UART_AUTOATTACH_DEFAULT_CMD;
 struct native_uart_status {
 	int out_fd; /* File descriptor used for output */
 	int in_fd; /* File descriptor used for input */
+#ifdef CONFIG_UART_ASYNC_API
+	const struct device *dev;
+	struct k_work_delayable async_work;
+	uart_callback_t user_callback;
+	void *user_data;
+	const uint8_t *tx_buf;
+	size_t tx_len;
+#endif /* CONFIG_UART_ASYNC_API */
 };
 
 static struct native_uart_status native_uart_status_0;
@@ -63,6 +77,10 @@ static struct native_uart_status native_uart_status_1;
 static struct uart_driver_api np_uart_driver_api_1 = {
 	.poll_out = np_uart_poll_out,
 	.poll_in = np_uart_tty_poll_in,
+#ifdef CONFIG_UART_ASYNC_API
+	.callback_set = np_uart_callback_set,
+	.tx = np_uart_tx,
+#endif /* CONFIG_UART_ASYNC_API */
 };
 #endif /* CONFIG_UART_NATIVE_POSIX_PORT_1_ENABLE */
 
@@ -96,6 +114,10 @@ static int np_uart_0_init(const struct device *dev)
 		np_uart_driver_api_0.poll_in = np_uart_stdin_poll_in;
 	}
 
+#ifdef CONFIG_UART_ASYNC_API
+	k_work_init_delayable(&d->async_work, np_uart_tx_done_work);
+#endif
+
 	return 0;
 }
 
@@ -115,6 +137,10 @@ static int np_uart_1_init(const struct device *dev)
 
 	d->in_fd = tty_fn;
 	d->out_fd = tty_fn;
+
+#ifdef CONFIG_UART_ASYNC_API
+	k_work_init_delayable(&d->async_work, np_uart_tx_done_work);
+#endif
 
 	return 0;
 }
@@ -201,6 +227,59 @@ static int np_uart_tty_poll_in(const struct device *dev,
 	}
 	return 0;
 }
+
+#ifdef CONFIG_UART_ASYNC_API
+
+static int np_uart_callback_set(const struct device *dev, uart_callback_t callback, void *user_data)
+{
+	struct native_uart_status *data = dev->data;
+
+	data->user_callback = callback;
+	data->user_data = user_data;
+
+	return 0;
+}
+
+static void np_uart_tx_done_work(struct k_work *work)
+{
+	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
+	struct native_uart_status *data =
+		CONTAINER_OF(dwork, struct native_uart_status, async_work);
+	struct uart_event evt;
+	unsigned int key = irq_lock();
+	long ret;
+
+	evt.type = UART_TX_DONE;
+	evt.data.tx.buf = data->tx_buf;
+	evt.data.tx.len = data->tx_len;
+
+	ret = nsi_host_write(data->out_fd, evt.data.tx.buf, evt.data.tx.len);
+	(void)ret;
+
+	data->tx_buf = NULL;
+
+	data->user_callback(data->dev, &evt, data->user_data);
+	irq_unlock(key);
+}
+
+static int np_uart_tx(const struct device *dev, const uint8_t *buf, size_t len, int32_t timeout)
+{
+	struct native_uart_status *data = dev->data;
+
+	if (data->tx_buf) {
+		/* Port is busy */
+		return -EBUSY;
+	}
+	data->dev = dev;
+	data->tx_buf = buf;
+	data->tx_len = len;
+
+	/* Run the callback on the next tick to give the caller time to use the return value */
+	k_work_reschedule(&data->async_work, K_TICKS(1));
+	return 0;
+}
+
+#endif /* CONFIG_UART_ASYNC_API */
 
 DEVICE_DT_INST_DEFINE(0,
 	    &np_uart_0_init, NULL,
