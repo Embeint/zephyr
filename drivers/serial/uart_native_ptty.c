@@ -7,6 +7,7 @@
 #define DT_DRV_COMPAT zephyr_native_posix_uart
 
 #include <stdbool.h>
+#include <signal.h>
 
 #include <zephyr/drivers/uart.h>
 #include <zephyr/kernel.h>
@@ -45,6 +46,9 @@ static void np_uart_tx_done_work(struct k_work *work);
 static int np_uart_callback_set(const struct device *dev, uart_callback_t callback,
 				void *user_data);
 static int np_uart_tx(const struct device *dev, const uint8_t *buf, size_t len, int32_t timeout);
+static int np_uart_rx_buf_rsp(const struct device *dev, uint8_t *buf, size_t len);
+static int np_uart_rx_enable(const struct device *dev, uint8_t *buf, size_t len, int32_t timeout);
+static int np_uart_rx_disable(const struct device *dev);
 #endif /* CONFIG_UART_ASYNC_API */
 
 static bool auto_attach;
@@ -61,6 +65,8 @@ struct native_uart_status {
 	void *user_data;
 	const uint8_t *tx_buf;
 	size_t tx_len;
+	uint8_t *rx_buf;
+	size_t rx_len;
 #endif /* CONFIG_UART_ASYNC_API */
 };
 
@@ -80,6 +86,9 @@ static struct uart_driver_api np_uart_driver_api_1 = {
 #ifdef CONFIG_UART_ASYNC_API
 	.callback_set = np_uart_callback_set,
 	.tx = np_uart_tx,
+	.rx_buf_rsp = np_uart_rx_buf_rsp,
+	.rx_enable = np_uart_rx_enable,
+	.rx_disable = np_uart_rx_disable,
 #endif /* CONFIG_UART_ASYNC_API */
 };
 #endif /* CONFIG_UART_NATIVE_POSIX_PORT_1_ENABLE */
@@ -87,7 +96,90 @@ static struct uart_driver_api np_uart_driver_api_1 = {
 #define ERROR posix_print_error_and_exit
 #define WARN posix_print_warning
 
+#ifdef CONFIG_UART_ASYNC_API
 
+static void sigio_handler_dev(struct native_uart_status *data)
+{
+	unsigned char fallback[8];
+	struct uart_event event;
+	unsigned char *buf;
+	long read;
+	int len;
+
+	/* Read data from the file even if it is disabled.
+	 * This prevents data that was received while disabled from
+	 * appearing at the output if it is enabled later.
+	 */
+	if (data->rx_len == 0) {
+		buf = fallback;
+		len = sizeof(fallback);
+	} else {
+		buf = data->rx_buf;
+		len = data->rx_len;
+	}
+
+	/* Loop until there is no more data to be read */
+	while (1) {
+		read = np_uart_stdin_poll_in_bottom(data->in_fd, buf, len);
+		if (read <= 0) {
+			break;
+		}
+		if (data->rx_len == 0) {
+			/* RX disabled, drop data */
+			continue;
+		} 
+
+		event.type = UART_RX_RDY;
+		event.data.rx.buf = buf;
+		event.data.rx.len =  len;
+		event.data.rx.offset = 0;
+
+		data->user_callback(data->dev, &event, data->user_data);
+	}
+}
+
+static void sigio_handler(int status)
+{
+	sigio_handler_dev(&native_uart_status_0);
+#ifdef CONFIG_UART_NATIVE_POSIX_PORT_1_ENABLE
+	sigio_handler_dev(&native_uart_status_1);
+#endif /* CONFIG_UART_NATIVE_POSIX_PORT_1_ENABLE */
+}
+
+static int np_uart_rx_buf_rsp(const struct device *dev, uint8_t *buf, size_t len)
+{
+	/* Driver never requests additional buffers */
+	return -ENOTSUP;
+}
+
+static int np_uart_rx_enable(const struct device *dev, uint8_t *buf, size_t len,
+			     int32_t timeout)
+{
+	struct native_uart_status *data = dev->data;
+
+	ARG_UNUSED(timeout);
+
+	data->rx_buf = buf;
+	data->rx_len = len;
+
+	return 0;
+}
+
+static int np_uart_rx_disable(const struct device *dev)
+{
+	struct native_uart_status *data = dev->data;
+
+	if (data->rx_buf == NULL) {
+		return -EFAULT;
+	}
+
+	data->rx_buf = NULL;
+	data->rx_len = 0;
+
+	return 0;
+}
+
+#endif /* CONFIG_UART_ASYNC_API */
 
 /**
  * @brief Initialize the first native_posix serial port
@@ -116,6 +208,10 @@ static int np_uart_0_init(const struct device *dev)
 
 #ifdef CONFIG_UART_ASYNC_API
 	k_work_init_delayable(&d->async_work, np_uart_tx_done_work);
+	/* Install global SIGIO handler (also applies for UART1) */
+	nsi_signal_handler_install(SIGIO, sigio_handler);
+	/* Mark the file descriptor as async */
+	nsi_fd_async(d->in_fd);
 #endif
 
 	return 0;
@@ -140,6 +236,8 @@ static int np_uart_1_init(const struct device *dev)
 
 #ifdef CONFIG_UART_ASYNC_API
 	k_work_init_delayable(&d->async_work, np_uart_tx_done_work);
+	/* Mark the file descriptor as async */
+	nsi_fd_async(d->in_fd);
 #endif
 
 	return 0;
