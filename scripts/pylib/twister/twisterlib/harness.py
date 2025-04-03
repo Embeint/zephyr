@@ -774,11 +774,11 @@ class Gtest(Harness):
 class Test(Harness):
     __test__ = False  # for pytest to skip this class when collects tests
 
-    test_suite_start_pattern = re.compile(r"Running TESTSUITE (?P<suite_name>\S*)")
+    test_suite_start_pattern = re.compile(r"Running TESTSUITE (\(reboots\) )?(?P<suite_name>\S*)")
     test_suite_end_pattern = re.compile(
         r"TESTSUITE (?P<suite_name>\S*)\s+(?P<suite_status>succeeded|failed)"
     )
-    test_case_start_pattern = re.compile(r"START - (test_)?([a-zA-Z0-9_-]+)")
+    test_case_start_pattern = re.compile(r"START (\(reboots\) )?- (test_)?([a-zA-Z0-9_-]+)")
     test_case_end_pattern = re.compile(
         r".*(PASS|FAIL|SKIP) - (test_)?(\S*) in (\d*[.,]?\d*) seconds"
     )
@@ -825,7 +825,7 @@ class Test(Harness):
         tc_id = self.instance.compose_case_name(tc_name)
         return self.instance.get_case_or_create(tc_id)
 
-    def start_suite(self, suite_name, phase='TS_START'):
+    def start_suite(self, suite_name, phase='TS_START', reboot_expected=False):
         if suite_name not in self.detected_suite_names:
             self.detected_suite_names.append(suite_name)
         if self.trace and suite_name not in self.instance.testsuite.ztest_suite_names:
@@ -834,7 +834,7 @@ class Test(Harness):
             logger.debug(f"{phase}: unexpected Ztest suite '{suite_name}' is "
                          f"not present among: {self.instance.testsuite.ztest_suite_names}")
         if suite_name in self.started_suites:
-            if self.started_suites[suite_name]['count'] > 0:
+            if self.started_suites[suite_name]['count'] > 0 and not reboot_expected:
                 # Either the suite restarts itself or unexpected state transition.
                 logger.warning(f"{phase}: already STARTED '{suite_name}':"
                                f"{self.started_suites[suite_name]}")
@@ -862,9 +862,9 @@ class Test(Harness):
         else:
             logger.warning(f"{phase}: END suite '{suite_name}' without START detected")
 
-    def start_case(self, tc_name, phase='TC_START'):
+    def start_case(self, tc_name, phase='TC_START', reboot_expected=False):
         if tc_name in self.started_cases:
-            if self.started_cases[tc_name]['count'] > 0:
+            if self.started_cases[tc_name]['count'] > 0 and not reboot_expected:
                 logger.warning(f"{phase}: already STARTED case "
                                f"'{tc_name}':{self.started_cases[tc_name]}")
             self.started_cases[tc_name]['count'] += 1
@@ -892,14 +892,16 @@ class Test(Harness):
             self.testcase_output += line + "\n"
 
         if test_suite_start_match := re.search(self.test_suite_start_pattern, line):
-            self.start_suite(test_suite_start_match.group("suite_name"))
+            ts_reboots = test_suite_start_match.group(1) is not None
+            self.start_suite(test_suite_start_match.group("suite_name"), reboot_expected=ts_reboots)
         elif test_suite_end_match := re.search(self.test_suite_end_pattern, line):
             suite_name=test_suite_end_match.group("suite_name")
             self.end_suite(suite_name)
         elif testcase_match := re.search(self.test_case_start_pattern, line):
-            tc_name = testcase_match.group(2)
+            tc_reboots = testcase_match.group(1) is not None
+            tc_name = testcase_match.group(3)
             tc = self.get_testcase(tc_name, 'TC_START')
-            self.start_case(tc.name)
+            self.start_case(tc.name, reboot_expected=tc_reboots)
             # Mark the test as started, if something happens here, it is mostly
             # due to this tests, for example timeout. This should in this case
             # be marked as failed and not blocked (not run).
