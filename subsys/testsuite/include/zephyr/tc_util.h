@@ -153,6 +153,18 @@ static inline void print_nothing(const char *fmt, ...)
 	} while (0)
 #endif
 
+#ifndef TC_START_REBOOTS_PRINT
+#if defined(CONFIG_ZTEST_VERBOSE_OUTPUT)
+#define TC_START_REBOOTS_PRINT(name) PRINT_DATA("START (reboots) - %s\n", name);
+#else
+#define TC_START_REBOOTS_PRINT(name) print_nothing(name)
+#endif /* CONFIG_ZTEST_VERBOSE_OUTPUT */
+#endif /* TC_START_REBOOTS_PRINT */
+
+#ifndef TC_START_REBOOTS
+#define TC_START_REBOOTS(name) TC_START_REBOOTS_PRINT(name)
+#endif
+
 #ifndef TC_END
 #define TC_END(result, fmt, ...) PRINT_DATA(fmt, ##__VA_ARGS__)
 #endif
@@ -194,6 +206,14 @@ static inline void print_nothing(const char *fmt, ...)
 	do {							\
 		TC_SUITE_PRINT("Running TESTSUITE %s\n", name);	\
 		PRINT_LINE;					\
+	} while (false)
+#endif
+
+#ifndef TC_SUITE_START_REBOOTS
+#define TC_SUITE_START_REBOOTS(name)						\
+	do {									\
+		TC_SUITE_PRINT("Running TESTSUITE (reboots) %s\n", name);	\
+		PRINT_LINE;							\
 	} while (false)
 #endif
 

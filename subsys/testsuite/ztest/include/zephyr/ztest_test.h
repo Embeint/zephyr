@@ -131,6 +131,8 @@ struct ztest_suite_stats {
 	uint32_t skip_count;
 	/** The number of times that the suite failed */
 	uint32_t fail_count;
+	/** At least one test in the suite reboots */
+	bool reboots_expected;
 };
 
 struct ztest_unit_test_stats {
@@ -406,6 +408,9 @@ void ztest_test_skip(void);
 
 void ztest_skip_failed_assumption(void);
 
+/** @brief Mark a test as expected to trigger reboots */
+#define ZTEST_TEST_REBOOTS BIT(31)
+
 #define Z_TEST_P(suite, fn, t_options) \
 	struct ztest_unit_test_stats z_ztest_unit_test_stats_##suite##_##fn; \
 	static void _##suite##_##fn##_wrapper(void *data); \
@@ -491,6 +496,14 @@ void ztest_skip_failed_assumption(void);
  * @param fn The test function to call.
  */
 #define ZTEST_USER(suite, fn) Z_ZTEST(suite, fn, K_USER)
+
+/**
+ * @brief Define a test function that expects to cause reboots
+ *
+ * @param suite The name of the test suite to attach this test
+ * @param fn The test function to call.
+ */
+#define ZTEST_REBOOTS(suite, fn) Z_ZTEST(suite, fn, ZTEST_TEST_REBOOTS)
 
 /**
  * @brief Define a test function

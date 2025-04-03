@@ -670,7 +670,13 @@ static int run_test(struct ztest_suite_node *suite, struct ztest_unit_test *test
 #if CONFIG_ZTEST_TEST_DELAY_MS > 0
 	k_busy_wait(CONFIG_ZTEST_TEST_DELAY_MS * USEC_PER_MSEC);
 #endif
-	TC_START(test->name);
+
+	/* If any of the suite tests reboot, any test may be run multiple times */
+	if (suite->stats->reboots_expected) {
+		TC_START_REBOOTS(test->name);
+	} else {
+		TC_START(test->name);
+	}
 
 	__ztest_set_test_phase(TEST_PHASE_BEFORE);
 
@@ -824,7 +830,22 @@ static int z_ztest_run_test_suite_ptr(struct ztest_suite_node *suite, bool shuff
 	k_object_access_all_grant(&ztest_thread);
 #endif
 
-	TC_SUITE_START(suite->name);
+	/* Check if any of the contained tests reboot */
+	suite->stats->reboots_expected = false;
+	while (((test = z_ztest_get_next_test(suite->name, test)) != NULL)) {
+		if (test->thread_options & ZTEST_TEST_REBOOTS) {
+			suite->stats->reboots_expected = true;
+			break;
+		}
+	}
+	test = NULL;
+
+	if (suite->stats->reboots_expected) {
+		TC_SUITE_START_REBOOTS(suite->name);
+	} else {
+		TC_SUITE_START(suite->name);
+	}
+
 	current_test_failed_assumption = false;
 	__ztest_set_test_result(ZTEST_RESULT_PENDING);
 	__ztest_set_test_phase(TEST_PHASE_SETUP);
