@@ -505,9 +505,6 @@ static void uarte_nrfx_isr_int(const void *arg)
 
 		if (data->int_driven->disable_tx_irq) {
 			data->int_driven->disable_tx_irq = false;
-			if (IS_ENABLED(CONFIG_PM_DEVICE_RUNTIME)) {
-				pm_device_runtime_put_async(dev, K_NO_WAIT);
-			}
 			return;
 		}
 	}
@@ -2120,10 +2117,6 @@ static void uarte_nrfx_irq_tx_enable(const struct device *dev)
 {
 	NRF_UARTE_Type *uarte = get_uarte_instance(dev);
 	struct uarte_nrfx_data *data = dev->data;
-
-	if (IS_ENABLED(CONFIG_PM_DEVICE_RUNTIME)) {
-		pm_device_runtime_get(dev);
-	}
 
 	unsigned int key = irq_lock();
 
