@@ -296,7 +296,18 @@ int pm_device_runtime_get(const struct device *dev)
 		struct pm_device_isr *pm_sync = dev->pm_isr;
 		k_spinlock_key_t k = k_spin_lock(&pm_sync->lock);
 
-		ret = get_sync_locked(dev);
+		/*
+		 * Check if the device has a pending suspend operation (not started
+		 * yet) and cancel it. This way we avoid unnecessary operations because
+		 * the device is actually active.
+		 */
+		if ((pm->base.state == PM_DEVICE_STATE_SUSPENDING) &&
+			((k_work_cancel_delayable(&pm->base.work) & K_WORK_RUNNING) == 0)) {
+			pm->base.state = PM_DEVICE_STATE_ACTIVE;
+			pm->base.usage++;
+		} else {
+			ret = get_sync_locked(dev);
+		}
 		k_spin_unlock(&pm_sync->lock, k);
 		goto end;
 	}
@@ -408,7 +419,7 @@ end:
 }
 
 
-static int put_sync_locked(const struct device *dev)
+static int put_sync_locked(const struct device *dev, bool async, k_timeout_t delay)
 {
 	int ret;
 	struct pm_device_isr *pm = dev->pm_isr;
@@ -420,15 +431,21 @@ static int put_sync_locked(const struct device *dev)
 
 	pm->base.usage--;
 	if (pm->base.usage == 0U) {
-		ret = pm->base.action_cb(dev, PM_DEVICE_ACTION_SUSPEND);
-		if (ret < 0) {
-			pm->base.usage++;
-			return ret;
-		}
-		pm->base.state = PM_DEVICE_STATE_SUSPENDED;
+		if (async) {
+			/* queue suspend */
+			pm->base.state = PM_DEVICE_STATE_SUSPENDING;
+			(void)k_work_schedule(&pm->base.work, delay);
+			ret = 0;
+		} else {
+			ret = pm->base.action_cb(dev, PM_DEVICE_ACTION_SUSPEND);
+			if (ret < 0) {
+				pm->base.usage++;
+				return ret;
+			}
+			pm->base.state = PM_DEVICE_STATE_SUSPENDED;
 
-		if (flags & BIT(PM_DEVICE_FLAG_PD_CLAIMED)) {
-			const struct device *domain = PM_DOMAIN(&pm->base);
+			if (flags & BIT(PM_DEVICE_FLAG_PD_CLAIMED)) {
+				const struct device *domain = PM_DOMAIN(&pm->base);
 
 			if (domain->pm_base->flags & BIT(PM_DEVICE_FLAG_ISR_SAFE)) {
 				ret = pm_device_runtime_put(domain);
@@ -463,7 +480,7 @@ int pm_device_runtime_put(const struct device *dev)
 		struct pm_device_isr *pm_sync = dev->pm_isr;
 		k_spinlock_key_t k = k_spin_lock(&pm_sync->lock);
 
-		ret = put_sync_locked(dev);
+		ret = put_sync_locked(dev, false, K_NO_WAIT);
 
 		k_spin_unlock(&pm_sync->lock, k);
 	} else {
@@ -490,13 +507,6 @@ int pm_device_runtime_put_async(const struct device *dev, k_timeout_t delay)
 	 */
 	if (!atomic_test_bit(&dev->pm_base->flags, PM_DEVICE_FLAG_RUNTIME_ENABLED)) {
 		ret = 0;
-	} else if (atomic_test_bit(&dev->pm_base->flags, PM_DEVICE_FLAG_ISR_SAFE)) {
-		struct pm_device_isr *pm_sync = dev->pm_isr;
-		k_spinlock_key_t k = k_spin_lock(&pm_sync->lock);
-
-		ret = put_sync_locked(dev);
-
-		k_spin_unlock(&pm_sync->lock, k);
 	} else {
 		ret = runtime_suspend(dev, true, delay);
 	}
