@@ -69,6 +69,14 @@ config SOC_NRF54LX_SKIP_GLITCHDETECTOR_DISABLE
 	  With this option, the glitch detector is not disabled during system initialization.
 	  The CPU runs with the default state of glitch detector.
 
+config SOC_NRF54LX_KMU_PUSH_AREA
+	bool "Create KMU push area at static location"
+	depends on !BUILD_WITH_TFM
+	depends on XIP
+	help
+	  Creates a section, ".nrf_kmu_reserved_push_area", at the start of the application RAM space
+	  to use a static address for the KMU PUSH task.
+
 config SOC_NRF_FORCE_CONSTLAT
 	bool "Force constant-latency mode"
 	help
