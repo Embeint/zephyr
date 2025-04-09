@@ -110,6 +110,14 @@ int twim_nrfx_pm_action(const struct device *dev, enum pm_device_action action)
 	switch (action) {
 	case PM_DEVICE_ACTION_TURN_ON:
 		if (!config->no_boot_recover) {
+#ifndef CONFIG_PM_DEVICE
+			/* pm_device_state_get ALWAYS returns PM_DEVICE_STATE_ACTIVE when
+			 * PM_DEVICE=n. To avoid the assert from nrfx_twim_disable on boot,
+			 * we need to enable the TWIM instance here before calling recover
+			 * bus, which disables it.
+			 */
+			nrfx_twim_enable(&config->twim);
+#endif
 			rc = i2c_nrfx_twim_recover_bus(dev);
 		}
 		break;
