@@ -73,6 +73,11 @@ enum npm1300_gpio_type {
 #define LDSW2_SOFTSTART_MASK  0x30U
 #define LDSW2_SOFTSTART_SHIFT 4U
 
+struct npm1300_gpio_info {
+	uint8_t pin;
+	uint8_t flags;
+};
+
 struct regulator_npm1300_pconfig {
 	const struct device *mfd;
 	struct gpio_dt_spec dvs_state_pins[5];
@@ -83,9 +88,9 @@ struct regulator_npm1300_config {
 	const struct device *mfd;
 	uint8_t source;
 	int32_t retention_uv;
-	struct gpio_dt_spec enable_gpios;
-	struct gpio_dt_spec retention_gpios;
-	struct gpio_dt_spec pwm_gpios;
+	struct npm1300_gpio_info enable_gpios;
+	struct npm1300_gpio_info retention_gpios;
+	struct npm1300_gpio_info pwm_gpios;
 	uint8_t soft_start;
 	bool ldo_disable_workaround;
 };
@@ -459,27 +464,27 @@ static int regulator_npm1300_set_ldsw_pin_ctrl(const struct device *dev, uint8_t
 	return mfd_npm1300_reg_write(config->mfd, LDSW_BASE, LDSW_OFFSET_GPISEL + chan, ctrl);
 }
 
-int regulator_npm1300_set_pin_ctrl(const struct device *dev, const struct gpio_dt_spec *spec,
+int regulator_npm1300_set_pin_ctrl(const struct device *dev, const struct npm1300_gpio_info *info,
 				   enum npm1300_gpio_type type)
 {
 	const struct regulator_npm1300_config *config = dev->config;
 	uint8_t inv;
 
-	if (spec->port == NULL) {
+	if (info->pin == UINT8_MAX) {
 		return 0;
 	}
 
-	inv = (spec->dt_flags & GPIO_ACTIVE_LOW) != 0U;
+	inv = (info->flags & GPIO_ACTIVE_LOW) != 0U;
 
 	switch (config->source) {
 	case NPM1300_SOURCE_BUCK1:
-		return regulator_npm1300_set_buck_pin_ctrl(dev, 0, spec->pin, inv, type);
+		return regulator_npm1300_set_buck_pin_ctrl(dev, 0, info->pin, inv, type);
 	case NPM1300_SOURCE_BUCK2:
-		return regulator_npm1300_set_buck_pin_ctrl(dev, 1, spec->pin, inv, type);
+		return regulator_npm1300_set_buck_pin_ctrl(dev, 1, info->pin, inv, type);
 	case NPM1300_SOURCE_LDO1:
-		return regulator_npm1300_set_ldsw_pin_ctrl(dev, 0, spec->pin, inv, type);
+		return regulator_npm1300_set_ldsw_pin_ctrl(dev, 0, info->pin, inv, type);
 	case NPM1300_SOURCE_LDO2:
-		return regulator_npm1300_set_ldsw_pin_ctrl(dev, 1, spec->pin, inv, type);
+		return regulator_npm1300_set_ldsw_pin_ctrl(dev, 1, info->pin, inv, type);
 	default:
 		return -ENODEV;
 	}
@@ -670,9 +675,9 @@ static DEVICE_API(regulator, api) = {
 		.source = _source,                                                                 \
 		.retention_uv = DT_PROP_OR(node_id, retention_microvolt, 0),                       \
 		.soft_start = DT_ENUM_IDX_OR(node_id, soft_start_microamp, UINT8_MAX),             \
-		.enable_gpios = GPIO_DT_SPEC_GET_OR(node_id, enable_gpios, {0}),                   \
-		.retention_gpios = GPIO_DT_SPEC_GET_OR(node_id, retention_gpios, {0}),             \
-		.pwm_gpios = GPIO_DT_SPEC_GET_OR(node_id, pwm_gpios, {0}),                         \
+		.enable_gpios = DT_PROP_OR(node_id, enable_gpio_config, {UINT8_MAX}),              \
+		.retention_gpios = DT_PROP_OR(node_id, retention_gpio_config, {UINT8_MAX}),        \
+		.pwm_gpios = DT_PROP_OR(node_id, pwm_gpio_config, {UINT8_MAX}),                    \
 		.ldo_disable_workaround = DT_PROP(node_id, nordic_anomaly38_disable_workaround)};  \
                                                                                                    \
 	DEVICE_DT_DEFINE(node_id, regulator_npm1300_init, NULL, &data_##id, &config_##id,          \
