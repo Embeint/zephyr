@@ -843,6 +843,7 @@ static int shell_cmd_upload(const struct shell *sh, size_t argc,
 	size_t opt_cnt = 0;
 	int ret;
 
+	param.unix_offset_us = k_uptime_get() * USEC_PER_MSEC;
 	param.options.priority = -1;
 	is_udp = proto == IPPROTO_UDP;
 
@@ -1077,6 +1078,7 @@ static int shell_cmd_upload2(const struct shell *sh, size_t argc,
 	int start = 0;
 	size_t opt_cnt = 0;
 
+	param.unix_offset_us = k_uptime_get() * USEC_PER_MSEC;
 	is_udp = proto == IPPROTO_UDP;
 
 	/* Parse options */
