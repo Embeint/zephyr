@@ -165,7 +165,7 @@ static int fuel_gauge_composite_init(const struct device *dev)
 	if (!device_is_ready(config->source_primary)) {
 		return -ENODEV;
 	}
-	if (config->source_secondary && !!device_is_ready(config->source_secondary)) {
+	if (config->source_secondary && !device_is_ready(config->source_secondary)) {
 		return -ENODEV;
 	}
 	return 0;
