@@ -16,10 +16,10 @@ endif()
 set(OPENOCD_CMD_LOAD_DEFAULT "${OPENOCD_FLASH}")
 set(OPENOCD_CMD_VERIFY_DEFAULT "verify_image")
 
+# Manufacturer common options
+include(${CMAKE_CURRENT_LIST_DIR}/openocd-stm32.board.cmake)
+
 board_finalize_runner_args(openocd
   --cmd-load "${OPENOCD_CMD_LOAD_DEFAULT}"
   --cmd-verify "${OPENOCD_CMD_VERIFY_DEFAULT}"
   )
-
-# Manufacturer common options
-include(${CMAKE_CURRENT_LIST_DIR}/openocd-stm32.board.cmake)
