@@ -109,7 +109,7 @@ static int get(const struct device *dev, enum sensor_channel chan, struct sensor
 	LOG_DBG("%d/%d, %d uV, current:%d uA", data->raw, (1 << data->sequence.resolution) - 1,
 		v_uv, i_ua);
 
-	return 0;
+	return sensor_value_from_micro(val, i_ua);
 }
 
 static DEVICE_API(sensor, current_api) = {
