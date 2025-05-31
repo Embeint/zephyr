@@ -353,6 +353,11 @@ static DEVICE_API(sensor, ina228_driver_api) = {
 #define CAL_PRECISION_MULTIPLIER(inst) \
 	((DT_INST_PROP_OR(inst, high_precision, 0)) * 3 + 1)
 
+#define CONV_DURATION_US(inst)                             \
+	((DT_INST_PROP(inst, vbus_conversion_time_us) +        \
+	  DT_INST_PROP(inst, vshunt_conversion_time_us)) *     \
+	 DT_INST_PROP(inst, avg_count))
+
 #define INA237_DT_ADC_CONFIG(inst)                             \
 	(DT_INST_ENUM_IDX(inst, adc_mode) << 12) |                 \
 	(DT_INST_ENUM_IDX(inst, vbus_conversion_time_us) << 9) |   \
@@ -370,10 +375,12 @@ static DEVICE_API(sensor, ina228_driver_api) = {
 	static const struct ina237_config ina237_config_##inst = {                 \
 		.common = {                                                            \
 			.bus = I2C_DT_SPEC_INST_GET(inst),	                               \
+			.conv_duration_us = CONV_DURATION_US(inst),                        \
 			.current_lsb = DT_INST_PROP(inst, current_lsb_microamps),          \
 			.config = INA237_DT_CONFIG(inst),                                  \
 			.adc_config = INA237_DT_ADC_CONFIG(inst),                          \
 			.cal = INA237_DT_CAL(inst),                                        \
+			.adc_mode = DT_INST_ENUM_IDX(inst, adc_mode),                      \
 			.id_reg = &ina237_mfr_id,                                          \
 			.config_reg = &ina237_config,                                      \
 			.adc_config_reg = &ina237_adc_config,                              \
@@ -392,9 +399,11 @@ static DEVICE_API(sensor, ina228_driver_api) = {
 	static const struct ina237_config ina228_config_##inst = {                 \
 		.common = {                                                            \
 			.bus = I2C_DT_SPEC_INST_GET(inst),                                 \
+			.conv_duration_us = CONV_DURATION_US(inst),                        \
 			.current_lsb = DT_INST_PROP(inst, current_lsb_microamps),          \
 			.adc_config = INA237_DT_ADC_CONFIG(inst),                          \
 			.cal = (INA237_DT_CAL(inst) * 16),                                 \
+			.adc_mode = DT_INST_ENUM_IDX(inst, adc_mode),                      \
 			.id_reg = &ina237_mfr_id,                                          \
 			.config_reg = &ina237_config,                                      \
 			.adc_config_reg = &ina237_adc_config,                              \
