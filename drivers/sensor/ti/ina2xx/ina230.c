@@ -276,13 +276,17 @@ static DEVICE_API(sensor, ina230_driver_api) = {
 	DT_INST_PROP(inst, rshunt_micro_ohms))) >>             \
 	(DT_INST_PROP_OR(inst, high_precision, 0) << 1))
 
+#define INA230_CURRENT_LSB(inst) \
+	(DT_INST_PROP(inst, current_lsb_microamps) *                               \
+			      COND_CODE_1(DT_INST_PROP(inst, direction_invert), (-1), (1)))
+
 #define INA230_DRIVER_INIT(inst)                                               \
 	static struct ina230_data ina230_data_##inst;                              \
 	static const struct ina230_config ina230_config_##inst = {                 \
 		.common = {                                                            \
 			.bus = I2C_DT_SPEC_INST_GET(inst),                                 \
 			.conv_duration_us = CONV_DURATION_US(inst),                        \
-			.current_lsb = DT_INST_PROP(inst, current_lsb_microamps),          \
+			.current_lsb = INA230_CURRENT_LSB(inst),                           \
 			.config = INA230_DT_CONFIG(inst),                                  \
 			.cal = INA230_DT_CAL(inst),                                        \
 			.adc_mode = DT_INST_ENUM_IDX(inst, adc_mode),                      \
@@ -306,7 +310,8 @@ static DEVICE_API(sensor, ina230_driver_api) = {
 		.common = {                                                            \
 			.bus = I2C_DT_SPEC_INST_GET(inst),                                 \
 			.conv_duration_us = CONV_DURATION_US(inst),                        \
-			.current_lsb = DT_INST_PROP(inst, current_lsb_microamps),          \
+			.current_lsb = DT_INST_PROP(inst, current_lsb_microamps) *                         \
+			       COND_CODE_1(DT_INST_PROP(inst, direction_invert), (-1), (1)),       \
 			.config = INA230_DT_CONFIG(inst),                                  \
 			.cal = INA230_DT_CAL(inst),                                        \
 			.adc_mode = DT_INST_ENUM_IDX(inst, adc_mode),                      \
