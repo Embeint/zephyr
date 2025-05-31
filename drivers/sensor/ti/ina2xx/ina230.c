@@ -135,6 +135,7 @@ static int ina230_attr_get(const struct device *dev, enum sensor_channel chan,
 static int ina2xx_adc_run(const struct device *dev)
 {
 	const struct ina2xx_config *config = dev->config;
+	bool in_shutdown = config->adc_mode == 0;
 	uint16_t reg;
 	int ret;
 
@@ -143,8 +144,11 @@ static int ina2xx_adc_run(const struct device *dev)
 		return 0;
 	}
 
+	/* If idling in shutdown, update to single shot triggered */
+	reg = in_shutdown ? (config->config | 3) : config->config;
+
 	/* Write the configuration register to force a sample */
-	ret = ina2xx_reg_write(&config->bus, INA230_REG_CONFIG, config->config);
+	ret = ina2xx_reg_write(&config->bus, INA230_REG_CONFIG, reg);
 	if (ret < 0) {
 		LOG_ERR("Failed to trigger sample");
 		return ret;
@@ -161,6 +165,12 @@ static int ina2xx_adc_run(const struct device *dev)
 		}
 		k_sleep(K_MSEC(1));
 	}
+
+	if (in_shutdown) {
+		/* Return to shutdown mode */
+		(void)ina23x_reg_write(&config->bus, INA230_REG_CONFIG, config->config);
+	}
+
 	return ret;
 }
 
