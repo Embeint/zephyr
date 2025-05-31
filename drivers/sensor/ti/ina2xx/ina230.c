@@ -13,6 +13,9 @@
 
 LOG_MODULE_REGISTER(INA230, CONFIG_SENSOR_LOG_LEVEL);
 
+/* Bit that holds conversion complete status */
+#define INA230_REG_MASK_CNVR BIT(3)
+
 /** @brief Calibration scaling value (value scaled by 100000) */
 #define INA230_CAL_SCALING 512ULL
 
@@ -129,6 +132,53 @@ static int ina230_attr_get(const struct device *dev, enum sensor_channel chan,
 	return ina2xx_attr_get(dev, chan, attr, val);
 }
 
+static int ina2xx_adc_run(const struct device *dev)
+{
+	const struct ina2xx_config *config = dev->config;
+	uint16_t reg;
+	int ret;
+
+	/* Modes 5 through 7 are continuously sampling */
+	if (config->adc_mode >= 5) {
+		return 0;
+	}
+
+	/* Write the configuration register to force a sample */
+	ret = ina2xx_reg_write(&config->bus, INA230_REG_CONFIG, config->config);
+	if (ret < 0) {
+		LOG_ERR("Failed to trigger sample");
+		return ret;
+	}
+
+	/* Wait until we expect the sampling to be complete */
+	k_sleep(K_USEC(config->conv_duration_us));
+
+	/* Poll conversion complete bit */
+	while (1) {
+		ret = ina2xx_reg_read_16(&config->bus, INA230_REG_MASK, &reg);
+		if ((ret != 0) || (reg & INA230_REG_MASK_CNVR)) {
+			break;
+		}
+		k_sleep(K_MSEC(1));
+	}
+	return ret;
+}
+
+int ina230_sample_fetch(const struct device *dev, enum sensor_channel chan)
+{
+	int ret;
+
+	/* Run the ADC to get new data */
+	ret = ina230_adc_run(dev);
+	if (ret < 0) {
+		LOG_ERR("Failed to run sample");
+		return ret;
+	}
+
+	/* Run the common data fetch routine */
+	return ina2xx_sample_fetch(dev, chan);
+}
+
 static int ina230_init_trigger(const struct device *dev)
 {
 	if (IS_ENABLED(CONFIG_INA230_TRIGGER)) {
@@ -185,7 +235,7 @@ static DEVICE_API(sensor, ina230_driver_api) = {
 #ifdef CONFIG_INA230_TRIGGER
 	.trigger_set = ina230_trigger_set,
 #endif
-	.sample_fetch = ina2xx_sample_fetch,
+	.sample_fetch = ina230_sample_fetch,
 	.channel_get = ina2xx_channel_get,
 };
 
@@ -197,6 +247,11 @@ static DEVICE_API(sensor, ina230_driver_api) = {
 #else
 #define INA230_CFG_IRQ(inst)
 #endif /* CONFIG_INA230_TRIGGER */
+
+#define CONV_DURATION_US(inst)                             \
+	((DT_INST_PROP(inst, vbus_conversion_time_us) +        \
+	  DT_INST_PROP(inst, vshunt_conversion_time_us)) *     \
+	 DT_INST_PROP(inst, avg_count))
 
 #define INA230_DT_CONFIG(inst)                                 \
 	(DT_INST_PROP_OR(inst, high_precision, 0) << 12) |         \
@@ -216,9 +271,11 @@ static DEVICE_API(sensor, ina230_driver_api) = {
 	static const struct ina230_config ina230_config_##inst = {                 \
 		.common = {                                                            \
 			.bus = I2C_DT_SPEC_INST_GET(inst),                                 \
+			.conv_duration_us = CONV_DURATION_US(inst),                        \
 			.current_lsb = DT_INST_PROP(inst, current_lsb_microamps),          \
 			.config = INA230_DT_CONFIG(inst),                                  \
 			.cal = INA230_DT_CAL(inst),                                        \
+			.adc_mode = DT_INST_ENUM_IDX(inst, adc_mode),                      \
 			.id_reg = NULL,                                                    \
 			.config_reg = &ina230_config,                                      \
 			.adc_config_reg = NULL,                                            \
@@ -238,9 +295,11 @@ static DEVICE_API(sensor, ina230_driver_api) = {
 	static const struct ina230_config ina236_config_##inst = {                 \
 		.common = {                                                            \
 			.bus = I2C_DT_SPEC_INST_GET(inst),                                 \
+			.conv_duration_us = CONV_DURATION_US(inst),                        \
 			.current_lsb = DT_INST_PROP(inst, current_lsb_microamps),          \
 			.config = INA230_DT_CONFIG(inst),                                  \
 			.cal = INA230_DT_CAL(inst),                                        \
+			.adc_mode = DT_INST_ENUM_IDX(inst, adc_mode),                      \
 			.id_reg = NULL,                                                    \
 			.config_reg = &ina230_config,                                      \
 			.adc_config_reg = NULL,                                            \
