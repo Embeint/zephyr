@@ -370,13 +370,17 @@ static DEVICE_API(sensor, ina228_driver_api) = {
 	DT_INST_PROP(inst, current_lsb_microamps) *           \
 	DT_INST_PROP(inst, rshunt_micro_ohms) / 10000000ULL
 
+#define INA237_CURRENT_LSB(inst) \
+	(DT_INST_PROP(inst, current_lsb_microamps) *                               \
+			      COND_CODE_1(DT_INST_PROP(inst, direction_invert), (-1), (1)))
+
 #define INA237_DRIVER_INIT(inst)                                               \
 	static struct ina237_data ina237_data_##inst;                              \
 	static const struct ina237_config ina237_config_##inst = {                 \
 		.common = {                                                            \
 			.bus = I2C_DT_SPEC_INST_GET(inst),	                               \
 			.conv_duration_us = CONV_DURATION_US(inst),                        \
-			.current_lsb = DT_INST_PROP(inst, current_lsb_microamps),          \
+			.current_lsb = INA237_CURRENT_LSB(inst),                           \
 			.config = INA237_DT_CONFIG(inst),                                  \
 			.adc_config = INA237_DT_ADC_CONFIG(inst),                          \
 			.cal = INA237_DT_CAL(inst),                                        \
@@ -400,7 +404,7 @@ static DEVICE_API(sensor, ina228_driver_api) = {
 		.common = {                                                            \
 			.bus = I2C_DT_SPEC_INST_GET(inst),                                 \
 			.conv_duration_us = CONV_DURATION_US(inst),                        \
-			.current_lsb = DT_INST_PROP(inst, current_lsb_microamps),          \
+			.current_lsb = INA237_CURRENT_LSB(inst),                           \
 			.adc_config = INA237_DT_ADC_CONFIG(inst),                          \
 			.cal = (INA237_DT_CAL(inst) * 16),                                 \
 			.adc_mode = DT_INST_ENUM_IDX(inst, adc_mode),                      \
