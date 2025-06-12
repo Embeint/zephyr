@@ -1173,7 +1173,9 @@ static inline void async_evt_tx_done(struct uart_stm32_data *data)
 	/* Reset tx buffer */
 	data->dma_tx.buffer_length = 0;
 	data->dma_tx.counter = 0;
+#ifdef CONFIG_PM
 	data->tx_int_stream_on = false;
+#endif /* CONFIG_PM */
 
 	async_user_callback(data, &event);
 }
@@ -1191,7 +1193,9 @@ static inline void async_evt_tx_abort(struct uart_stm32_data *data)
 	/* Reset tx buffer */
 	data->dma_tx.buffer_length = 0;
 	data->dma_tx.counter = 0;
+#ifdef CONFIG_PM
 	data->tx_int_stream_on = false;
+#endif /* CONFIG_PM */
 
 	async_user_callback(data, &event);
 }
@@ -1630,8 +1634,10 @@ static int uart_stm32_async_tx(const struct device *dev,
 	}
 #endif /* CONFIG_DCACHE */
 
+#ifdef CONFIG_PM
 	data->tx_poll_stream_on = false;
 	data->tx_int_stream_on = true;
+#endif
 	data->dma_tx.buffer = (uint8_t *)tx_data;
 	data->dma_tx.buffer_length = buf_size;
 	data->dma_tx.timeout = timeout;
