@@ -610,6 +610,9 @@ static int stm32_sdmmc_access_erase(struct disk_info *disk, uint32_t sector, uin
 		err = -EIO;
 	}
 
+	while (!stm32_sdmmc_is_card_in_transfer(&priv->hsd)) {
+	}
+
 	k_sem_give(&priv->thread_lock);
 	return err;
 }
