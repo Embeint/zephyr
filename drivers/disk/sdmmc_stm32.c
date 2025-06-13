@@ -708,33 +708,7 @@ static int stm32_sdmmc_access_erase(struct disk_info *disk, uint32_t sector, uin
 	int err;
 
 	k_sem_take(&priv->thread_lock, K_FOREVER);
-
-#ifdef CONFIG_SDMMC_STM32_EMMC
-	err = HAL_MMC_Erase(&priv->hsd, sector, sector + count);
-#else
-	err = HAL_SD_Erase(&priv->hsd, sector, sector + count);
-#endif
-	if (err != HAL_OK) {
-		LOG_ERR("sdmmc erase block failed %d", err);
-		err = -EIO;
-		goto end;
-	}
-
-	while (!stm32_sdmmc_is_card_in_transfer(&priv->hsd)) {
-	}
-
-end:
-	k_sem_give(&priv->thread_lock);
-	return err;
-}
-
-static int stm32_sdmmc_access_erase(struct disk_info *disk, uint32_t sector, uint32_t count)
-{
-	const struct device *dev = disk->dev;
-	struct stm32_sdmmc_priv *priv = dev->data;
-	int err;
-
-	k_sem_take(&priv->thread_lock, K_FOREVER);
+	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 
 	err = HAL_SD_Erase(&priv->hsd, sector, sector + count);
 	if (err != HAL_OK) {
@@ -745,6 +719,7 @@ static int stm32_sdmmc_access_erase(struct disk_info *disk, uint32_t sector, uin
 	while (!stm32_sdmmc_is_card_in_transfer(&priv->hsd)) {
 	}
 
+	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 	k_sem_give(&priv->thread_lock);
 	return err;
 }
