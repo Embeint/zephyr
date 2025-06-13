@@ -14,6 +14,7 @@
 #include <zephyr/drivers/pinctrl.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/reset.h>
+#include <zephyr/pm/policy.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/irq.h>
 #include <soc.h>
@@ -549,6 +550,7 @@ static int stm32_sdmmc_access_read(struct disk_info *disk, uint8_t *data_buf,
 	int err;
 
 	k_sem_take(&priv->thread_lock, K_FOREVER);
+	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 
 #if STM32_SDMMC_USE_DMA_SHARED
 	/* Initialise the shared DMA channel for the current direction */
@@ -583,6 +585,7 @@ static int stm32_sdmmc_access_read(struct disk_info *disk, uint8_t *data_buf,
 	}
 
 end:
+	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 	k_sem_give(&priv->thread_lock);
 	return err;
 }
@@ -628,6 +631,7 @@ static int stm32_sdmmc_access_write(struct disk_info *disk,
 	int err;
 
 	k_sem_take(&priv->thread_lock, K_FOREVER);
+	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 
 #if STM32_SDMMC_USE_DMA_SHARED
 	/* Initialise the shared DMA channel for the current direction */
@@ -663,6 +667,7 @@ static int stm32_sdmmc_access_write(struct disk_info *disk,
 	}
 
 end:
+	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 	k_sem_give(&priv->thread_lock);
 	return err;
 }
@@ -674,6 +679,7 @@ static int stm32_sdmmc_access_erase(struct disk_info *disk, uint32_t sector, uin
 	int err;
 
 	k_sem_take(&priv->thread_lock, K_FOREVER);
+	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 
 	err = HAL_SD_Erase(&priv->hsd, sector, sector + count);
 	if (err != HAL_OK) {
@@ -684,6 +690,7 @@ static int stm32_sdmmc_access_erase(struct disk_info *disk, uint32_t sector, uin
 	while (!stm32_sdmmc_is_card_in_transfer(&priv->hsd)) {
 	}
 
+	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 	k_sem_give(&priv->thread_lock);
 	return err;
 }
