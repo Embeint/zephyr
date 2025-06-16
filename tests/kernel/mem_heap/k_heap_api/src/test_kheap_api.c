@@ -125,7 +125,6 @@ ZTEST(k_heap_api, test_k_heap_alloc)
 	k_heap_free(&k_heap_test, p);
 }
 
-
 /**
  * @brief Test to demonstrate k_heap_alloc() and k_heap_free() API usage
  *
@@ -146,7 +145,6 @@ ZTEST(k_heap_api, test_k_heap_alloc_fail)
 
 	k_heap_free(&k_heap_test, p);
 }
-
 
 /**
  * @brief Test to demonstrate k_heap_free() API functionality.
@@ -211,9 +209,8 @@ ZTEST(k_heap_api, test_k_heap_alloc_pending)
 	zassert_not_null(p, "k_heap_alloc operation failed");
 
 	/* Create a thread which will pend on allocation */
-	k_tid_t tid = k_thread_create(&tdata, tstack, STACK_SIZE,
-				      thread_alloc_heap, NULL, NULL, NULL,
-				      K_PRIO_PREEMPT(5), 0, K_NO_WAIT);
+	k_tid_t tid = k_thread_create(&tdata, tstack, STACK_SIZE, thread_alloc_heap, NULL, NULL,
+				      NULL, K_PRIO_PREEMPT(5), 0, K_NO_WAIT);
 
 	/* Sleep long enough for child thread to go into pending */
 	k_msleep(5);
@@ -250,9 +247,8 @@ ZTEST(k_heap_api, test_k_heap_alloc_pending_null)
 	zassert_not_null(q, "k_heap_alloc operation failed");
 
 	/* Create a thread which will pend on allocation */
-	k_tid_t tid = k_thread_create(&tdata, tstack, STACK_SIZE,
-				      thread_alloc_heap_null, NULL, NULL, NULL,
-				      K_PRIO_PREEMPT(5), 0, K_NO_WAIT);
+	k_tid_t tid = k_thread_create(&tdata, tstack, STACK_SIZE, thread_alloc_heap_null, NULL,
+				      NULL, NULL, K_PRIO_PREEMPT(5), 0, K_NO_WAIT);
 
 	/* Sleep long enough for child thread to go into pending */
 	k_msleep(5);
@@ -290,4 +286,32 @@ ZTEST(k_heap_api, test_k_heap_calloc)
 	}
 
 	k_heap_free(&k_heap_test, p);
+}
+
+/**
+ * @brief Test to demonstrate k_heap_array_get()
+ *
+ * @ingroup kernel_kheap_api_tests
+ *
+ * @details The test ensures that valid values are returned
+ *
+ * @see k_heap_array_get()
+ */
+ZTEST(k_heap_api, test_k_heap_array_get)
+{
+	struct k_heap *ha = NULL;
+	bool test_heap_found = false;
+	int n;
+
+	n = k_heap_array_get(&ha);
+	zassert_not_equal(0, n, "No heaps returned");
+	zassert_not_null(ha, "Heap array pointer not populated");
+
+	/* Ensure that k_heap_test exists in the array */
+	for (int i = 0; i < n; i++) {
+		if (&k_heap_test == &ha[i]) {
+			test_heap_found = true;
+		}
+	}
+	zassert_true(test_heap_found);
 }
