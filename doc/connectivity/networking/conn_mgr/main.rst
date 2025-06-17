@@ -290,8 +290,12 @@ Connection Manager requires that all connectivity implementations support the fo
 These features describe how ifaces should behave during connect and disconnect events.
 You can individually set them for each iface.
 
+The Connection Manager also implements the following optional feature:
+
+* :ref:`Interface idle timeouts <conn_mgr_control_idle_timeout>`
+
 .. note::
-   It is left to connectivity implementations to successfully and accurately implement these two features as described below.
+   It is left to connectivity implementations to successfully and accurately implement these three features as described below.
    See :ref:`conn_mgr_impl_timeout_persistence` for more details from the connectivity implementation perspective.
 
 The Connection Manager also implements the following optional feature:
