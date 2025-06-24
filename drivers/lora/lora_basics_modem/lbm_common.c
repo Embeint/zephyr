@@ -213,6 +213,104 @@ int lbm_lora_send(const struct device *dev, uint8_t *msg, uint32_t msg_len)
 	return ret;
 }
 
+int lbm_lora_cad(const struct device *dev, uint8_t num_symbols)
+{
+	const struct lbm_lora_config_common *config = dev->config;
+	struct lbm_lora_data_common *data = dev->data;
+	struct k_poll_signal done = K_POLL_SIGNAL_INITIALIZER(done);
+	struct k_poll_event evt =
+		K_POLL_EVENT_INITIALIZER(K_POLL_TYPE_SIGNAL, K_POLL_MODE_NOTIFY_ONLY, &done);
+	ral_lora_cad_params_t params = {
+		/* Number of symbols to watch for */
+		.cad_symb_nb = 0,
+		/* Populated by ral_get_lora_cad_det_peak */
+		.cad_det_peak_in_symb = 0,
+		/* Value used by wake_on_radio_ral.c */
+		.cad_det_min_in_symb = 10,
+		/* Perform CAD then return to idle */
+		.cad_exit_mode = RAL_LORA_CAD_ONLY,
+		/* Only relevant for RAL_LORA_CAD_RX */
+		.cad_timeout_in_ms = 0,
+	};
+	ral_status_t status;
+	int ret;
+
+	/* Convert symbol request to RAL value */
+	switch (num_symbols) {
+	case 1:
+		params.cad_symb_nb = RAL_LORA_CAD_01_SYMB;
+		break;
+	case 2:
+		params.cad_symb_nb = RAL_LORA_CAD_02_SYMB;
+		break;
+	case 4:
+		params.cad_symb_nb = RAL_LORA_CAD_04_SYMB;
+		break;
+	case 8:
+		params.cad_symb_nb = RAL_LORA_CAD_08_SYMB;
+		break;
+	case 16:
+		params.cad_symb_nb = RAL_LORA_CAD_16_SYMB;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	/* Ensure available, freed by CAD done callback */
+	if (!modem_acquire(dev)) {
+		return -EBUSY;
+	}
+
+	/* Get CAD parameters from RAL for modem configuration */
+	status = ral_get_lora_cad_det_peak(&config->ralf.ral, data->mod_params.sf,
+					   data->mod_params.bw, params.cad_symb_nb,
+					   &params.cad_det_peak_in_symb);
+	if (status != RAL_STATUS_OK) {
+		LOG_DBG("Get CAD params failed (%d)", status);
+		ret = -EINVAL;
+		goto error;
+	}
+
+	status = ral_set_lora_cad_params(&config->ralf.ral, &params);
+	if (status != RAL_STATUS_OK) {
+		LOG_DBG("Set CAD params failed (%d)", status);
+		ret = -EINVAL;
+		goto error;
+	}
+
+	/* Store the completion signal */
+	data->operation_done = &done;
+
+	/* Start the CAD */
+	status = ral_set_lora_cad(&config->ralf.ral);
+	if (status != RAL_STATUS_OK) {
+		LOG_DBG("Start CAD failed (%d)", status);
+		ret = -EINVAL;
+		goto error;
+	}
+
+	LOG_DBG("CAD started");
+	data->modem_mode = MODE_CAD;
+
+	/* Wait for CAD to complete */
+	ret = k_poll(&evt, 1, K_SECONDS(1));
+	if (ret < 0) {
+		if (modem_release(dev)) {
+			LOG_DBG("CAD did not complete");
+		} else {
+			/* CAD done interrupt is currently running */
+			k_poll(&evt, 1, K_FOREVER);
+		}
+	} else {
+		/* Return result from the CAD interrupt */
+		ret = done.result;
+	}
+	return ret;
+error:
+	modem_release(dev);
+	return ret;
+}
+
 int lbm_lora_recv(const struct device *dev, uint8_t *msg, uint8_t msg_len, k_timeout_t timeout,
 		  int16_t *rssi, int8_t *snr)
 {
@@ -442,8 +540,14 @@ static void op_done_work_handler(struct k_work *work)
 	bool release = false;
 	bool error_irq;
 	int ret = 0;
+	char *state;
 
-	LOG_DBG("%s: %d", __func__, data->modem_mode);
+	/* Get and reset the current IRQ state */
+	(void)ral_get_irq_status(&config->ralf.ral, &irq_state);
+	(void)ral_clear_irq_status(&config->ralf.ral, RAL_IRQ_ALL);
+	error_irq = irq_state & (RAL_IRQ_RX_TIMEOUT | RAL_IRQ_RX_HDR_ERROR | RAL_IRQ_RX_CRC_ERROR);
+
+	LOG_DBG("%d: IRQ %08X", data->modem_mode, irq_state);
 
 	switch (data->modem_mode) {
 	case MODE_SLEEP:
@@ -474,14 +578,24 @@ static void op_done_work_handler(struct k_work *work)
 		/* Don't release the modem here, RX continues */
 		break;
 	case MODE_CAD:
-		LOG_DBG("CAD complete (TBC)");
+		/*    CAD_OK == Activity detected
+		 *  CAD_DONE == CAD process completed
+		 */
+		if (irq_state & RAL_IRQ_CAD_OK) {
+			state = "busy";
+			ret = CAD_CHANNEL_BUSY;
+		} else if (irq_state & RAL_IRQ_CAD_DONE) {
+			state = "free";
+			ret = CAD_CHANNEL_FREE;
+		} else {
+			/* Unknown IRQ state */
+			state = "error";
+			ret = -EIO;
+		}
+		release = true;
+		LOG_DBG("CAD complete (%s)", state);
 		break;
 	}
-
-	/* Get and reset the current IRQ state */
-	(void)ral_get_irq_status(&config->ralf.ral, &irq_state);
-	(void)ral_clear_irq_status(&config->ralf.ral, RAL_IRQ_ALL);
-	error_irq = irq_state & (RAL_IRQ_RX_TIMEOUT | RAL_IRQ_RX_HDR_ERROR | RAL_IRQ_RX_CRC_ERROR);
 
 	/* Release the modem before running the user callback so that the notified thread can
 	 * immediately start another operation before the work item terminates. This requires
@@ -541,6 +655,7 @@ DEVICE_API(lora, lbm_lora_api) = {
 	.config = lbm_lora_config,
 	.send = lbm_lora_send,
 	.send_async = lbm_lora_send_async,
+	.cad = lbm_lora_cad,
 	.recv = lbm_lora_recv,
 	.recv_async = lbm_lora_recv_async,
 	.test_cw = lbm_lora_test_cw,
