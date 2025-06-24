@@ -62,6 +62,14 @@ enum lora_coding_rate {
 };
 
 /**
+ * @brief LoRa CAD result
+ */
+enum lora_cad_result {
+	CAD_CHANNEL_FREE = 0,
+	CAD_CHANNEL_BUSY = 1,
+};
+
+/**
  * @struct lora_modem_config
  * Structure containing the configuration of a LoRa modem
  */
@@ -152,6 +160,14 @@ typedef int (*lora_api_send_async)(const struct device *dev,
 				   struct k_poll_signal *async);
 
 /**
+ * @typedef lora_api_cad()
+ * @brief Callback API for performing channel activity detection
+ *
+ * @see lora_cad() for argument descriptions.
+ */
+typedef int (*lora_api_cad)(const struct device *dev, uint8_t num_symbols);
+
+/**
  * @typedef lora_api_recv()
  * @brief Callback API for receiving data over LoRa
  *
@@ -184,6 +200,7 @@ __subsystem struct lora_driver_api {
 	lora_api_config config;
 	lora_api_send send;
 	lora_api_send_async send_async;
+	lora_api_cad cad;
 	lora_api_recv recv;
 	lora_api_recv_async recv_async;
 	lora_api_test_cw test_cw;
@@ -249,6 +266,36 @@ static inline int lora_send_async(const struct device *dev,
 		(const struct lora_driver_api *)dev->api;
 
 	return api->send_async(dev, data, data_len, async);
+}
+
+/**
+ * @brief Perform channel activity detection on LoRa
+ *
+ * Monitor the RF channel configured by @ref lora_config to detect if another
+ * device is currently transmitting. The length of the monitoring is controlled
+ * by the combination of the @a num_symbols parameters and the RF channel
+ * configuration (symbol rate).
+ *
+ * @note This is a blocking call.
+ *
+ * @param dev         LoRa device
+ * @param num_symbols Number of symbols to observe for (one of 1,2,4,8,16)
+ * @retval CAD_CHANNEL_FREE If no channel activity was detected
+ * @retval CAD_CHANNEL_BUSY If channel activity was detected
+ * @retval -ENOTSUP Device does not support CAD
+ * @retval -EINVAL Invalid @a num_symbols
+ * @retval errno Negative error code on failure
+ */
+static inline int lora_cad(const struct device *dev, uint8_t num_symbols)
+{
+	const struct lora_driver_api *api =
+		(const struct lora_driver_api *)dev->api;
+
+	if (api->cad == NULL) {
+		return -ENOTSUP;
+	}
+
+	return api->cad(dev, num_symbols);
 }
 
 /**
