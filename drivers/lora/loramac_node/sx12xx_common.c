@@ -366,6 +366,16 @@ int sx12xx_lora_config(const struct device *dev,
 	return 0;
 }
 
+int sx12xx_airtime(const struct device *dev, uint32_t data_len)
+{
+	return Radio.TimeOnAir(MODEM_LORA,
+			       dev_data.tx_cfg.bandwidth,
+			       dev_data.tx_cfg.datarate,
+			       dev_data.tx_cfg.coding_rate,
+			       dev_data.tx_cfg.preamble_len,
+			       0, data_len, true);
+}
+
 int sx12xx_lora_test_cw(const struct device *dev, uint32_t frequency,
 			int8_t tx_power,
 			uint16_t duration)
