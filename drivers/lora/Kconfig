@@ -48,6 +48,14 @@ config LORA_INIT_PRIORITY
 	help
 	  System initialization priority for LoRa drivers.
 
+config LORA_DEDICATED_WORKQUEUE
+	bool "Use a dedicated workqueue for deferred operations"
+
+config LORA_DEDICATED_WORKQUEUE_STACK_SIZE
+	int "Dedicated workqueue stack size"
+	depends on LORA_DEDICATED_WORKQUEUE
+	default 2048
+
 rsource "Kconfig.sx12xx"
 rsource "Kconfig.rylrxxx"
 rsource "lora_basics_modem/Kconfig"
