@@ -11,6 +11,13 @@
 
 LOG_MODULE_REGISTER(lbm_driver, CONFIG_LORA_LOG_LEVEL);
 
+#ifdef CONFIG_LORA_DEDICATED_WORKQUEUE
+
+struct k_work_q lora_work_q;
+static K_THREAD_STACK_DEFINE(lora_stack_area, CONFIG_LORA_DEDICATED_WORKQUEUE_STACK_SIZE);
+
+#endif /* CONFIG_LORA_DEDICATED_WORKQUEUE */
+
 /**
  * @brief Attempt to acquire the modem for operations
  *
@@ -635,11 +642,35 @@ static void op_done_work_handler(struct k_work *work)
 	}
 }
 
+void lbm_schedule_op_done(struct lbm_lora_data_common *data)
+{
+	/* Submit work to process the interrupt immediately */
+#ifdef CONFIG_LORA_DEDICATED_WORKQUEUE
+	k_work_schedule_for_queue(&lora_work_q, &data->op_done_work, K_NO_WAIT);
+#else
+	k_work_schedule(&data->op_done_work, K_NO_WAIT);
+#endif /* CONFIG_LORA_DEDICATED_WORKQUEUE */
+}
+
 int lbm_lora_common_init(const struct device *dev)
 {
 	const struct lbm_lora_config_common *config = dev->config;
 	struct lbm_lora_data_common *data = dev->data;
 	ral_status_t status;
+
+#ifdef CONFIG_LORA_DEDICATED_WORKQUEUE
+	static bool workq_init;
+
+	if (!workq_init) {
+		/* Boot the dedicated workqueue */
+		k_work_queue_init(&lora_work_q);
+		k_work_queue_start(&lora_work_q, lora_stack_area,
+				   K_THREAD_STACK_SIZEOF(lora_stack_area),
+				   CONFIG_SYSTEM_WORKQUEUE_PRIORITY, NULL);
+		k_thread_name_set(k_work_queue_thread_get(&lora_work_q), "lora_workq");
+		workq_init = true;
+	}
+#endif /* CONFIG_LORA_DEDICATED_WORKQUEUE */
 
 	data->dev = dev;
 	k_work_init_delayable(&data->op_done_work, op_done_work_handler);
