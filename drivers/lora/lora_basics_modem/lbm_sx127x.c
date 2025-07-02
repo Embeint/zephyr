@@ -52,6 +52,8 @@ struct lbm_sx127x_data {
 	bool asleep;
 };
 
+extern struct k_work_q lora_work_q;
+
 LOG_MODULE_DECLARE(lbm_driver, CONFIG_LORA_LOG_LEVEL);
 
 static int sx127x_transceive(const struct device *dev, uint8_t reg, bool write, void *data,
@@ -323,7 +325,11 @@ static void sx127x_dio_callback(const struct device *dev, struct gpio_callback *
 
 	__ASSERT_NO_MSG(dio <= 3);
 	/* Submit work to process the interrupt immediately */
+#ifdef CONFIG_LORA_DEDICATED_WORKQUEUE
+	k_work_submit_to_queue(&lora_work_q, &data->dio_packages[dio].worker);
+#else
 	k_work_submit(&data->dio_packages[dio].worker);
+#endif /* CONFIG_LORA_DEDICATED_WORKQUEUE */
 }
 
 static void dio_work_function(struct k_work *work)
@@ -362,7 +368,7 @@ static void sx127x_irq_handler(void *irq_context)
 	struct lbm_sx127x_data *data = dev->data;
 
 	/* Finish the current task from the common worker */
-	k_work_reschedule(&data->lbm_common.op_done_work, K_NO_WAIT);
+	lbm_schedule_op_done(&data->lbm_common);
 }
 
 static int sx127x_driver_init(const struct device *dev)
