@@ -376,8 +376,8 @@ static void sx126x_dio1_callback(const struct device *dev, struct gpio_callback 
 	struct lbm_sx126x_data *data = CONTAINER_OF(cb, struct lbm_sx126x_data, dio1_callback);
 
 	LOG_DBG("");
-	/* Submit work to process the interrupt immediately */
-	k_work_schedule(&data->lbm_common.op_done_work, K_NO_WAIT);
+
+	lbm_schedule_op_done(&data->lbm_common);
 }
 
 static int sx126x_init(const struct device *dev)

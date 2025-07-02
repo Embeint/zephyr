@@ -88,6 +88,13 @@ int lbm_lora_common_init(const struct device *dev);
 void lbm_driver_antenna_configure(const struct device *dev, enum lbm_modem_mode mode);
 
 /**
+ * @brief Schedule the operation complete worker
+ *
+ * @param data Common data structure
+ */
+void lbm_schedule_op_done(struct lbm_lora_data_common *data);
+
+/**
  * @brief Control a GPIO pin if it has been configured
  *
  * @param spec GPIO specification from devicetree
