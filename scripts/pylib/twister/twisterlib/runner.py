@@ -1983,17 +1983,31 @@ class TwisterRunner:
                         pipeline.put({"op": "cmake", "test": instance})
 
 
-    def pipeline_mgr(self, pipeline, done_queue, lock, results):
+    def pipeline_mgr(self, pipeline, done_queue, lock, results, mgr_idx):
         try:
             if sys.platform == 'linux':
                 with self.jobserver.get_job():
                     while True:
                         try:
-                            task = pipeline.get_nowait()
+                            with lock:
+                                task = pipeline.get_nowait()
+                                instance = task['test']
+                                is_sequential_run = getattr(instance.testsuite, 'run_sequential', False)
+                                delay_mgr = False
+                                if task['op'] == 'run' and is_sequential_run and mgr_idx != 0:
+                                    # Put the task back on the queue for manager 0 to handle
+                                    pipeline.put(task)
+                                    delay_mgr = True
+
                         except queue.Empty:
                             break
                         else:
-                            instance = task['test']
+                            if delay_mgr:
+                                # Sleep for a short duration to prevent a queue full of sequential
+                                # runs from busy looping
+                                time.sleep(0.1)
+                                continue
+
                             pb = ProjectBuilder(instance, self.env, self.jobserver)
                             pb.duts = self.duts
                             pb.process(pipeline, done_queue, task, lock, results)
@@ -2034,8 +2048,8 @@ class TwisterRunner:
 
         processes = []
 
-        for _ in range(self.jobs):
-            p = Process(target=self.pipeline_mgr, args=(pipeline, done, lock, self.results, ))
+        for mgr_idx in range(self.jobs):
+            p = Process(target=self.pipeline_mgr, args=(pipeline, done, lock, self.results, mgr_idx,))
             processes.append(p)
             p.start()
         logger.debug(f"Launched {self.jobs} jobs")
