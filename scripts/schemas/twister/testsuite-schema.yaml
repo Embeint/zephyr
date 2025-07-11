@@ -73,6 +73,9 @@ schema;scenario-schema:
     "expect_reboot":
       type: bool
       required: false
+    "run_sequential":
+      type: bool
+      required: false
     "required_snippets":
       type: seq
       required: false
