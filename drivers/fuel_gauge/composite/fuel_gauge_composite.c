@@ -59,7 +59,8 @@ static int composite_get_prop(const struct device *dev, fuel_gauge_prop_t prop,
 {
 	const struct composite_config *config = dev->config;
 	struct composite_data *data = dev->data;
-	k_ticks_t now = k_uptime_ticks();
+	const k_ticks_t validity_ticks =
+		k_ms_to_ticks_near64(CONFIG_FUEL_GAUGE_COMPOSITE_DATA_VALIDITY_MS);
 	struct sensor_value sensor_val;
 	enum sensor_channel sensor_chan;
 	int64_t voltage;
@@ -74,7 +75,7 @@ static int composite_get_prop(const struct device *dev, fuel_gauge_prop_t prop,
 	BUILD_ASSERT(offsetof(union fuel_gauge_prop_val, current) ==
 		     offsetof(union fuel_gauge_prop_val, avg_current));
 
-	if (now >= data->next_reading) {
+	if (k_uptime_ticks() >= data->next_reading) {
 		/* Trigger a sample on the input devices */
 		rc = composite_fetch(config->source_primary);
 		if ((rc == 0) && config->source_secondary) {
@@ -84,8 +85,7 @@ static int composite_get_prop(const struct device *dev, fuel_gauge_prop_t prop,
 			return rc;
 		}
 		/* Update timestamp for next reading */
-		data->next_reading =
-			now + k_ms_to_ticks_near64(CONFIG_FUEL_GAUGE_COMPOSITE_DATA_VALIDITY_MS);
+		data->next_reading = k_uptime_ticks() + validity_ticks;
 	}
 
 	switch (prop) {
