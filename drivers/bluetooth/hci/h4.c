@@ -13,6 +13,7 @@
 #include <zephyr/arch/cpu.h>
 
 #include <zephyr/init.h>
+#include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/uart.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/sys/byteorder.h>
@@ -534,6 +535,14 @@ static int h4_open(const struct device *dev, bt_hci_recv_t recv)
 	h4->recv = recv;
 
 	uart_irq_callback_user_data_set(cfg->uart, bt_uart_isr, (void *)dev);
+
+#if DT_NODE_HAS_PROP(DT_DRV_INST(0), reset_gpios)
+	const struct gpio_dt_spec rst_gpio = GPIO_DT_SPEC_INST_GET(0, reset_gpios);
+
+	(void)gpio_pin_configure_dt(&rst_gpio, GPIO_OUTPUT_ACTIVE);
+	k_sleep(K_MSEC(DT_INST_PROP_OR(0, reset_assert_duration_ms, 0)));
+	gpio_pin_set_dt(&rst_gpio, 0);
+#endif
 
 	tid = k_thread_create(cfg->rx_thread, cfg->rx_thread_stack,
 			      cfg->rx_thread_stack_size,
