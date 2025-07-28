@@ -222,6 +222,18 @@ static uint8_t *data_ref(struct net_buf *buf, uint8_t *data)
 	return pool->alloc->cb->ref(buf, data);
 }
 
+int net_buf_num_free(struct net_buf_pool *pool)
+{
+	int num_free;
+
+	__ASSERT_NO_MSG(pool);
+
+	K_SPINLOCK(&pool->lock) {
+		num_free = pool->uninit_count + k_lifo_len(&pool->free);
+	}
+	return num_free;
+}
+
 #if defined(CONFIG_NET_BUF_LOG)
 struct net_buf *net_buf_alloc_len_debug(struct net_buf_pool *pool, size_t size,
 					k_timeout_t timeout, const char *func,
