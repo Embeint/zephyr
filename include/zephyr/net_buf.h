@@ -1327,6 +1327,19 @@ struct net_buf_pool *net_buf_pool_get(int id);
 int net_buf_id(const struct net_buf *buf);
 
 /**
+ * @brief Get the number of buffers currently free in a pool.
+ *
+ * Note that the number of free buffers might already have changed by the time this
+ * function returns if other threads are also allocating or freeing buffers from the
+ * pool.
+ *
+ * @param pool Which pool to check the number of free buffers
+ *
+ * @return Number of buffers currently free in the pool
+ */
+int net_buf_num_free(struct net_buf_pool *pool);
+
+/**
  * @brief Allocate a new fixed buffer from a pool.
  *
  * @param pool Which pool to allocate the buffer from.
