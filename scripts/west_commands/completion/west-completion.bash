@@ -1218,6 +1218,29 @@ __comp_west_vscode()
 	esac
 }
 
+__comp_west_cloudgen()
+{
+	local dir_opts="
+		--defs -d
+		--output -o
+	"
+
+	all_opts="$dir_opts"
+
+	case "$prev" in
+		$(__west_to_extglob "$dir_opts") )
+			__set_comp_dirs
+			return
+			;;
+	esac
+
+	case "$cur" in
+		-*)
+			__set_comp $all_opts
+			;;
+	esac
+}
+
 __comp_west_release_build()
 {
 	local file_opts="
@@ -1271,9 +1294,26 @@ __comp_west_release_flash()
 
 __comp_west_release_diff()
 {
-	case "$cur" in
-		*)
+	local dir_opts="
+		--input -i
+		--output -o
+	"
+	local bool_opts="
+		--tool-compare
+	"
+
+	all_opts="$dir_opts $bool_opts"
+
+	case "$prev" in
+		$(__west_to_extglob "$dir_opts") )
 			__set_comp_dirs
+			return
+			;;
+	esac
+
+	case "$cur" in
+		-*)
+			__set_comp $all_opts
 			;;
 	esac
 }
@@ -1314,6 +1354,7 @@ __comp_west()
 		twister
 		sdk
 		vscode
+		cloudgen
 		release-build
 		release-diff
 		release-flash
