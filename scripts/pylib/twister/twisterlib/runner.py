@@ -1994,7 +1994,9 @@ class TwisterRunner:
                                 instance = task['test']
                                 is_sequential_run = getattr(instance.testsuite, 'run_sequential', False)
                                 delay_mgr = False
-                                if task['op'] == 'run' and is_sequential_run and mgr_idx != 0:
+                                # Force only 0 to run all steps so that it doesn't have a chance to
+                                # exit early due to an empty queue.
+                                if is_sequential_run and mgr_idx != 0:
                                     # Put the task back on the queue for manager 0 to handle
                                     pipeline.put(task)
                                     delay_mgr = True
