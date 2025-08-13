@@ -36,7 +36,7 @@
 
 		slot0_partition: partition@10000 {
 			label = "image-0";
-			reg = <0x00010000 0x40000>;
+			reg = <0x00010000 0x70000>;
 		};
 		slot0_s_partition: subpartition@10000 {
 			label = "image-0-secure";
@@ -49,7 +49,7 @@
 
 		slot1_partition: partition@80000 {
 			label = "image-1";
-			reg = <0x00080000 0x40000>;
+			reg = <0x00080000 0x70000>;
 		};
 		slot1_s_partition: subpartition@80000 {
 			label = "image-1-secure";
