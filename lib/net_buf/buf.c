@@ -224,7 +224,7 @@ static uint8_t *data_ref(struct net_buf *buf, uint8_t *data)
 
 int net_buf_num_free(struct net_buf_pool *pool)
 {
-	int num_free;
+	int num_free = 0;
 
 	__ASSERT_NO_MSG(pool);
 
