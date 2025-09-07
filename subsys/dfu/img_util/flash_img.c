@@ -24,7 +24,7 @@ LOG_MODULE_REGISTER(flash_img, CONFIG_IMG_MANAGER_LOG_LEVEL);
 #endif
 
 #include <zephyr/devicetree.h>
-#ifdef CONFIG_TRUSTED_EXECUTION_NONSECURE
+#if defined(CONFIG_TRUSTED_EXECUTION_NONSECURE) && (CONFIG_TFM_MCUBOOT_IMAGE_NUMBER == 2)
 	#define UPLOAD_FLASH_AREA_LABEL slot1_ns_partition
 #else
 #if FIXED_PARTITION_EXISTS(slot1_partition)
