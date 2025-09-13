@@ -361,6 +361,10 @@ if (CONFIG_BUILD_WITH_TFM)
     list(APPEND TFM_CMAKE_ARGS -DNRF_CC3XX_PLATFORM_LIB=${NRF_CC3XX_PLATFORM_LIB})
     list(APPEND TFM_CMAKE_ARGS -DNRF_CC3XX_PLATFORM_BASE=${NRF_CC3XX_PLATFORM_BASE})
   endif()
+  # Temporary workaround to force Zephyr implementation of `tfm_platform_user_memory_ranges.h` to be used
+  if(CONFIG_SOC_FAMILY_NORDIC_NRF)
+    list(APPEND TFM_CMAKE_ARGS -DNRF_DIR=1)
+  endif()
 
   file(MAKE_DIRECTORY ${TFM_BINARY_DIR})
   add_custom_target(tfm_cmake
