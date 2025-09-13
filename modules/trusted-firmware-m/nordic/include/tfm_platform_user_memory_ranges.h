@@ -63,4 +63,9 @@ static const struct tfm_read_service_range ranges[] = {
 	{ .start = NRF_UICR_S_BASE, .size = sizeof(NRF_UICR_Type)}
 };
 
+static const struct tfm_write32_service_address tfm_write32_service_addresses[] = {
+	/* This is a dummy value because this table cannot be empty */
+	{.addr = 0xFFFFFFFF, .mask = 0x0, .allowed_values = NULL, .allowed_values_array_size = 0},
+};
+
 #endif /* TFM_READ_RANGES_H__ */
