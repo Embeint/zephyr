@@ -316,8 +316,8 @@ void gcov_coverage_dump(void)
 	}
 	printk("\nGCOV_COVERAGE_DUMP_START");
 	while (gcov_list) {
-		if ((strlen(CONFIG_COVERAGE_DUMP_PATH_EXCLUSIVE) > 0) &&
-		    (fnmatch(CONFIG_COVERAGE_DUMP_PATH_EXCLUSIVE, gcov_list->filename, 0) != 0)) {
+		if ((strlen(CONFIG_COVERAGE_DUMP_PATH_EXCLUDE) > 0) &&
+		    (fnmatch(CONFIG_COVERAGE_DUMP_PATH_EXCLUDE, gcov_list->filename, 0) == 0)) {
 			/* Don't print a note here, it would be interpreted as dump data */
 			goto file_dump_end;
 		}
