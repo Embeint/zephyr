@@ -67,6 +67,22 @@ config MODEM_CMUX_DLCI_AUTO_MSC_V24_READY
 	  channel through a MSC Virtual V.24 command. See 3GPP TS 27.010 for information
 	  on command formats.
 
+
+config MODEM_CMUX_DLCI_AT_ECHO_DEDICATED
+	bool "DLCI channel AT echo configuration not copied from parent configuration"
+	help
+	  Some modems don't propagate the AT echo state from the primary comms channel to
+	  the virtual CMUX DLCI channels. If set, users should run the
+	  CONFIG_MODEM_CMUX_DLCI_AT_ECHO_DISABLE_COMMAND command on channel open to disable AT
+	  command echoes.
+
+config MODEM_CMUX_DLCI_AT_ECHO_DISABLE_COMMAND
+	string "Command to use to disable AT command echoes on CMUX DLCI channels"
+	depends on MODEM_CMUX_DLCI_AT_ECHO_DEDICATED
+	default "ATE0"
+	help
+	  Command to run to disable AT command echoes.
+
 module = MODEM_CMUX
 module-str = modem_cmux
 source "subsys/logging/Kconfig.template.log_config"
