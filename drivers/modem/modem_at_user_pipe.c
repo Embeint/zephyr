@@ -77,11 +77,29 @@ static void at_util_open_pipe_handler(struct k_work *work)
 	modem_pipe_open_async(modem_pipelink_get_pipe(at_util_pipelink));
 }
 
+#ifdef CONFIG_MODEM_CMUX_DLCI_AT_ECHO_DEDICATED
+MODEM_CHAT_MATCH_DEFINE(ok_match, "OK", "", NULL);
+MODEM_CHAT_MATCHES_DEFINE(abort_matches, MODEM_CHAT_MATCH("ERROR", "", NULL));
+MODEM_CHAT_SCRIPT_CMDS_DEFINE(
+	ate_disable_script_cmds,
+	MODEM_CHAT_SCRIPT_CMD_RESP(CONFIG_MODEM_CMUX_DLCI_AT_ECHO_DISABLE_COMMAND, ok_match));
+
+MODEM_CHAT_SCRIPT_DEFINE(ate_disable_script, ate_disable_script_cmds, abort_matches, NULL, 1);
+#endif /* CONFIG_MODEM_CMUX_DLCI_AT_ECHO_DEDICATED */
+
 static void at_util_attach_chat_handler(struct k_work *work)
 {
+	struct modem_pipe *pipe = modem_pipelink_get_pipe(at_util_pipelink);
+
 	ARG_UNUSED(work);
 
-	modem_chat_attach(at_util_chat, modem_pipelink_get_pipe(at_util_pipelink));
+	modem_chat_attach(at_util_chat, pipe);
+
+#ifdef CONFIG_MODEM_CMUX_DLCI_AT_ECHO_DEDICATED
+	LOG_DBG("disabling echo");
+	(void)modem_chat_run_script_async(at_util_chat, &ate_disable_script);
+#endif /* CONFIG_MODEM_CMUX_DLCI_AT_ECHO_DEDICATED */
+
 	atomic_set_bit(&at_util_state, AT_UTIL_STATE_ATTACHED_BIT);
 	LOG_INF("chat attached");
 }
