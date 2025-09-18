@@ -59,6 +59,14 @@ config MODEM_CMUX_WORK_BUFFER_SIZE
 	  Size of the work buffer used by the CMUX module.
 	  Recommended size is MODEM_CMUX_MTU + 7 (CMUX header size).
 
+config MODEM_CMUX_DLCI_REQUIRES_MANUAL_MSC_V24_READY
+	bool "DLCI channels need to be manually set to ready through a MSC command"
+	help
+	  For some modems, after a DLCI channel is opened from a UA notification,
+	  it starts in a disabled state. Enabling this option automatically enables the
+	  channel through a MSC Virtual V.24 command. See "Telit CMUX Implementation
+	  User Guide", Rev 8, Section 4.
+
 module = MODEM_CMUX
 module-str = modem_cmux
 source "subsys/logging/Kconfig.template.log_config"
