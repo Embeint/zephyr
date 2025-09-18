@@ -76,6 +76,37 @@ struct modem_cmux_command {
 	uint8_t value[];
 };
 
+/* 3GPP TS 27.010 Section 5.4.6.3.7
+ * Modem Status Command
+ * Virtual V.24 signal status
+ * 4 byte command variant without the "Break Status" byte.
+ */
+struct modem_cmux_command_msc_v24 {
+	struct modem_cmux_command_type type;
+	struct modem_cmux_command_length length;
+	struct {
+		uint8_t ea: 1;
+		uint8_t one: 1;
+		uint8_t dlci: 6;
+	} dlci;
+	struct {
+		/* Set to 1 for the variant without the "Break Status" */
+		uint8_t ea: 1;
+		/* Flow control: 1 when unable to accept frames */
+		uint8_t fc: 1;
+		/* Ready to Communicate: 1 when ready to communicate */
+		uint8_t rtc: 1;
+		/* Ready to Receive: 1 when ready to receive data */
+		uint8_t rtr: 1;
+		/* Ignored, set to 0 */
+		uint8_t reserved: 2;
+		/* Incoming Call: 1 when a call is incoming (Modem only) */
+		uint8_t ic: 1;
+		/* Data Valid: 1 when valid data is being sent (Modem only) */
+		uint8_t dv: 1;
+	} line_status;
+};
+
 static int modem_cmux_wrap_command(struct modem_cmux_command **command, const uint8_t *data,
 				   uint16_t data_len)
 {
@@ -244,6 +275,28 @@ static void modem_cmux_raise_event(struct modem_cmux *cmux, enum modem_cmux_even
 	cmux->callback(cmux, event, cmux->user_data);
 }
 
+static struct modem_cmux_dlci *modem_cmux_find_dlci_by_address(struct modem_cmux *cmux,
+							       uint8_t address)
+{
+	sys_snode_t *node;
+	struct modem_cmux_dlci *dlci;
+
+	SYS_SLIST_FOR_EACH_NODE(&cmux->dlcis, node) {
+		dlci = (struct modem_cmux_dlci *)node;
+
+		if (dlci->dlci_address == address) {
+			return dlci;
+		}
+	}
+
+	return NULL;
+}
+
+static struct modem_cmux_dlci *modem_cmux_find_dlci(struct modem_cmux *cmux)
+{
+	return modem_cmux_find_dlci_by_address(cmux, cmux->frame.dlci_address);
+}
+
 static void modem_cmux_bus_callback(struct modem_pipe *pipe, enum modem_pipe_event event,
 				    void *user_data)
 {
@@ -403,8 +456,27 @@ static void modem_cmux_acknowledge_received_frame(struct modem_cmux *cmux)
 
 static void modem_cmux_on_msc_command(struct modem_cmux *cmux, struct modem_cmux_command *command)
 {
+	struct modem_cmux_command_msc_v24 *v24_base = (void *)command;
+
+	LOG_DBG("DLCI: %d Status: %02x CR %d:%d", v24_base->dlci.dlci, command->value[1],
+		cmux->frame.cr, command->type.cr);
 	if (command->type.cr) {
 		modem_cmux_acknowledge_received_frame(cmux);
+	} else {
+#ifdef CONFIG_MODEM_CMUX_DLCI_AUTO_MSC_V24_READY
+		/* Response to a MSC command we initiated */
+		struct modem_cmux_dlci *dlci =
+			modem_cmux_find_dlci_by_address(cmux, v24_base->dlci.dlci);
+
+		if (dlci && (dlci->state == MODEM_CMUX_DLCI_STATE_MSC_V24_WAITING)) {
+			dlci->state = MODEM_CMUX_DLCI_STATE_OPEN;
+			modem_pipe_notify_opened(&dlci->pipe);
+			k_work_cancel_delayable(&dlci->open_work);
+			k_mutex_lock(&dlci->receive_rb_lock, K_FOREVER);
+			ring_buf_reset(&dlci->receive_rb);
+			k_mutex_unlock(&dlci->receive_rb_lock);
+		}
+#endif /* CONFIG_MODEM_CMUX_DLCI_AUTO_MSC_V24_READY */
 	}
 }
 
@@ -568,32 +640,61 @@ static void modem_cmux_on_control_frame(struct modem_cmux *cmux)
 	}
 }
 
-static struct modem_cmux_dlci *modem_cmux_find_dlci(struct modem_cmux *cmux)
+#ifdef CONFIG_MODEM_CMUX_DLCI_AUTO_MSC_V24_READY
+static void modem_cmux_send_msc_v24_ready(struct modem_cmux *cmux, uint8_t dlci)
 {
-	sys_snode_t *node;
-	struct modem_cmux_dlci *dlci;
+	struct modem_cmux_command_msc_v24 cmd = {
+		.type = {
+			.ea = 1,
+			.cr = 1,
+			.value = MODEM_CMUX_COMMAND_MSC,
+		},
+		.length = {
+			.ea = 1,
+			.value = 2,
+		},
+		.dlci = {
+			.ea = 1,
+			.one = 1,
+			.dlci = dlci,
+		},
+		.line_status = {
+			.ea = 1,
+			.rtc = 1,
+			.rtr = 1,
+		},
+	};
+	struct modem_cmux_frame frame = {
+		.dlci_address = 0,
+		.cr = true,
+		.pf = false,
+		.type = MODEM_CMUX_FRAME_TYPE_UIH,
+		.data = (const void *)&cmd,
+		.data_len = sizeof(cmd),
+	};
 
-	SYS_SLIST_FOR_EACH_NODE(&cmux->dlcis, node) {
-		dlci = (struct modem_cmux_dlci *)node;
-
-		if (dlci->dlci_address == cmux->frame.dlci_address) {
-			return dlci;
-		}
-	}
-
-	return NULL;
+	LOG_DBG("MSC V.24 line state send (DLCI %d)", dlci);
+	modem_cmux_transmit_cmd_frame(cmux, &frame);
 }
+#endif /* CONFIG_MODEM_CMUX_DLCI_AUTO_MSC_V24_READY */
 
-static void modem_cmux_on_dlci_frame_ua(struct modem_cmux_dlci *dlci)
+static void modem_cmux_on_dlci_frame_ua(struct modem_cmux *cmux, struct modem_cmux_dlci *dlci)
 {
+	ARG_UNUSED(cmux);
+
 	switch (dlci->state) {
 	case MODEM_CMUX_DLCI_STATE_OPENING:
+#ifdef CONFIG_MODEM_CMUX_DLCI_AUTO_MSC_V24_READY
+		dlci->state = MODEM_CMUX_DLCI_STATE_MSC_V24_WAITING;
+		modem_cmux_send_msc_v24_ready(cmux, dlci->dlci_address);
+#else
 		dlci->state = MODEM_CMUX_DLCI_STATE_OPEN;
 		modem_pipe_notify_opened(&dlci->pipe);
 		k_work_cancel_delayable(&dlci->open_work);
 		k_mutex_lock(&dlci->receive_rb_lock, K_FOREVER);
 		ring_buf_reset(&dlci->receive_rb);
 		k_mutex_unlock(&dlci->receive_rb_lock);
+#endif /* CONFIG_MODEM_CMUX_DLCI_AUTO_MSC_V24_READY */
 		break;
 
 	case MODEM_CMUX_DLCI_STATE_CLOSING:
@@ -676,7 +777,7 @@ static void modem_cmux_on_dlci_frame(struct modem_cmux *cmux)
 
 	switch (cmux->frame.type) {
 	case MODEM_CMUX_FRAME_TYPE_UA:
-		modem_cmux_on_dlci_frame_ua(dlci);
+		modem_cmux_on_dlci_frame_ua(cmux, dlci);
 		break;
 
 	case MODEM_CMUX_FRAME_TYPE_UIH:
