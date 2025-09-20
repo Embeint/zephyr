@@ -257,8 +257,9 @@ static void modem_ppp_process_received_byte(struct modem_ppp *ppp, uint8_t byte)
 			net_pkt_remove_tail(ppp->rx_pkt, MODEM_PPP_FRAME_TAIL_SIZE);
 			net_pkt_set_ppp(ppp->rx_pkt, true);
 
-			if (net_recv_data(ppp->iface, ppp->rx_pkt) < 0) {
-				LOG_WRN("Net pkt could not be processed");
+			int rc = net_recv_data(ppp->iface, ppp->rx_pkt);
+			if (rc < 0) {
+				LOG_WRN("Net pkt could not be processed %d", rc);
 				net_pkt_unref(ppp->rx_pkt);
 			}
 
