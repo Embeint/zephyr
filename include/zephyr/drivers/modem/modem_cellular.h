@@ -206,6 +206,7 @@ struct modem_cellular_config {
 	k_timeout_t cmux_idle_timeout;
 	const struct modem_chat_script *init_chat_script;
 	const struct modem_chat_script *dial_chat_script;
+	const struct modem_chat_script *ready_chat_script;
 	const struct modem_chat_script *periodic_chat_script;
 	const struct modem_chat_script *shutdown_chat_script;
 	const struct modem_chat_script *set_baudrate_chat_script;
@@ -292,7 +293,7 @@ void modem_cellular_chat_callback_handler(struct modem_chat *chat,
 
 /* Helper to define modem instance */
 #define MODEM_CELLULAR_DEFINE_INSTANCE(inst, power_ms, reset_ms, startup_ms, shutdown_ms, start,   \
-				       set_baudrate_script, init_script, dial_script,              \
+				       set_baudrate_script, init_script, dial_script, ready_script,             \
 				       periodic_script, shutdown_script)                           \
 	static const struct modem_cellular_config MODEM_CELLULAR_INST_NAME(config, inst) = {       \
 		.uart = DEVICE_DT_GET(DT_INST_BUS(inst)),                                          \
@@ -322,6 +323,7 @@ void modem_cellular_chat_callback_handler(struct modem_chat *chat,
 		.set_baudrate_chat_script = (set_baudrate_script),                                 \
 		.init_chat_script = (init_script),                                                 \
 		.dial_chat_script = (dial_script),                                                 \
+		.ready_chat_script = (ready_script),                                               \
 		.periodic_chat_script = (periodic_script),                                         \
 		.shutdown_chat_script = (shutdown_script),                                         \
 		.user_pipes = MODEM_CELLULAR_GET_USER_PIPES(inst),                                 \
