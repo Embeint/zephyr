@@ -132,7 +132,7 @@ int twim_nrfx_pm_action(const struct device *dev, enum pm_device_action action)
 			 * we need to enable the TWIM instance here before calling recover
 			 * bus, which disables it.
 			 */
-			nrfx_twim_enable(&config->twim);
+			twim_nrfx_pm_resume(dev);
 #endif
 			rc = i2c_nrfx_twim_recover_bus(dev);
 		}
