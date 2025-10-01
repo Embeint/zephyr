@@ -192,10 +192,17 @@ struct modem_cellular_config {
 	uint16_t startup_time_ms;
 	uint16_t shutdown_time_ms;
 	bool autostarts;
+	/* Run at modem boot to initiate modem */
 	const struct modem_chat_script *init_chat_script;
+	/* Run once CMUX configured to initiate connection */
 	const struct modem_chat_script *dial_chat_script;
+	/* Run once modem is waiting for registration to network */
+	const struct modem_chat_script *ready_chat_script;
+	/* Periodically run to monitor connectivity state */
 	const struct modem_chat_script *periodic_chat_script;
+	/* Run to power down the modem */
 	const struct modem_chat_script *shutdown_chat_script;
+	/* Run before @a init_chat_script to switch to alternate baudrate */
 	const struct modem_chat_script *set_baudrate_chat_script;
 	struct modem_cellular_user_pipe *user_pipes;
 	uint8_t user_pipes_size;
@@ -1336,12 +1343,22 @@ static int modem_cellular_on_run_dial_script_state_leave(struct modem_cellular_d
 
 static int modem_cellular_on_await_registered_state_enter(struct modem_cellular_data *data)
 {
+	const struct modem_cellular_config *config =
+		(const struct modem_cellular_config *)data->dev->config;
+
 	if (modem_ppp_attach(data->ppp, data->dlci1_pipe) < 0) {
 		return -EAGAIN;
 	}
 
 	modem_cellular_start_timer(data, MODEM_CELLULAR_PERIODIC_SCRIPT_TIMEOUT);
-	return modem_chat_attach(&data->chat, data->dlci2_pipe);
+	if (modem_chat_attach(&data->chat, data->dlci2_pipe) < 0) {
+		return -EAGAIN;
+	}
+
+	if (config->ready_chat_script != NULL) {
+		modem_chat_run_script_async(&data->chat, config->ready_chat_script);
+	}
+	return 0;
 }
 
 static void modem_cellular_await_registered_event_handler(struct modem_cellular_data *data,
@@ -2976,6 +2993,7 @@ MODEM_CHAT_SCRIPT_DEFINE(sqn_gm02s_periodic_chat_script,
 				       set_baudrate_script,                                        \
 				       init_script,                                                \
 				       dial_script,                                                \
+				       ready_script,                                               \
 				       periodic_script,                                            \
 				       shutdown_script)                                            \
 	static const struct modem_cellular_config MODEM_CELLULAR_INST_NAME(config, inst) = {       \
@@ -2991,6 +3009,7 @@ MODEM_CHAT_SCRIPT_DEFINE(sqn_gm02s_periodic_chat_script,
 		.set_baudrate_chat_script    = (set_baudrate_script),                              \
 		.init_chat_script            = (init_script),                                      \
 		.dial_chat_script            = (dial_script),                                      \
+		.ready_chat_script           = (ready_script),                                     \
 		.periodic_chat_script = (periodic_script),                                         \
 		.shutdown_chat_script  = (shutdown_script),                                        \
 		.user_pipes = MODEM_CELLULAR_GET_USER_PIPES(inst),                                 \
@@ -3019,10 +3038,9 @@ MODEM_CHAT_SCRIPT_DEFINE(sqn_gm02s_periodic_chat_script,
                                                                                                    \
 	MODEM_CELLULAR_DEFINE_INSTANCE(inst, 1500, 100, 10000, 5000, false,                        \
 				       NULL,                                                       \
-				       &quectel_bg9x_init_chat_script,                             \
-				       &quectel_bg9x_dial_chat_script,                             \
-				       &quectel_bg9x_periodic_chat_script,                         \
-				       &quectel_bg9x_shutdown_chat_script)
+				       &quectel_bg95_init_chat_script,                             \
+				       &quectel_bg95_dial_chat_script, NULL,                       \
+				       &quectel_bg95_periodic_chat_script, NULL)
 
 #define MODEM_CELLULAR_DEVICE_QUECTEL_EG25_G(inst)                                                 \
 	MODEM_DT_INST_PPP_DEFINE(inst, MODEM_CELLULAR_INST_NAME(ppp, inst), NULL, 98, 1500, 64);   \
@@ -3040,7 +3058,7 @@ MODEM_CHAT_SCRIPT_DEFINE(sqn_gm02s_periodic_chat_script,
 	MODEM_CELLULAR_DEFINE_INSTANCE(inst, 1500, 500, 15000, 5000, false,                        \
 				       NULL,                                                       \
 				       &quectel_eg25_g_init_chat_script,                           \
-				       &quectel_eg25_g_dial_chat_script,                           \
+				       &quectel_eg25_g_dial_chat_script, NULL,                     \
 				       &quectel_eg25_g_periodic_chat_script, NULL)
 
 #define MODEM_CELLULAR_DEVICE_QUECTEL_EG800Q(inst)                                                 \
@@ -3059,7 +3077,7 @@ MODEM_CHAT_SCRIPT_DEFINE(sqn_gm02s_periodic_chat_script,
 	MODEM_CELLULAR_DEFINE_INSTANCE(inst, 1500, 500, 15000, 5000, false,                        \
 				       NULL,                                                       \
 				       &quectel_eg800q_init_chat_script,                           \
-				       &quectel_eg800q_dial_chat_script,                           \
+				       &quectel_eg800q_dial_chat_script, NULL,                     \
 				       &quectel_eg800q_periodic_chat_script, NULL)
 
 #define MODEM_CELLULAR_DEVICE_SIMCOM_SIM7080(inst)                                                 \
@@ -3078,7 +3096,7 @@ MODEM_CHAT_SCRIPT_DEFINE(sqn_gm02s_periodic_chat_script,
 	MODEM_CELLULAR_DEFINE_INSTANCE(inst, 1500, 100, 10000, 5000, false,                        \
 				       NULL,                                                       \
 				       &simcom_sim7080_init_chat_script,                           \
-				       &simcom_sim7080_dial_chat_script,                           \
+				       &simcom_sim7080_dial_chat_script, NULL,                     \
 				       &simcom_sim7080_periodic_chat_script, NULL)
 
 #define MODEM_CELLULAR_DEVICE_SIMCOM_A76XX(inst)                                                   \
@@ -3099,6 +3117,7 @@ MODEM_CHAT_SCRIPT_DEFINE(sqn_gm02s_periodic_chat_script,
 				       &simcom_a76xx_init_chat_script,                             \
 				       &simcom_a76xx_dial_chat_script,                             \
 				       &simcom_a76xx_periodic_chat_script,                         \
+				       NULL,                                                       \
 				       &simcom_a76xx_shutdown_chat_script)
 
 #define MODEM_CELLULAR_DEVICE_U_BLOX_SARA_R4(inst)                                                 \
@@ -3117,7 +3136,7 @@ MODEM_CHAT_SCRIPT_DEFINE(sqn_gm02s_periodic_chat_script,
 	MODEM_CELLULAR_DEFINE_INSTANCE(inst, 1500, 100, 10000, 5000, false,                        \
 				       NULL,                                                       \
 				       &u_blox_sara_r4_init_chat_script,                           \
-				       &u_blox_sara_r4_dial_chat_script,                           \
+				       &u_blox_sara_r4_dial_chat_script, NULL,                     \
 				       &u_blox_sara_r4_periodic_chat_script, NULL)
 
 #define MODEM_CELLULAR_DEVICE_U_BLOX_SARA_R5(inst)                                                 \
@@ -3136,7 +3155,7 @@ MODEM_CHAT_SCRIPT_DEFINE(sqn_gm02s_periodic_chat_script,
 	MODEM_CELLULAR_DEFINE_INSTANCE(inst, 1500, 100, 1500, 13000, true,                         \
 				       NULL,                                                       \
 				       &u_blox_sara_r5_init_chat_script,                           \
-				       &u_blox_sara_r5_dial_chat_script,                           \
+				       &u_blox_sara_r5_dial_chat_script, NULL,                     \
 				       &u_blox_sara_r5_periodic_chat_script, NULL)
 
 #define MODEM_CELLULAR_DEVICE_U_BLOX_LARA_R6(inst)                                                 \
@@ -3156,6 +3175,7 @@ MODEM_CHAT_SCRIPT_DEFINE(sqn_gm02s_periodic_chat_script,
 				       &u_blox_lara_r6_set_baudrate_chat_script,                   \
 				       &u_blox_lara_r6_init_chat_script,                           \
 				       &u_blox_lara_r6_dial_chat_script,                           \
+				       NULL,                                                       \
 				       &u_blox_lara_r6_periodic_chat_script,                       \
 				       NULL)
 
@@ -3175,7 +3195,7 @@ MODEM_CHAT_SCRIPT_DEFINE(sqn_gm02s_periodic_chat_script,
 	MODEM_CELLULAR_DEFINE_INSTANCE(inst, 1500, 100, 10000, 5000, false,                        \
 				       NULL,                                                       \
 				       &swir_hl7800_init_chat_script,                              \
-				       &swir_hl7800_dial_chat_script,                              \
+				       &swir_hl7800_dial_chat_script, NULL,                        \
 				       &swir_hl7800_periodic_chat_script, NULL)
 
 #define MODEM_CELLULAR_DEVICE_TELIT_ME910G1(inst)                                                  \
@@ -3194,6 +3214,7 @@ MODEM_CHAT_SCRIPT_DEFINE(sqn_gm02s_periodic_chat_script,
 				       NULL,                                                       \
 				       &telit_mex10g1_init_chat_script,                            \
 				       &telit_mex10g1_dial_chat_script,                            \
+				       NULL,                                                       \
 				       &telit_mex10g1_periodic_chat_script,                        \
 				       NULL)
 
@@ -3213,6 +3234,7 @@ MODEM_CHAT_SCRIPT_DEFINE(sqn_gm02s_periodic_chat_script,
 				       NULL,                                                       \
 				       &telit_mex10g1_init_chat_script,                            \
 				       &telit_mex10g1_dial_chat_script,                            \
+				       NULL,                                                       \
 				       &telit_mex10g1_periodic_chat_script,                        \
 				       &telit_me310g1_shutdown_chat_script)
 
@@ -3230,9 +3252,8 @@ MODEM_CHAT_SCRIPT_DEFINE(sqn_gm02s_periodic_chat_script,
 	MODEM_CELLULAR_DEFINE_INSTANCE(inst, 100, 100, 2000, 10000, false,                         \
 				       NULL,                                                       \
 				       &nordic_nrf91_slm_init_chat_script,                         \
-				       &nordic_nrf91_slm_dial_chat_script,                         \
-				       &nordic_nrf91_slm_periodic_chat_script,                     \
-				       NULL)
+				       &nordic_nrf91_slm_dial_chat_script, NULL,                   \
+				       &nordic_nrf91_slm_periodic_chat_script, NULL)
 
 #define MODEM_CELLULAR_DEVICE_SQN_GM02S(inst)                                                      \
 	MODEM_DT_INST_PPP_DEFINE(inst, MODEM_CELLULAR_INST_NAME(ppp, inst), NULL, 98, 1500, 64);   \
@@ -3250,7 +3271,7 @@ MODEM_CHAT_SCRIPT_DEFINE(sqn_gm02s_periodic_chat_script,
 	MODEM_CELLULAR_DEFINE_INSTANCE(inst, 1500, 100, 2000, 5000, true,                          \
 				       NULL,                                                       \
 				       &sqn_gm02s_init_chat_script,                                \
-				       &sqn_gm02s_dial_chat_script,                                \
+				       &sqn_gm02s_dial_chat_script, NULL,                          \
 				       &sqn_gm02s_periodic_chat_script, NULL)
 
 #define DT_DRV_COMPAT quectel_bg95
