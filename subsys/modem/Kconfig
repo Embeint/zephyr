@@ -80,6 +80,7 @@ config MODEM_CMUX_MSC_FC_THRESHOLD
 
 config MODEM_CMUX_DLCI_AT_ECHO_DEDICATED
 	bool "DLCI channel AT echo configuration not copied from parent configuration"
+	default y if DT_HAS_TELIT_LE910CX_ENABLED
 	help
 	  Some modems don't propagate the AT echo state from the primary comms channel to
 	  the virtual CMUX DLCI channels. If set, users should run the
