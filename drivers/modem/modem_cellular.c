@@ -136,6 +136,7 @@ struct modem_cellular_data {
 	enum cellular_registration_status registration_status_gsm;
 	enum cellular_registration_status registration_status_gprs;
 	enum cellular_registration_status registration_status_lte;
+	enum cellular_access_technology access_tech;
 	uint8_t rssi;
 	uint8_t rsrp;
 	uint8_t rsrq;
@@ -570,20 +571,33 @@ static void modem_cellular_chat_on_cxreg(struct modem_chat *chat, char **argv, u
 					void *user_data)
 {
 	struct modem_cellular_data *data = (struct modem_cellular_data *)user_data;
-	enum cellular_registration_status registration_status = 0;
+	enum cellular_registration_status registration_status = CELLULAR_REGISTRATION_UNKNOWN;
+	uint8_t num_args;
+	uint8_t base;
 
 	/* This receives both +C*REG? read command answers and unsolicited notifications.
 	 * Their syntax differs in that the former has one more parameter, <n>, which is first.
 	 */
 	if (argc >= 3 && argv[2][0] != '"') {
 		/* +CEREG: <n>,<stat>[,<tac>[...]] */
-		registration_status = atoi(argv[2]);
+		base = 2;
 	} else if (argc >= 2) {
 		/* +CEREG: <stat>[,<tac>[...]] */
-		registration_status = atoi(argv[1]);
+		base = 1;
 	} else {
 		return;
 	}
+	/* Long form of the various CXREG options:
+	 *   +CREG: <stat>[,<lac>,<ci>[,<AcT>]]
+	 *   +CGREG:<stat>[,<lac>,<ci>[,<AcT>,<rac>]]
+	 *   +CEREG: <stat>[,[<tac>],[<ci>],[<AcT>]]
+	 */
+	num_args = argc - base;
+	registration_status = atoi(argv[base]);
+	if (num_args >= 4) {
+		data->access_tech = strtol(argv[base + 3], NULL, 10);
+	}
+	LOG_DBG("REG %d AcT %d", registration_status, data->access_tech);
 
 	if (strcmp(argv[0], "+CREG: ") == 0) {
 		data->registration_status_gsm = registration_status;
@@ -2316,9 +2330,9 @@ MODEM_CHAT_SCRIPT_CMDS_DEFINE(quectel_bg95_init_chat_script_cmds,
 			      MODEM_CHAT_SCRIPT_CMD_RESP("ATE0", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CFUN=4", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CMEE=1", ok_match),
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CREG=1", ok_match),
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGREG=1", ok_match),
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG=1", ok_match),
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CREG=2", ok_match),
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGREG=2", ok_match),
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG=2", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CREG?", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG?", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGREG?", ok_match),
@@ -2362,9 +2376,9 @@ MODEM_CHAT_SCRIPT_CMDS_DEFINE(
 	quectel_eg25_g_init_chat_script_cmds, MODEM_CHAT_SCRIPT_CMD_RESP("ATE0", ok_match),
 	MODEM_CHAT_SCRIPT_CMD_RESP("AT+CFUN=4", ok_match),
 	MODEM_CHAT_SCRIPT_CMD_RESP("AT+CMEE=1", ok_match),
-	MODEM_CHAT_SCRIPT_CMD_RESP("AT+CREG=1", ok_match),
-	MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGREG=1", ok_match),
-	MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG=1", ok_match),
+	MODEM_CHAT_SCRIPT_CMD_RESP("AT+CREG=2", ok_match),
+	MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGREG=2", ok_match),
+	MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG=2", ok_match),
 	MODEM_CHAT_SCRIPT_CMD_RESP("AT+CREG?", ok_match),
 	MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG?", ok_match),
 	MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGREG?", ok_match),
@@ -2409,7 +2423,7 @@ MODEM_CHAT_SCRIPT_CMDS_DEFINE(quectel_eg800q_init_chat_script_cmds,
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CFUN?", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CFUN=4", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CMEE=1", ok_match),
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG=1", ok_match),
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG=2", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG?", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGSN", imei_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("", ok_match),
@@ -2456,9 +2470,9 @@ MODEM_CHAT_SCRIPT_CMDS_DEFINE(simcom_sim7080_init_chat_script_cmds,
 			      MODEM_CHAT_SCRIPT_CMD_RESP("ATE0", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CFUN=4", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CMEE=1", ok_match),
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CREG=1", ok_match),
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGREG=1", ok_match),
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG=1", ok_match),
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CREG=2", ok_match),
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGREG=2", ok_match),
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG=2", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CREG?", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG?", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGREG?", ok_match),
@@ -2503,9 +2517,9 @@ MODEM_CHAT_SCRIPT_CMDS_DEFINE(simcom_a76xx_init_chat_script_cmds,
 			      MODEM_CHAT_SCRIPT_CMD_RESP_MULT("AT+CGNSSPWR=1", allow_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CFUN=4", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CMEE=1", ok_match),
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CREG=1", ok_match),
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGREG=1", ok_match),
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG=1", ok_match),
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CREG=2", ok_match),
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGREG=2", ok_match),
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG=2", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CREG?", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG?", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGREG?", ok_match),
@@ -2553,9 +2567,9 @@ MODEM_CHAT_SCRIPT_CMDS_DEFINE(u_blox_sara_r4_init_chat_script_cmds,
 			      MODEM_CHAT_SCRIPT_CMD_RESP("ATE0", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CFUN=4", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CMEE=1", ok_match),
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CREG=1", ok_match),
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGREG=1", ok_match),
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG=1", ok_match),
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CREG=2", ok_match),
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGREG=2", ok_match),
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG=2", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CREG?", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG?", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGREG?", ok_match),
@@ -2595,9 +2609,9 @@ MODEM_CHAT_SCRIPT_CMDS_DEFINE(u_blox_sara_r5_init_chat_script_cmds,
 			      MODEM_CHAT_SCRIPT_CMD_RESP("ATE0", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CFUN=4", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CMEE=1", ok_match),
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CREG=1", ok_match),
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGREG=1", ok_match),
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG=1", ok_match),
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CREG=2", ok_match),
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGREG=2", ok_match),
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG=2", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CREG?", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG?", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGREG?", ok_match),
@@ -2658,9 +2672,9 @@ MODEM_CHAT_SCRIPT_CMDS_DEFINE(u_blox_lara_r6_init_chat_script_cmds,
 			      MODEM_CHAT_SCRIPT_CMD_RESP_MULT("AT+ULWM2M=1", allow_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CFUN=4", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CMEE=1", ok_match),
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CREG=1", ok_match),
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGREG=1", ok_match),
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG=1", ok_match),
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CREG=2", ok_match),
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGREG=2", ok_match),
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG=2", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CREG?", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG?", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGREG?", ok_match),
@@ -2726,8 +2740,8 @@ MODEM_CHAT_SCRIPT_CMDS_DEFINE(swir_hl7800_init_chat_script_cmds,
 			      MODEM_CHAT_SCRIPT_CMD_RESP_MULT("AT+CGACT=0", allow_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CFUN=4", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CMEE=1", ok_match),
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CREG=1", ok_match),
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG=1", ok_match),
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CREG=2", ok_match),
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG=2", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CREG?", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG?", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGSN", imei_match),
@@ -2775,9 +2789,9 @@ MODEM_CHAT_SCRIPT_CMDS_DEFINE(telit_mex10g1_init_chat_script_cmds,
 				  MODEM_CHAT_SCRIPT_CMD_RESP("", ok_match),
 				  MODEM_CHAT_SCRIPT_CMD_RESP("AT+CFUN=4", ok_match),
 				  MODEM_CHAT_SCRIPT_CMD_RESP("AT+CMEE=1", ok_match),
-				  MODEM_CHAT_SCRIPT_CMD_RESP("AT+CREG=1", ok_match),
-				  MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGREG=1", ok_match),
-				  MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG=1", ok_match),
+				  MODEM_CHAT_SCRIPT_CMD_RESP("AT+CREG=2", ok_match),
+				  MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGREG=2", ok_match),
+				  MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG=2", ok_match),
 				  MODEM_CHAT_SCRIPT_CMD_RESP("AT+CREG?", ok_match),
 				  MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG?", ok_match),
 				  MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGREG?", ok_match),
@@ -2828,7 +2842,7 @@ MODEM_CHAT_SCRIPT_DEFINE(telit_me310g1_shutdown_chat_script,
 MODEM_CHAT_SCRIPT_CMDS_DEFINE(nordic_nrf91_slm_init_chat_script_cmds,
 			      MODEM_CHAT_SCRIPT_CMD_RESP_MULT("AT", allow_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CMEE=1", ok_match),
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG=1", ok_match),
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG=2", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG?", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGSN", imei_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("", ok_match),
@@ -2864,7 +2878,7 @@ MODEM_CHAT_SCRIPT_CMDS_DEFINE(sqn_gm02s_init_chat_script_cmds,
 			      MODEM_CHAT_SCRIPT_CMD_RESP("ATE0", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CFUN=4", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CMEE=1", ok_match),
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG=1", ok_match),
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG=2", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG?", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGSN", imei_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("", ok_match),
