@@ -8,6 +8,7 @@
 #include <zephyr/sys/crc.h>
 #include <zephyr/modem/ppp.h>
 #include <string.h>
+#include <ctype.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(modem_ppp, CONFIG_MODEM_MODULES_LOG_LEVEL);
@@ -194,10 +195,15 @@ static uint8_t modem_ppp_wrap_net_pkt_byte(struct modem_ppp *ppp)
 
 static bool modem_ppp_is_byte_expected(uint8_t byte, uint8_t expected_byte)
 {
+	char printable;
+
 	if (byte == expected_byte) {
 		return true;
 	}
-	LOG_DBG("Dropping byte 0x%02hhx because 0x%02hhx was expected.", byte, expected_byte);
+	printable = isprint(byte) ? (char)byte : ' ';
+
+	LOG_DBG("Dropping byte 0x%02hhx (%c) because 0x%02hhx was expected.", byte, printable,
+		expected_byte);
 	return false;
 }
 
