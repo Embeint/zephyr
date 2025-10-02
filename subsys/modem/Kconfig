@@ -50,6 +50,7 @@ config MODEM_CMUX_DEFAULT_MTU_127
 		      DT_HAS_SIMCOM_SIM7080_ENABLED || DT_HAS_U_BLOX_SARA_R4_ENABLED || \
 		      DT_HAS_U_BLOX_SARA_R5_ENABLED || DT_HAS_SWIR_HL7800_ENABLED || \
 		      DT_HAS_TELIT_ME910G1_ENABLED || DT_HAS_TELIT_ME310G1_ENABLED || \
+			  DT_HAS_TELIT_LE910CX_ENABLED || \
 		      DT_HAS_SQN_GM02S_ENABLED || DT_HAS_QUECTEL_EG800Q_ENABLED || \
 		      DT_HAS_SIMCOM_A76XX_ENABLED)
 	help
@@ -74,15 +75,16 @@ config MODEM_CMUX_WORK_BUFFER_SIZE_EXTRA
 
 config MODEM_CMUX_DLCI_AUTO_MSC_V24_READY
 	bool "DLCI channels need to be set to ready through a MSC command"
+	default y if DT_HAS_TELIT_LE910CX_ENABLED
 	help
 	  For some modems, after a DLCI channel is opened from a UA notification,
 	  it starts in a disabled state. Enabling this option automatically enables the
 	  channel through a MSC Virtual V.24 command. See 3GPP TS 27.010 for information
 	  on command formats.
 
-
 config MODEM_CMUX_DLCI_AT_ECHO_DEDICATED
 	bool "DLCI channel AT echo configuration not copied from parent configuration"
+	default y if DT_HAS_TELIT_LE910CX_ENABLED
 	help
 	  Some modems don't propagate the AT echo state from the primary comms channel to
 	  the virtual CMUX DLCI channels. If set, users should run the
