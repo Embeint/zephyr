@@ -120,6 +120,8 @@ enum cellular_event {
 	CELLULAR_EVENT_MODEM_INFO_CHANGED = BIT(0),
 	/** Cellular network registration status changed */
 	CELLULAR_EVENT_REGISTRATION_STATUS_CHANGED = BIT(1),
+	/** Cellular network status changed */
+	CELLULAR_EVENT_NETWORK_STATUS_CHANGED = BIT(2),
 };
 
 /* Opaque bit-mask large enough for all current & future events */
@@ -133,6 +135,30 @@ struct cellular_evt_modem_info {
 /** Payload for @ref CELLULAR_EVENT_REGISTRATION_STATUS_CHANGED. */
 struct cellular_evt_registration_status {
 	enum cellular_registration_status status; /**< New registration status */
+};
+
+/** E-UTRAN Global Cell Identifier (GCI) is a 28bit value */
+#define CELLULAR_EUTRAN_CELL_ID_MAX     0xFFFFFFF
+/** Unknown E-UTRAN Global Cell Identifier (GCI) */
+#define CELLULAR_EUTRAN_CELL_ID_INVALID UINT32_MAX
+
+/** Payload for @ref CELLULAR_EVENT_NETWORK_STATUS_CHANGED */
+struct cellular_evt_network_status {
+	enum cellular_registration_status status; /**< Registration status */
+	enum cellular_access_technology access_tech; /**< Access technology */
+	union {
+		struct {
+			uint16_t mcc; /**< Mobile Country Code */
+			uint8_t mnc; /**< Mobile Network Code */
+			uint32_t tac; /**< Tracking Area Code */
+			uint32_t earfcn; /**< E-UTRAN assigned radio channel */
+			uint32_t gci; /**< E-UTRAN cell ID (0 - CELLULAR_EUTRAN_CELL_ID_MAX) */
+			uint16_t phys_cell_id; /**< Physical cell ID */
+			uint16_t band; /**< Band number (from 3GPP TS 36.101) */
+			int16_t rsrp; /**< Received signal power (dBm) */
+			int8_t rsrq; /**< Received signal quality (dB) */
+		} lte; /**< LTE Cell information */
+	} cell; /**< Generic Cell information */
 };
 
 /**
