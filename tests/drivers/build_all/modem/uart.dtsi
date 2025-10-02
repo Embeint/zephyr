@@ -85,3 +85,9 @@ test_st_st87mxx: st87mxx {
 	mdm-reset-gpios = <&test_gpio 0 0>;
 	mdm-ring-gpios = <&test_gpio 0 0>;
 };
+
+test_telit_le910cx_le: telit_le910cx_le {
+	compatible = "telit,le910cx-le";
+
+	mdm-reset-gpios = <&test_gpio 0 0>;
+};

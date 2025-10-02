@@ -1,0 +1,20 @@
+# Copyright(c) 2026 Embeint Pty Ltd
+# SPDX-License-Identifier: Apache-2.0
+
+description: Telit LE910Cx Linux Modem
+
+compatible: "telit,le910cx-le"
+
+include: zephyr,cellular-modem-device.yaml
+
+properties:
+  mdm-power-gpios:
+    type: phandle-array
+    required: true
+
+  mdm-reset-gpios:
+    type: phandle-array
+    required: true
+
+  zephyr,mdm-reset-behavior:
+    default: ["toggle_on_recovery", "toggle_on_resume"]
