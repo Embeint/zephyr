@@ -630,11 +630,6 @@ MODEM_CHAT_MATCH_DEFINE(cimi_match __maybe_unused, "", "", modem_cellular_chat_o
 MODEM_CHAT_MATCH_DEFINE(cgmi_match __maybe_unused, "", "", modem_cellular_chat_on_cgmi);
 MODEM_CHAT_MATCH_DEFINE(cgmr_match __maybe_unused, "", "", modem_cellular_chat_on_cgmr);
 
-MODEM_CHAT_MATCHES_DEFINE(unsol_matches,
-			  MODEM_CHAT_MATCH("+CREG: ", ",", modem_cellular_chat_on_cxreg),
-			  MODEM_CHAT_MATCH("+CEREG: ", ",", modem_cellular_chat_on_cxreg),
-			  MODEM_CHAT_MATCH("+CGREG: ", ",", modem_cellular_chat_on_cxreg));
-
 MODEM_CHAT_MATCHES_DEFINE(abort_matches, MODEM_CHAT_MATCH("ERROR", "", NULL));
 
 MODEM_CHAT_MATCHES_DEFINE(dial_abort_matches,
@@ -2185,131 +2180,8 @@ static void modem_cellular_init_apn(struct modem_cellular_data *data)
 				       modem_cellular_chat_callback_handler);
 }
 
-static int modem_cellular_init(const struct device *dev)
-{
-	struct modem_cellular_data *data = (struct modem_cellular_data *)dev->data;
-	struct modem_cellular_config *config = (struct modem_cellular_config *)dev->config;
-
-	data->dev = dev;
-
-	k_mutex_init(&data->api_lock);
-	k_work_init_delayable(&data->timeout_work, modem_cellular_timeout_handler);
-
-	k_work_init(&data->event_dispatch_work, modem_cellular_event_dispatch_handler);
-	ring_buf_init(&data->event_rb, sizeof(data->event_buf), data->event_buf);
-
-	k_sem_init(&data->suspended_sem, 0, 1);
-
-	if (modem_cellular_gpio_is_enabled(&config->wake_gpio)) {
-		gpio_pin_configure_dt(&config->wake_gpio, GPIO_OUTPUT_INACTIVE);
-	}
-
-	if (modem_cellular_gpio_is_enabled(&config->power_gpio)) {
-		gpio_pin_configure_dt(&config->power_gpio, GPIO_OUTPUT_INACTIVE);
-	}
-
-	if (modem_cellular_gpio_is_enabled(&config->reset_gpio)) {
-		gpio_pin_configure_dt(&config->reset_gpio, GPIO_OUTPUT_ACTIVE);
-	}
-
-	{
-		const struct modem_backend_uart_config uart_backend_config = {
-			.uart = config->uart,
-			.receive_buf = data->uart_backend_receive_buf,
-			.receive_buf_size = ARRAY_SIZE(data->uart_backend_receive_buf),
-			.transmit_buf = data->uart_backend_transmit_buf,
-			.transmit_buf_size = ARRAY_SIZE(data->uart_backend_transmit_buf),
-		};
-
-		data->uart_pipe = modem_backend_uart_init(&data->uart_backend,
-							  &uart_backend_config);
-
-		data->cmd_pipe = NULL;
-	}
-
-	{
-		const struct modem_cmux_config cmux_config = {
-			.callback = modem_cellular_cmux_handler,
-			.user_data = data,
-			.receive_buf = data->cmux_receive_buf,
-			.receive_buf_size = ARRAY_SIZE(data->cmux_receive_buf),
-			.transmit_buf = data->cmux_transmit_buf,
-			.transmit_buf_size = ARRAY_SIZE(data->cmux_transmit_buf),
-		};
-
-		modem_cmux_init(&data->cmux, &cmux_config);
-	}
-
-	{
-		const struct modem_cmux_dlci_config dlci1_config = {
-			.dlci_address = 1,
-			.receive_buf = data->dlci1_receive_buf,
-			.receive_buf_size = ARRAY_SIZE(data->dlci1_receive_buf),
-		};
-
-		data->dlci1_pipe = modem_cmux_dlci_init(&data->cmux, &data->dlci1,
-							&dlci1_config);
-	}
-
-	{
-		const struct modem_cmux_dlci_config dlci2_config = {
-			.dlci_address = 2,
-			.receive_buf = data->dlci2_receive_buf,
-			.receive_buf_size = ARRAY_SIZE(data->dlci2_receive_buf),
-		};
-
-		data->dlci2_pipe = modem_cmux_dlci_init(&data->cmux, &data->dlci2,
-							&dlci2_config);
-	}
-
-	for (uint8_t i = 0; i < config->user_pipes_size; i++) {
-		struct modem_cellular_user_pipe *user_pipe = &config->user_pipes[i];
-		const struct modem_cmux_dlci_config user_dlci_config = {
-			.dlci_address = user_pipe->dlci_address,
-			.receive_buf = user_pipe->dlci_receive_buf,
-			.receive_buf_size = user_pipe->dlci_receive_buf_size,
-		};
-
-		user_pipe->pipe = modem_cmux_dlci_init(&data->cmux, &user_pipe->dlci,
-						       &user_dlci_config);
-
-		modem_pipelink_init(user_pipe->pipelink, user_pipe->pipe);
-	}
-
-	{
-		const struct modem_chat_config chat_config = {
-			.user_data = data,
-			.receive_buf = data->chat_receive_buf,
-			.receive_buf_size = ARRAY_SIZE(data->chat_receive_buf),
-			.delimiter = data->chat_delimiter,
-			.delimiter_size = strlen(data->chat_delimiter),
-			.filter = data->chat_filter,
-			.filter_size = data->chat_filter ? strlen(data->chat_filter) : 0,
-			.argv = data->chat_argv,
-			.argv_size = ARRAY_SIZE(data->chat_argv),
-			.unsol_matches = unsol_matches,
-			.unsol_matches_size = ARRAY_SIZE(unsol_matches),
-		};
-
-		modem_chat_init(&data->chat, &chat_config);
-	}
-
-	{
-		net_mgmt_init_event_callback(&data->net_mgmt_event_callback, net_mgmt_event_handler,
-					     NET_EVENT_PPP_PHASE_DEAD);
-		net_mgmt_add_event_callback(&data->net_mgmt_event_callback);
-	}
-
-	modem_cellular_init_apn(data);
-
-#ifndef CONFIG_PM_DEVICE
-	modem_cellular_delegate_event(data, MODEM_CELLULAR_EVENT_RESUME);
-#else
-	pm_device_init_suspended(dev);
-#endif /* CONFIG_PM_DEVICE */
-
-	return 0;
-}
+/* Forward declaration for init macros */
+static int modem_cellular_init(const struct device *dev);
 
 /*
  * Every modem uses two custom scripts to initialize the modem and dial out.
@@ -3300,3 +3172,136 @@ DT_INST_FOREACH_STATUS_OKAY(MODEM_CELLULAR_DEVICE_NORDIC_NRF91_SLM)
 #define DT_DRV_COMPAT sqn_gm02s
 DT_INST_FOREACH_STATUS_OKAY(MODEM_CELLULAR_DEVICE_SQN_GM02S)
 #undef DT_DRV_COMPAT
+
+/* Avoid MODEM_CHAT_MATCHES_DEFINE so we can use pre-processor macros internally */
+const static struct modem_chat_match unsol_matches[] = {
+	MODEM_CHAT_MATCH("+CREG: ", ",", modem_cellular_chat_on_cxreg),
+	MODEM_CHAT_MATCH("+CEREG: ", ",", modem_cellular_chat_on_cxreg),
+	MODEM_CHAT_MATCH("+CGREG: ", ",", modem_cellular_chat_on_cxreg),
+};
+
+static int modem_cellular_init(const struct device *dev)
+{
+	struct modem_cellular_data *data = (struct modem_cellular_data *)dev->data;
+	struct modem_cellular_config *config = (struct modem_cellular_config *)dev->config;
+
+	data->dev = dev;
+
+	k_mutex_init(&data->api_lock);
+	k_work_init_delayable(&data->timeout_work, modem_cellular_timeout_handler);
+
+	k_work_init(&data->event_dispatch_work, modem_cellular_event_dispatch_handler);
+	ring_buf_init(&data->event_rb, sizeof(data->event_buf), data->event_buf);
+
+	k_sem_init(&data->suspended_sem, 0, 1);
+
+	if (modem_cellular_gpio_is_enabled(&config->wake_gpio)) {
+		gpio_pin_configure_dt(&config->wake_gpio, GPIO_OUTPUT_INACTIVE);
+	}
+
+	if (modem_cellular_gpio_is_enabled(&config->power_gpio)) {
+		gpio_pin_configure_dt(&config->power_gpio, GPIO_OUTPUT_INACTIVE);
+	}
+
+	if (modem_cellular_gpio_is_enabled(&config->reset_gpio)) {
+		gpio_pin_configure_dt(&config->reset_gpio, GPIO_OUTPUT_ACTIVE);
+	}
+
+	{
+		const struct modem_backend_uart_config uart_backend_config = {
+			.uart = config->uart,
+			.receive_buf = data->uart_backend_receive_buf,
+			.receive_buf_size = ARRAY_SIZE(data->uart_backend_receive_buf),
+			.transmit_buf = data->uart_backend_transmit_buf,
+			.transmit_buf_size = ARRAY_SIZE(data->uart_backend_transmit_buf),
+		};
+
+		data->uart_pipe = modem_backend_uart_init(&data->uart_backend,
+							  &uart_backend_config);
+
+		data->cmd_pipe = NULL;
+	}
+
+	{
+		const struct modem_cmux_config cmux_config = {
+			.callback = modem_cellular_cmux_handler,
+			.user_data = data,
+			.receive_buf = data->cmux_receive_buf,
+			.receive_buf_size = ARRAY_SIZE(data->cmux_receive_buf),
+			.transmit_buf = data->cmux_transmit_buf,
+			.transmit_buf_size = ARRAY_SIZE(data->cmux_transmit_buf),
+		};
+
+		modem_cmux_init(&data->cmux, &cmux_config);
+	}
+
+	{
+		const struct modem_cmux_dlci_config dlci1_config = {
+			.dlci_address = 1,
+			.receive_buf = data->dlci1_receive_buf,
+			.receive_buf_size = ARRAY_SIZE(data->dlci1_receive_buf),
+		};
+
+		data->dlci1_pipe = modem_cmux_dlci_init(&data->cmux, &data->dlci1,
+							&dlci1_config);
+	}
+
+	{
+		const struct modem_cmux_dlci_config dlci2_config = {
+			.dlci_address = 2,
+			.receive_buf = data->dlci2_receive_buf,
+			.receive_buf_size = ARRAY_SIZE(data->dlci2_receive_buf),
+		};
+
+		data->dlci2_pipe = modem_cmux_dlci_init(&data->cmux, &data->dlci2,
+							&dlci2_config);
+	}
+
+	for (uint8_t i = 0; i < config->user_pipes_size; i++) {
+		struct modem_cellular_user_pipe *user_pipe = &config->user_pipes[i];
+		const struct modem_cmux_dlci_config user_dlci_config = {
+			.dlci_address = user_pipe->dlci_address,
+			.receive_buf = user_pipe->dlci_receive_buf,
+			.receive_buf_size = user_pipe->dlci_receive_buf_size,
+		};
+
+		user_pipe->pipe = modem_cmux_dlci_init(&data->cmux, &user_pipe->dlci,
+						       &user_dlci_config);
+
+		modem_pipelink_init(user_pipe->pipelink, user_pipe->pipe);
+	}
+
+	{
+		const struct modem_chat_config chat_config = {
+			.user_data = data,
+			.receive_buf = data->chat_receive_buf,
+			.receive_buf_size = ARRAY_SIZE(data->chat_receive_buf),
+			.delimiter = data->chat_delimiter,
+			.delimiter_size = strlen(data->chat_delimiter),
+			.filter = data->chat_filter,
+			.filter_size = data->chat_filter ? strlen(data->chat_filter) : 0,
+			.argv = data->chat_argv,
+			.argv_size = ARRAY_SIZE(data->chat_argv),
+			.unsol_matches = unsol_matches,
+			.unsol_matches_size = ARRAY_SIZE(unsol_matches),
+		};
+
+		modem_chat_init(&data->chat, &chat_config);
+	}
+
+	{
+		net_mgmt_init_event_callback(&data->net_mgmt_event_callback, net_mgmt_event_handler,
+					     NET_EVENT_PPP_PHASE_DEAD);
+		net_mgmt_add_event_callback(&data->net_mgmt_event_callback);
+	}
+
+	modem_cellular_init_apn(data);
+
+#ifndef CONFIG_PM_DEVICE
+	modem_cellular_delegate_event(data, MODEM_CELLULAR_EVENT_RESUME);
+#else
+	pm_device_init_suspended(dev);
+#endif /* CONFIG_PM_DEVICE */
+
+	return 0;
+}
