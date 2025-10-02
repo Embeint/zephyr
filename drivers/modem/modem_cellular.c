@@ -430,6 +430,7 @@ static void modem_cellular_chat_on_cxreg(struct modem_chat *chat, char **argv, u
 {
 	struct modem_cellular_data *data = (struct modem_cellular_data *)user_data;
 	enum cellular_registration_status registration_status = CELLULAR_REGISTRATION_UNKNOWN;
+	enum cellular_registration_status registration_prev;
 	uint8_t num_args;
 	uint8_t base;
 
@@ -458,10 +459,13 @@ static void modem_cellular_chat_on_cxreg(struct modem_chat *chat, char **argv, u
 	LOG_DBG("REG %d AcT %d", registration_status, data->access_tech);
 
 	if (strcmp(argv[0], "+CREG: ") == 0) {
+		registration_prev = data->registration_status_gsm;
 		data->registration_status_gsm = registration_status;
 	} else if (strcmp(argv[0], "+CGREG: ") == 0) {
+		registration_prev = data->registration_status_gprs;
 		data->registration_status_gprs = registration_status;
 	} else { /* CEREG */
+		registration_prev = data->registration_status_lte;
 		data->registration_status_lte = registration_status;
 	}
 
@@ -469,6 +473,18 @@ static void modem_cellular_chat_on_cxreg(struct modem_chat *chat, char **argv, u
 		modem_cellular_delegate_event(data, MODEM_CELLULAR_EVENT_REGISTERED);
 	} else {
 		modem_cellular_delegate_event(data, MODEM_CELLULAR_EVENT_DEREGISTERED);
+		/* If we transitioned into a deregistered state, issue a NETWORK_STATUS event,
+		 * as we cannot guarantee periodic network status AT commands will respond normally.
+		 */
+		if (registration_prev != registration_status) {
+			struct cellular_evt_network_status evt = {
+				.status = data->registration_status_lte,
+				.access_tech = data->access_tech,
+			};
+
+			modem_cellular_emit_event(data, CELLULAR_EVENT_NETWORK_STATUS_CHANGED,
+						  &evt);
+		}
 	}
 	modem_cellular_emit_reg_state(data, registration_status);
 }
@@ -526,6 +542,34 @@ static void modem_cellular_chat_on_cgev(struct modem_chat *chat, char **argv, ui
 	}
 }
 
+#if DT_HAS_COMPAT_STATUS_OKAY(telit_le910cx)
+static void modem_cellular_chat_on_rfsts(struct modem_chat *chat, char **argv, uint16_t argc,
+					 void *user_data)
+{
+	struct modem_cellular_data *data = (struct modem_cellular_data *)user_data;
+	struct cellular_evt_network_status evt = {
+		.status = data->registration_status_lte,
+		.access_tech = data->access_tech,
+	};
+	char *plmn = argv[1];
+
+	if (plmn[1] != '"') {
+		/* MCC and MNC are space separated */
+		evt.cell.lte.mcc = atoi(plmn + 1);
+		evt.cell.lte.mnc = atoi(plmn + 5);
+	}
+	evt.cell.lte.tac = strtol(argv[6], NULL, 16);
+	evt.cell.lte.earfcn = strtol(argv[2], NULL, 10);
+	evt.cell.lte.gci = strtol(argv[11], NULL, 16);
+	evt.cell.lte.phys_cell_id = 0; /* Not part of message */
+	evt.cell.lte.band = strtol(argv[15], NULL, 10);
+	evt.cell.lte.rsrp = strtol(argv[3], NULL, 10);
+	evt.cell.lte.rsrq = strtol(argv[5], NULL, 10);
+
+	modem_cellular_emit_event(data, CELLULAR_EVENT_NETWORK_STATUS_CHANGED, &evt);
+}
+#endif /* DT_HAS_COMPAT_STATUS_OKAY(telit_le910cx) */
+
 MODEM_CHAT_MATCH_DEFINE(ok_match, "OK", "", NULL);
 MODEM_CHAT_MATCHES_DEFINE(__maybe_unused allow_match,
 			  MODEM_CHAT_MATCH("OK", "", NULL),
@@ -547,7 +591,11 @@ MODEM_CHAT_MATCHES_DEFINE(__maybe_unused unsol_matches,
 			  MODEM_CHAT_MATCH("+CEREG: ", ",", modem_cellular_chat_on_cxreg),
 			  MODEM_CHAT_MATCH("+CGREG: ", ",", modem_cellular_chat_on_cxreg),
 			  MODEM_CHAT_MATCH("+CGEV: ", ",", modem_cellular_chat_on_cgev),
-			  MODEM_CHAT_MATCH("APP RDY", "", modem_cellular_chat_on_modem_ready));
+			  MODEM_CHAT_MATCH("APP RDY", "", modem_cellular_chat_on_modem_ready),
+#if DT_HAS_COMPAT_STATUS_OKAY(telit_le910cx)
+			  MODEM_CHAT_MATCH("#RFSTS: ", ",", modem_cellular_chat_on_rfsts),
+#endif /* DT_HAS_COMPAT_STATUS_OKAY(telit_le910cx) */
+			);
 
 MODEM_CHAT_MATCHES_DEFINE(abort_matches, MODEM_CHAT_MATCH("ERROR", "", NULL));
 
@@ -2935,7 +2983,8 @@ MODEM_CHAT_SCRIPT_DEFINE(telit_le910cx_ready_chat_script,
 			 modem_cellular_chat_callback_handler, 1);
 
 MODEM_CHAT_SCRIPT_CMDS_DEFINE(telit_le910cx_periodic_chat_script_cmds,
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG?", ok_match));
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG?", ok_match),
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT#RFSTS", ok_match));
 
 MODEM_CHAT_SCRIPT_DEFINE(telit_le910cx_periodic_chat_script,
 			 telit_le910cx_periodic_chat_script_cmds, abort_matches,
