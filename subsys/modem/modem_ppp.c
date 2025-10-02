@@ -9,6 +9,7 @@
 #include <zephyr/modem/ppp.h>
 #include <zephyr/pm/device_runtime.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "modem_workqueue.h"
 
@@ -194,10 +195,15 @@ end:
 
 static bool modem_ppp_is_byte_expected(uint8_t byte, uint8_t expected_byte)
 {
+	char printable;
+
 	if (byte == expected_byte) {
 		return true;
 	}
-	LOG_DBG("Dropping byte 0x%02hhx because 0x%02hhx was expected.", byte, expected_byte);
+	printable = isprint(byte) ? (char)byte : ' ';
+
+	LOG_DBG("Dropping byte 0x%02hhx (%c) because 0x%02hhx was expected.", byte, printable,
+		expected_byte);
 	return false;
 }
 
