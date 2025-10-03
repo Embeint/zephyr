@@ -391,6 +391,8 @@ static void modem_cmux_acknowledge_received_frame(struct modem_cmux *cmux)
 	memcpy(data, cmux->frame.data, cmux->frame.data_len);
 	modem_cmux_wrap_command(&command, data, cmux->frame.data_len);
 	command->type.cr = 0;
+	/* Frame C/R bit must be inverted for response */
+	frame.cr = !cmux->frame.cr;
 	frame.data = data;
 	frame.data_len = cmux->frame.data_len;
 

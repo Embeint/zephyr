@@ -112,6 +112,17 @@ struct modem_cmux_dlci {
 
 struct modem_cmux_frame {
 	uint8_t dlci_address;
+	/* The C/R (command/response) bit naming is confusing, as it must be combined with
+	 * knowledge about the initiator (side that setup CMUX) and the responder (side that
+	 * accepted the CMUX).
+	 *           Direction                   C/R
+	 *  Command: Initiator -> Responder      1
+	 *           Responder -> Initiator      0
+	 * Response: Initiator -> Responder      0
+	 *           Responder -> Initiator      1
+	 *
+	 * 3GPP TS 27.010 Section 5.2.1.2 (Address Field)
+	 */
 	bool cr;
 	bool pf;
 	uint8_t type;
