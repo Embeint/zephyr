@@ -122,6 +122,8 @@ enum cellular_event {
 	CELLULAR_EVENT_REGISTRATION_STATUS_CHANGED = BIT(1),
 	/** Cellular network status changed */
 	CELLULAR_EVENT_NETWORK_STATUS_CHANGED = BIT(2),
+	/** Periodic script result */
+	CELLULAR_EVENT_PERIODIC_SCRIPT_RESULT = BIT(3),
 };
 
 /* Opaque bit-mask large enough for all current & future events */
@@ -159,6 +161,11 @@ struct cellular_evt_network_status {
 			int8_t rsrq; /**< Received signal quality (dB) */
 		} lte; /**< LTE Cell information */
 	} cell; /**< Generic Cell information */
+};
+
+/** Payload for @ref CELLULAR_EVENT_PERIODIC_SCRIPT_RESULT */
+struct cellular_evt_periodic_script_result {
+	bool success; /**< Periodic script ran to completion successfully */
 };
 
 /**
