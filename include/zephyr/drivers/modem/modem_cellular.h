@@ -168,6 +168,9 @@ struct modem_cellular_data {
 	struct k_work event_dispatch_work;
 	uint8_t event_buf[8];
 	struct k_pipe event_pipe;
+#ifdef CONFIG_MODEM_CELLULAR_SUSPEND_ASYNC
+	bool suspending;
+#endif /* CONFIG_MODEM_CELLULAR_SUSPEND_ASYNC */
 
 	struct k_mutex api_lock;
 	struct modem_cellular_event_cb cb;
