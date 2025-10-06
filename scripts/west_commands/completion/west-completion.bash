@@ -1121,7 +1121,7 @@ __comp_west_twister()
 		        ;;
 
 		--runtime-artifact-cleanup|-M)
-		        __set_comp "all pass"
+		        __set_comp "all pass none"
 			return
 		        ;;
 
