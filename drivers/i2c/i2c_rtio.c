@@ -257,3 +257,35 @@ out:
 	k_sem_give(&ctx->lock);
 	return res;
 }
+
+int i2c_rtio_sda_toggle(struct i2c_rtio *ctx, uint8_t cycles)
+{
+	struct rtio_iodev *iodev = &ctx->iodev;
+	struct rtio *const r = ctx->r;
+	struct rtio_sqe *sqe = NULL;
+	struct rtio_cqe *cqe = NULL;
+	int res = 0;
+
+	k_sem_take(&ctx->lock, K_FOREVER);
+
+	sqe = rtio_sqe_acquire(r);
+	if (sqe == NULL) {
+		LOG_ERR("Not enough submission queue entries");
+		res = -ENOMEM;
+		goto out;
+	}
+
+	sqe->op = RTIO_OP_I2C_SDA_TOGGLE;
+	sqe->iodev = iodev;
+	sqe->cycles = cycles;
+
+	rtio_submit(r, 1);
+
+	cqe = rtio_cqe_consume(r);
+	res = cqe->result;
+	rtio_cqe_release(r, cqe);
+
+out:
+	k_sem_give(&ctx->lock);
+	return res;
+}
