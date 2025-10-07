@@ -236,6 +236,7 @@ static DEVICE_API(i2c, i2c_nrfx_twim_driver_api) = {
 	.iodev_submit = i2c_iodev_submit_fallback,
 #endif
 	.recover_bus = i2c_nrfx_twim_recover_bus,
+	.sda_toggle = i2c_nrfx_twim_sda_toggle,
 };
 
 #define CONCAT_BUF_SIZE(idx)						       \
