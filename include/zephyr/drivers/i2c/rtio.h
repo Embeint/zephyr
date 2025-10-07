@@ -108,6 +108,16 @@ int i2c_rtio_transfer(struct i2c_rtio *ctx, struct i2c_msg *msgs, uint8_t num_ms
  */
 int i2c_rtio_recover(struct i2c_rtio *ctx);
 
+/**
+ * @brief Perform I2C bus SDA toggling in a blocking call
+ *
+ * Provides a compatible API for the existing i2c_sda_toggle API, and blocks the caller
+ * until the process completes.
+ *
+ * See i2c_sda_toggle().
+ */
+int i2c_rtio_sda_toggle(struct i2c_rtio *ctx, uint8_t cycles);
+
 #ifdef __cplusplus
 }
 #endif
