@@ -240,6 +240,7 @@ typedef void (*i2c_api_iodev_submit)(const struct device *dev,
 #endif /* CONFIG_I2C_RTIO */
 
 typedef int (*i2c_api_recover_bus_t)(const struct device *dev);
+typedef int (*i2c_api_sda_toggle_t)(const struct device *dev, uint8_t cycles);
 
 __subsystem struct i2c_driver_api {
 	i2c_api_configure_t configure;
@@ -254,6 +255,7 @@ __subsystem struct i2c_driver_api {
 	i2c_api_iodev_submit iodev_submit;
 #endif
 	i2c_api_recover_bus_t recover_bus;
+	i2c_api_sda_toggle_t sda_toggle;
 };
 
 typedef int (*i2c_target_api_register_t)(const struct device *dev);
@@ -1222,6 +1224,32 @@ static inline int z_impl_i2c_recover_bus(const struct device *dev)
 	}
 
 	return api->recover_bus(dev);
+}
+
+/**
+ * @brief Toggle SDA lines
+ *
+ * Attempt to recover the I2C bus.
+ *
+ * @param dev Pointer to the device structure for an I2C controller
+ * driver configured in controller mode.
+ * @param cycles Number of times to cycle the SDA lines low then high
+ * @retval 0 If successful
+ * @retval -EIO General input / output error.
+ * @retval -ENOSYS If SDA toggling is not implemented
+ */
+__syscall int i2c_sda_toggle(const struct device *dev, uint8_t cycles);
+
+static inline int z_impl_i2c_sda_toggle(const struct device *dev, uint8_t cycles)
+{
+	const struct i2c_driver_api *api =
+		(const struct i2c_driver_api *)dev->api;
+
+	if (api->sda_toggle == NULL) {
+		return -ENOSYS;
+	}
+
+	return api->sda_toggle(dev, cycles);
 }
 
 /**

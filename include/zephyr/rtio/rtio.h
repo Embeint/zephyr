@@ -351,6 +351,9 @@ struct rtio_sqe {
 			struct _timeout to; /**< Timeout struct. Used internally. */
 		} delay;
 
+		/** OP_I2C_SDA_TOGGLE */
+		uint8_t cycles;
+
 		/** OP_I2C_CONFIGURE */
 		uint32_t i2c_config;
 
@@ -568,8 +571,11 @@ struct rtio_iodev {
 /** An operation to recover I2C buses */
 #define RTIO_OP_I2C_RECOVER (RTIO_OP_DELAY+1)
 
+/** An operation to toggle SDA on I2C buses */
+#define RTIO_OP_I2C_SDA_TOGGLE (RTIO_OP_I2C_RECOVER+1)
+
 /** An operation to configure I2C buses */
-#define RTIO_OP_I2C_CONFIGURE (RTIO_OP_I2C_RECOVER+1)
+#define RTIO_OP_I2C_CONFIGURE (RTIO_OP_I2C_SDA_TOGGLE+1)
 
 /** An operation to recover I3C buses */
 #define RTIO_OP_I3C_RECOVER (RTIO_OP_I2C_CONFIGURE+1)
