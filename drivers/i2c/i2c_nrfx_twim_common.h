@@ -47,6 +47,7 @@ int i2c_nrfx_twim_common_init(const struct device *dev);
 int i2c_nrfx_twim_common_deinit(const struct device *dev);
 int i2c_nrfx_twim_configure(const struct device *dev, uint32_t i2c_config);
 int i2c_nrfx_twim_recover_bus(const struct device *dev);
+int i2c_nrfx_twim_sda_toggle(const struct device *dev, uint8_t cycles);
 int i2c_nrfx_twim_msg_transfer(const struct device *dev, uint8_t flags, uint8_t *buf,
 			       size_t buf_len, uint16_t i2c_addr);
 

@@ -10,7 +10,13 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/pm/device_runtime.h>
 
+#include <hal/nrf_gpio.h>
+
 #include "i2c_nrfx_twim_common.h"
+
+#define TWI_TWIM_PIN_CONFIGURE(_pin)                                                               \
+	nrf_gpio_cfg((_pin), NRF_GPIO_PIN_DIR_OUTPUT, NRF_GPIO_PIN_INPUT_DISCONNECT,               \
+		     NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_S0D1, NRF_GPIO_PIN_NOSENSE)
 
 LOG_MODULE_DECLARE(i2c_nrfx_twim);
 
@@ -40,6 +46,62 @@ int i2c_nrfx_twim_recover_bus(const struct device *dev)
 	}
 
 	return (err == NRFX_SUCCESS ? 0 : -EBUSY);
+}
+
+/* Same style as nrfx_twi_twim_bus_recover from the HAL */
+void nrfx_twi_twim_bus_sda_toggle(uint32_t scl_pin, uint32_t sda_pin, uint8_t cycles)
+{
+	nrf_gpio_pin_set(scl_pin);
+	nrf_gpio_pin_set(sda_pin);
+
+	TWI_TWIM_PIN_CONFIGURE(scl_pin);
+	TWI_TWIM_PIN_CONFIGURE(sda_pin);
+
+#if NRF_GPIO_HAS_CLOCKPIN
+#if defined(NRF_TWIM_CLOCKPIN_SCL_NEEDED)
+	nrf_gpio_pin_clock_set(scl_pin, true);
+#endif
+#if defined(NRF_TWIM_CLOCKPIN_SDA_NEEDED)
+	nrf_gpio_pin_clock_set(sda_pin, true);
+#endif
+#endif
+
+	k_busy_wait(5);
+
+	for (int i = 0; i < cycles; i++) {
+		/* Pulse DATA signal */
+		nrf_gpio_pin_clear(sda_pin);
+		k_busy_wait(5);
+		nrf_gpio_pin_set(sda_pin);
+		k_busy_wait(5);
+	}
+}
+
+int i2c_nrfx_twim_sda_toggle(const struct device *dev, uint8_t cycles)
+{
+	const struct i2c_nrfx_twim_common_config *config = dev->config;
+	enum pm_device_state state;
+	uint32_t scl_pin;
+	uint32_t sda_pin;
+
+	scl_pin = nrf_twim_scl_pin_get(config->twim.p_twim);
+	sda_pin = nrf_twim_sda_pin_get(config->twim.p_twim);
+
+	/* disable peripheral if active (required to release SCL/SDA lines) */
+	(void)pm_device_state_get(dev, &state);
+	if (state == PM_DEVICE_STATE_ACTIVE) {
+		nrfx_twim_disable(&config->twim);
+	}
+
+	nrfx_twi_twim_bus_sda_toggle(scl_pin, sda_pin, cycles);
+
+	/* restore peripheral if it was active before */
+	if (state == PM_DEVICE_STATE_ACTIVE) {
+		(void)pinctrl_apply_state(config->pcfg, PINCTRL_STATE_DEFAULT);
+		nrfx_twim_enable(&config->twim);
+	}
+
+	return 0;
 }
 
 int i2c_nrfx_twim_configure(const struct device *dev, uint32_t i2c_config)

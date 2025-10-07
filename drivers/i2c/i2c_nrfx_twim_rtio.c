@@ -118,6 +118,13 @@ static bool i2c_nrfx_twim_rtio_start(const struct device *dev)
 	case RTIO_OP_I2C_RECOVER:
 		(void)i2c_nrfx_twim_recover_bus(dev);
 		return false;
+	case RTIO_OP_I2C_SDA_TOGGLE:
+		(void)i2c_nrfx_twim_sda_toggle(dev, sqe->cycles);
+		/** This request will not generate an event therefore, this
+		 * code immediately submits a CQE in order to unblock
+		 * i2c_rtio_configure.
+		 */
+		return i2c_rtio_complete(ctx, 0);
 	case RTIO_OP_AWAIT:
 		iodev_sqe = CONTAINER_OF(sqe, struct rtio_iodev_sqe, sqe);
 		rtio_iodev_sqe_await_signal(iodev_sqe, i2c_nrfx_twim_rtio_sqe_signaled,
@@ -168,6 +175,14 @@ static int i2c_nrfx_twim_rtio_recover_bus(const struct device *dev)
 	return i2c_rtio_recover(ctx);
 }
 
+static int i2c_nrfx_twim_rtio_sda_toggle(const struct device *dev, uint8_t cycles)
+{
+	const struct i2c_nrfx_twim_rtio_config *config = dev->config;
+	struct i2c_rtio *ctx = config->ctx;
+
+	return i2c_rtio_sda_toggle(ctx, 8);
+}
+
 static void i2c_nrfx_twim_rtio_submit(const struct device *dev, struct rtio_iodev_sqe *iodev_seq)
 {
 	const struct i2c_nrfx_twim_rtio_config *config = dev->config;
@@ -200,6 +215,7 @@ static DEVICE_API(i2c, i2c_nrfx_twim_driver_api) = {
 	.configure = i2c_nrfx_twim_rtio_configure,
 	.transfer = i2c_nrfx_twim_rtio_transfer,
 	.recover_bus = i2c_nrfx_twim_rtio_recover_bus,
+	.sda_toggle = i2c_nrfx_twim_rtio_sda_toggle,
 	.iodev_submit = i2c_nrfx_twim_rtio_submit,
 };
 
