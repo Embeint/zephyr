@@ -144,6 +144,16 @@ static inline bool i2c_rtio_run_sync_start_async(const struct device *dev, struc
 	return true;
 }
 
+/**
+ * @brief Perform I2C bus SDA toggling in a blocking call
+ *
+ * Provides a compatible API for the existing i2c_sda_toggle API, and blocks the caller
+ * until the process completes.
+ *
+ * See i2c_sda_toggle().
+ */
+int i2c_rtio_sda_toggle(struct i2c_rtio *ctx, uint8_t cycles);
+
 #ifdef __cplusplus
 }
 #endif
