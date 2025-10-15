@@ -1613,7 +1613,6 @@ NET_DEVICE_OFFLOAD_INIT(nsos_socket, "nsos_socket",
 
 struct nsos_conn_data {
 	struct k_work_delayable work;
-	struct k_work_delayable idle_work;
 	struct net_if *iface;
 	k_timeout_t connect_delay;
 };
@@ -1624,26 +1623,9 @@ static void nsos_delayed_connect_fn(struct k_work *work)
 {
 	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
 	struct nsos_conn_data *data = CONTAINER_OF(dwork, struct nsos_conn_data, work);
-	struct conn_mgr_conn_binding *const binding = conn_mgr_if_get_binding(data->iface);
 
 	LOG_INF("NSOS: active");
 	net_if_dormant_off(data->iface);
-
-	/* Start the idle timeout */
-	if (binding->idle_timeout > CONN_MGR_IF_NO_TIMEOUT) {
-		k_work_reschedule(&data->idle_work, K_SECONDS(binding->idle_timeout));
-	}
-}
-
-static void nsos_idle_fn(struct k_work *work)
-{
-	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
-	struct nsos_conn_data *data = CONTAINER_OF(dwork, struct nsos_conn_data, idle_work);
-
-	LOG_INF("NSOS: idle");
-	net_if_dormant_on(data->iface);
-
-	net_mgmt_event_notify(NET_EVENT_CONN_IF_IDLE_TIMEOUT, data->iface);
 }
 
 static void nsos_net_if_init(struct conn_mgr_conn_binding *binding)
@@ -1654,7 +1636,6 @@ static void nsos_net_if_init(struct conn_mgr_conn_binding *binding)
 
 	/* Setup connection worker */
 	k_work_init_delayable(&data->work, nsos_delayed_connect_fn);
-	k_work_init_delayable(&data->idle_work, nsos_idle_fn);
 	data->iface = binding->iface;
 
 	/* Set default auto connect state */
@@ -1678,22 +1659,21 @@ static int nsos_net_connect(struct conn_mgr_conn_binding *const binding)
 	return 0;
 }
 
-static void nsos_net_if_used(struct conn_mgr_conn_binding *const binding)
-{
-	struct nsos_conn_data *data = binding->ctx;
-
-	LOG_DBG("NSOS: used");
-	k_work_reschedule(&data->idle_work, K_SECONDS(binding->idle_timeout));
-}
-
 static int nsos_net_if_disconnect(struct conn_mgr_conn_binding *const binding)
 {
 	struct nsos_conn_data *data = binding->ctx;
 
 	LOG_INF("NSOS: dormant");
 	k_work_cancel_delayable(&data->work);
-	k_work_cancel_delayable(&data->idle_work);
 	net_if_dormant_on(binding->iface);
+
+	if (conn_mgr_binding_get_flag(binding, CONN_MGR_IF_PERSISTENT) &&
+	    !conn_mgr_binding_get_flag(binding, CONN_MGR_IF_DISCONNECTING)) {
+		/* Interface marked as persistent, application didn't request the disconnect */
+		LOG_INF("NSOS: reconnecting");
+		k_work_reschedule(&data->work, data->connect_delay);
+	}
+
 	return 0;
 }
 
@@ -1731,7 +1711,6 @@ int nsos_net_if_set_opt(struct conn_mgr_conn_binding *const binding, int optname
 
 static struct conn_mgr_conn_api nsos_conn_mgr_api = {
 	.init = nsos_net_if_init,
-	.used = nsos_net_if_used,
 	.connect = nsos_net_connect,
 	.disconnect = nsos_net_if_disconnect,
 	.get_opt = nsos_net_if_get_opt,

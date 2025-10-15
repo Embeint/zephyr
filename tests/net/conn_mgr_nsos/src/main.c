@@ -162,6 +162,23 @@ ZTEST(conn_mgr_nsos, test_conn_mgr_nsos_idle)
 	zassert_equal(-EAGAIN, k_sem_take(&l4_disconnected, K_MSEC(1900)));
 	zassert_equal(0, k_sem_take(&l4_disconnected, K_MSEC(500)));
 
+	/* Set the interface to persistent */
+	conn_mgr_if_set_flag(iface, CONN_MGR_IF_PERSISTENT, true);
+
+	/* Trigger the connection */
+	zassert_equal(0, conn_mgr_if_connect(iface));
+	zassert_equal(0, k_sem_take(&l4_connected, K_SECONDS(2)));
+
+	/* Interface should disconnect due to idle */
+	zassert_equal(0, k_sem_take(&l4_disconnected, K_MSEC(2100)));
+	/* But it should also come back up automatically */
+	zassert_equal(0, k_sem_take(&l4_connected, K_SECONDS(2)));
+
+	/* Clear the persistent flag, times out and doesn't reconnect */
+	conn_mgr_if_set_flag(iface, CONN_MGR_IF_PERSISTENT, false);
+	zassert_equal(0, k_sem_take(&l4_disconnected, K_MSEC(2100)));
+	zassert_equal(-EAGAIN, k_sem_take(&l4_connected, K_MSEC(2100)));
+
 	/* Cleanup socket */
 	zsock_close(sock);
 }

@@ -53,14 +53,6 @@ struct conn_mgr_conn_api {
 	int (*connect)(struct conn_mgr_conn_binding *const binding);
 
 	/**
-	 * @brief When called, the connectivity implementation should refresh any timeouts
-	 * associated with the interface remaining in idle.
-	 *
-	 * Called by @ref conn_mgr_if_connect.
-	 */
-	void (*used)(struct conn_mgr_conn_binding *const binding);
-
-	/**
 	 * @brief When called, the connectivity implementation should disconnect (disassociate), or
 	 * stop any in-progress attempts to associate to a network, the bound iface pointed to by
 	 * if_conn->iface.
@@ -214,6 +206,9 @@ struct conn_mgr_conn_binding {
 	/** @} */
 
 /** @cond INTERNAL_HIDDEN */
+	/* Internal-use work item for tracking interface idle timeouts */
+	struct k_work_delayable idle_worker;
+
 	/* Internal-use mutex for protecting access to the binding and API functions. */
 	struct k_mutex *mutex;
 /** @endcond */
