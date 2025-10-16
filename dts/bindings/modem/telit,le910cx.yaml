@@ -15,3 +15,10 @@ properties:
   mdm-reset-gpios:
     type: phandle-array
     required: true
+
+  target-speed:
+    type: int
+    default: 921600
+    description:
+      UART baudrate which will be requested using AT commands and to which
+      UART interface will be reconfigured during initialization phase.
