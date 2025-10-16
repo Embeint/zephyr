@@ -18,10 +18,17 @@ MODEM_CELLULAR_COMMON_CHAT_MATCHES();
 MODEM_CHAT_MATCHES_DEFINE(telit_le910cx_le_unsol, MODEM_CELLULAR_COMMON_UNSOL_MATCHES,
 			  MODEM_CHAT_MATCH("#RFSTS", "", le910cx_le_on_rfsts));
 
-MODEM_CHAT_SCRIPT_CMDS_DEFINE(
-	telit_le910cx_le_baudrate_chat_script_cmds, MODEM_CHAT_SCRIPT_CMD_RESP("AT", ok_match),
-	MODEM_CHAT_SCRIPT_CMD_RESP("AT+IPR=" STRINGIFY(CONFIG_MODEM_CELLULAR_NEW_BAUDRATE),
-						       ok_match));
+static uint16_t modem_baudrate_cmd(const uint8_t **request, void *user_data)
+{
+	struct modem_cellular_data *data = (struct modem_cellular_data *)user_data;
+
+	*request = data->target_baudrate_req;
+	return strlen(*request);
+}
+
+MODEM_CHAT_SCRIPT_CMDS_DEFINE(telit_le910cx_le_baudrate_chat_script_cmds,
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT", ok_match),
+			      MODEM_CHAT_SCRIPT_CMD_RESP_FN(modem_baudrate_cmd, ok_match));
 
 MODEM_CHAT_SCRIPT_DEFINE(telit_le910cx_le_baudrate_chat_script,
 			 telit_le910cx_le_baudrate_chat_script_cmds, abort_matches,
@@ -111,6 +118,34 @@ static const struct modem_cellular_vendor_config telit_le910cx_le_vendor = {
 	.shutdown_time_ms = 5000,
 };
 
+static void le910cx_le_on_rfsts(struct modem_chat *chat, char **argv, uint16_t argc,
+				void *user_data)
+{
+	struct modem_cellular_data *data = (struct modem_cellular_data *)user_data;
+	struct cellular_evt_network_status evt = {
+		.status = data->registration_status_lte,
+		.access_tech = data->access_tech,
+	};
+	char *plmn = argv[1];
+
+	if (plmn[1] != '"') {
+		/* MCC and MNC are space separated */
+		evt.cell.lte.mcc = atoi(plmn + 1);
+		evt.cell.lte.mnc = atoi(plmn + 5);
+	}
+	evt.cell.lte.tac = strtol(argv[6], NULL, 16);
+	evt.cell.lte.earfcn = strtol(argv[2], NULL, 10);
+	evt.cell.lte.gci = strtol(argv[11], NULL, 16);
+	evt.cell.lte.phys_cell_id = 0; /* Not part of message */
+	evt.cell.lte.band = strtol(argv[15], NULL, 10);
+	evt.cell.lte.rsrp = strtol(argv[3], NULL, 10);
+	evt.cell.lte.rsrq = strtol(argv[5], NULL, 10);
+
+	modem_cellular_emit_event(data, CELLULAR_EVENT_NETWORK_STATUS_CHANGED, &evt);
+}
+
+#define BAUDRATE_REQ(inst) "AT+IPR=" STRINGIFY(DT_INST_PROP(inst, target_speed))
+
 #define MODEM_CELLULAR_DEVICE_TELIT_LE910CX_LE(inst)                                               \
 	MODEM_DT_INST_PPP_DEFINE(inst, MODEM_CELLULAR_INST_NAME(ppp, inst), NULL, 98, 1500, 128);  \
                                                                                                    \
@@ -118,6 +153,8 @@ static const struct modem_cellular_vendor_config telit_le910cx_le_vendor = {
 		.chat_delimiter = "\r",                                                            \
 		.chat_filter = "\n",                                                               \
 		.ppp = &MODEM_CELLULAR_INST_NAME(ppp, inst),                                       \
+		.target_baudrate_req = BAUDRATE_REQ(inst),                                         \
+		.target_baudrate = DT_INST_PROP(inst, target_speed),                               \
 	};                                                                                         \
                                                                                                    \
 	MODEM_CELLULAR_DEFINE_AND_INIT_USER_PIPES(inst, (user_pipe_0, 3))                          \

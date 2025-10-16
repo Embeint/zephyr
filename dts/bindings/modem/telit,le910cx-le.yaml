@@ -18,3 +18,10 @@ properties:
 
   zephyr,mdm-reset-behavior:
     default: ["toggle_on_recovery", "toggle_on_resume"]
+
+  target-speed:
+    type: int
+    default: 921600
+    description:
+      UART baudrate which will be requested using AT commands and to which
+      UART interface will be reconfigured during initialization phase.

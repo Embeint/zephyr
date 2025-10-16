@@ -12,10 +12,17 @@ MODEM_CELLULAR_COMMON_CHAT_MATCHES();
 
 MODEM_CHAT_MATCHES_DEFINE(u_blox_lara_r6_unsol, MODEM_CELLULAR_COMMON_UNSOL_MATCHES);
 
-MODEM_CHAT_SCRIPT_CMDS_DEFINE(
-	u_blox_lara_r6_set_baudrate_chat_script_cmds, MODEM_CHAT_SCRIPT_CMD_RESP("ATE0", ok_match),
-	MODEM_CHAT_SCRIPT_CMD_RESP("AT+IPR=" STRINGIFY(CONFIG_MODEM_CELLULAR_NEW_BAUDRATE),
-						       ok_match));
+static uint16_t modem_baudrate_cmd(const uint8_t **request, void *user_data)
+{
+	struct modem_cellular_data *data = (struct modem_cellular_data *)user_data;
+
+	*request = data->target_baudrate_req;
+	return strlen(*request);
+}
+
+MODEM_CHAT_SCRIPT_CMDS_DEFINE(u_blox_lara_r6_set_baudrate_chat_script_cmds,
+			      MODEM_CHAT_SCRIPT_CMD_RESP("ATE0", ok_match),
+			      MODEM_CHAT_SCRIPT_CMD_RESP_FN(modem_baudrate_cmd, ok_match));
 
 MODEM_CHAT_SCRIPT_DEFINE(u_blox_lara_r6_set_baudrate_chat_script,
 			 u_blox_lara_r6_set_baudrate_chat_script_cmds, abort_matches,
@@ -101,6 +108,8 @@ static const struct modem_cellular_vendor_config u_blox_lara_r6_vendor = {
 	.shutdown_time_ms = 5000,
 };
 
+#define BAUDRATE_REQ(inst) "AT+IPR=" STRINGIFY(DT_INST_PROP(inst, target_speed))
+
 #define MODEM_CELLULAR_DEVICE_U_BLOX_LARA_R6(inst)                                                 \
 	MODEM_DT_INST_PPP_DEFINE(inst, MODEM_CELLULAR_INST_NAME(ppp, inst), NULL, 98, 1500, 64);   \
                                                                                                    \
@@ -108,6 +117,8 @@ static const struct modem_cellular_vendor_config u_blox_lara_r6_vendor = {
 		.chat_delimiter = "\r",                                                            \
 		.chat_filter = "\n",                                                               \
 		.ppp = &MODEM_CELLULAR_INST_NAME(ppp, inst),                                       \
+		.target_baudrate_req = BAUDRATE_REQ(inst),                                         \
+		.target_baudrate = DT_INST_PROP(inst, target_speed),                               \
 	};                                                                                         \
                                                                                                    \
 	MODEM_CELLULAR_DEFINE_AND_INIT_USER_PIPES(inst, (gnss_pipe, 3), (user_pipe_0, 4))          \
