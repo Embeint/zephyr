@@ -108,6 +108,8 @@ struct modem_cellular_data {
 	struct modem_backend_uart uart_backend;
 	uint8_t uart_backend_receive_buf[CONFIG_MODEM_CELLULAR_UART_BUFFER_SIZES];
 	uint8_t uart_backend_transmit_buf[CONFIG_MODEM_CELLULAR_UART_BUFFER_SIZES];
+	const char *target_baudrate_req;
+	uint32_t target_baudrate;
 	uint32_t original_baudrate;
 
 	/* CMUX */
