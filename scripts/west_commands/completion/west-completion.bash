@@ -1218,6 +1218,29 @@ __comp_west_vscode()
 	esac
 }
 
+__comp_west_zed()
+{
+	local dir_opts="
+		--workspace
+		--build-dir -d
+	"
+
+	all_opts="$dir_opts"
+
+	case "$prev" in
+		$(__west_to_extglob "$dir_opts") )
+			__set_comp_dirs
+			return
+			;;
+	esac
+
+	case "$cur" in
+		-*)
+			__set_comp $all_opts
+			;;
+	esac
+}
+
 __comp_west_cloudgen()
 {
 	local dir_opts="
@@ -1354,6 +1377,7 @@ __comp_west()
 		twister
 		sdk
 		vscode
+		zed
 		cloudgen
 		release-build
 		release-diff

@@ -37,6 +37,7 @@ _west_cmds() {
   'blobs[work with binary blobs]'
   'sdk[manage SDKs]'
   'vscode[generate vscode workspace configuration]'
+  'zed[generate zed workspace configuration]'
   'cloudgen[generate TDF,RPC and KV definitions]'
   'release-build[build an Infuse-IoT application release]'
   'release-flash[flash an Infuse-IoT application release]'
@@ -391,6 +392,14 @@ _west_vscode() {
   local -a opts=(
   '(-d --build-dir)'{-d,--build-dir}'[build directory to use]:build dir:_directories'
   '--workspace[vscode workspace directory]:workspace dir:_directories'
+  )
+  _arguments -S $opts
+}
+
+_west_zed() {
+  local -a opts=(
+  '(-d --build-dir)'{-d,--build-dir}'[build directory to use]:build dir:_directories'
+  '--workspace[zed workspace directory]:workspace dir:_directories'
   )
   _arguments -S $opts
 }
