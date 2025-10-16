@@ -1006,7 +1006,7 @@ static void modem_cellular_set_baudrate_event_handler(struct modem_cellular_data
 	case MODEM_CELLULAR_EVENT_BUS_CLOSED:
 		/* Update UART port baudrate and preserve the original value */
 		data->original_baudrate = modem_cellular_baudrate_update(
-			data, CONFIG_MODEM_CELLULAR_NEW_BAUDRATE);
+			data, data->target_baudrate);
 		break;
 
 	case MODEM_CELLULAR_EVENT_TIMEOUT:
