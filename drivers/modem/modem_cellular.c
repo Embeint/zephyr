@@ -1050,7 +1050,7 @@ static void modem_cellular_set_baudrate_event_handler(struct modem_cellular_data
 	case MODEM_CELLULAR_EVENT_BUS_CLOSED:
 		/* Update UART port baudrate and preserve the original value */
 		data->original_baudrate = modem_cellular_baudrate_update(
-			data, CONFIG_MODEM_CELLULAR_NEW_BAUDRATE);
+			data, data->target_baudrate);
 		break;
 
 	case MODEM_CELLULAR_EVENT_TIMEOUT:
@@ -2459,6 +2459,14 @@ int modem_cellular_init(const struct device *dev)
 	return pm_device_driver_init(dev, modem_cellular_pm_action);
 }
 
+__maybe_unused static uint16_t modem_baudrate_cmd(const uint8_t **request, void *user_data)
+{
+	struct modem_cellular_data *data = (struct modem_cellular_data *)user_data;
+
+	*request = data->target_baudrate_req;
+	return strlen(*request);
+}
+
 /*
  * Every modem uses two custom scripts to initialize the modem and dial out.
  *
@@ -2808,8 +2816,7 @@ MODEM_CHAT_SCRIPT_DEFINE(u_blox_sara_r5_periodic_chat_script,
 #if DT_HAS_COMPAT_STATUS_OKAY(u_blox_lara_r6)
 MODEM_CHAT_SCRIPT_CMDS_DEFINE(u_blox_lara_r6_set_baudrate_chat_script_cmds,
 			      MODEM_CHAT_SCRIPT_CMD_RESP("ATE0", ok_match),
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+IPR="
-					STRINGIFY(CONFIG_MODEM_CELLULAR_NEW_BAUDRATE), ok_match));
+			      MODEM_CHAT_SCRIPT_CMD_RESP_FN(modem_baudrate_cmd, ok_match));
 
 MODEM_CHAT_SCRIPT_DEFINE(u_blox_lara_r6_set_baudrate_chat_script,
 			 u_blox_lara_r6_set_baudrate_chat_script_cmds,
@@ -2939,8 +2946,7 @@ MODEM_CHAT_SCRIPT_DEFINE(swir_hl7800_dial_chat_script, swir_hl7800_dial_chat_scr
 
 MODEM_CHAT_SCRIPT_CMDS_DEFINE(telit_le910cx_baudrate_chat_script_cmds,
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT", ok_match),
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+IPR="
-					STRINGIFY(CONFIG_MODEM_CELLULAR_NEW_BAUDRATE), ok_match));
+			      MODEM_CHAT_SCRIPT_CMD_RESP_FN(modem_baudrate_cmd, ok_match));
 
 MODEM_CHAT_SCRIPT_DEFINE(telit_le910cx_baudrate_chat_script,
 			 telit_le910cx_baudrate_chat_script_cmds, abort_matches,
@@ -3294,6 +3300,8 @@ MODEM_CHAT_SCRIPT_DEFINE(sqn_gm02s_periodic_chat_script,
 		.chat_delimiter = "\r",                                                            \
 		.chat_filter = "\n",                                                               \
 		.ppp = &MODEM_CELLULAR_INST_NAME(ppp, inst),                                       \
+		.target_baudrate_req = "AT+IPR=" STRINGIFY(DT_INST_PROP(inst, target_speed)),	   \
+		.target_baudrate = DT_INST_PROP(inst, target_speed),                               \
 	};                                                                                         \
                                                                                                    \
 	MODEM_CELLULAR_DEFINE_AND_INIT_USER_PIPES(inst,                                            \
@@ -3334,6 +3342,8 @@ MODEM_CHAT_SCRIPT_DEFINE(sqn_gm02s_periodic_chat_script,
 		.chat_delimiter = "\r",                                                            \
 		.chat_filter = "\n",                                                               \
 		.ppp = &MODEM_CELLULAR_INST_NAME(ppp, inst),                                       \
+		.target_baudrate_req = "AT+IPR=" STRINGIFY(DT_INST_PROP(inst, target_speed)),	   \
+		.target_baudrate = DT_INST_PROP(inst, target_speed),                               \
 	};                                                                                         \
                                                                                                    \
 	MODEM_CELLULAR_DEFINE_AND_INIT_USER_PIPES(inst,                                            \
