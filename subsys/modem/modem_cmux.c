@@ -1305,6 +1305,7 @@ static void modem_cmux_dlci_open_handler(struct k_work *item)
 		.data_len = 0,
 	};
 
+	LOG_DBG("Opening: %d", dlci->dlci_address);
 	modem_cmux_transmit_cmd_frame(dlci->cmux, &frame);
 	modem_work_schedule(&dlci->open_work, MODEM_CMUX_T1_TIMEOUT);
 }
@@ -1334,6 +1335,7 @@ static void modem_cmux_dlci_close_handler(struct k_work *item)
 		.data_len = 0,
 	};
 
+	LOG_DBG("Closing: %d", dlci->dlci_address);
 	modem_cmux_transmit_cmd_frame(cmux, &frame);
 	modem_work_schedule(&dlci->close_work, MODEM_CMUX_T1_TIMEOUT);
 }
