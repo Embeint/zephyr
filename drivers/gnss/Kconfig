@@ -89,6 +89,7 @@ rsource "Kconfig.emul"
 rsource "Kconfig.generic"
 rsource "Kconfig.luatos_air530z"
 rsource "Kconfig.quectel_lcx6g"
+rsource "Kconfig.telit_le910cx"
 rsource "u_blox/Kconfig"
 # zephyr-keep-sorted-stop
 
