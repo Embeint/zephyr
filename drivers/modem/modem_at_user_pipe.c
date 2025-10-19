@@ -22,6 +22,7 @@ MODEM_PIPELINK_DT_DECLARE(AT_UTIL_MODEM_NODE, AT_UTIL_PIPELINK_NAME);
 static struct modem_pipelink *at_util_pipelink =
 	MODEM_PIPELINK_DT_GET(AT_UTIL_MODEM_NODE, AT_UTIL_PIPELINK_NAME);
 
+static struct k_mutex at_util_pipe_access;
 static struct k_work at_util_open_pipe_work;
 static struct modem_chat *at_util_chat;
 static atomic_t at_util_state;
@@ -42,7 +43,6 @@ static void at_util_pipe_callback(struct modem_pipe *pipe, enum modem_pipe_event
 		LOG_INF("pipe closed");
 		atomic_clear_bit(&at_util_state, AT_UTIL_STATE_OPENED_BIT);
 		atomic_clear_bit(&at_util_state, AT_UTIL_STATE_PIPE_AT_ECHO_DISABLED_BIT);
-		modem_at_user_pipe_release();
 		break;
 	default:
 		break;
@@ -87,16 +87,24 @@ MODEM_CHAT_SCRIPT_CMDS_DEFINE(
 MODEM_CHAT_SCRIPT_DEFINE(ate_disable_script, ate_disable_script_cmds, abort_matches, NULL, 1);
 #endif /* CONFIG_MODEM_CMUX_DLCI_AT_ECHO_DEDICATED */
 
-int modem_at_user_pipe_claim(struct modem_chat *chat)
+int modem_at_user_pipe_claim(struct modem_chat *chat, k_timeout_t timeout)
 {
 	struct modem_pipe *pipe = modem_pipelink_get_pipe(at_util_pipelink);
 
 	if (!atomic_test_bit(&at_util_state, AT_UTIL_STATE_OPENED_BIT)) {
+		/* No expectation the pipe will become available in any reasonable timeframe */
 		return -EPERM;
 	}
 
-	if (atomic_test_and_set_bit(&at_util_state, AT_UTIL_STATE_PIPE_CLAIMED_BIT)) {
+	/* Wait until the pipe is available */
+	if (k_mutex_lock(&at_util_pipe_access, timeout) < 0) {
 		return -EBUSY;
+	}
+
+	if (!atomic_test_bit(&at_util_state, AT_UTIL_STATE_OPENED_BIT)) {
+		/* Pipe is available but underlying channel closed while waiting */
+		k_mutex_unlock(&at_util_pipe_access);
+		return -EPERM;
 	}
 
 	__ASSERT_NO_MSG(at_util_chat == NULL);
@@ -116,16 +124,17 @@ int modem_at_user_pipe_claim(struct modem_chat *chat)
 
 void modem_at_user_pipe_release(void)
 {
-	if (atomic_test_and_clear_bit(&at_util_state, AT_UTIL_STATE_PIPE_CLAIMED_BIT)) {
-		modem_chat_release(at_util_chat);
-		at_util_chat = NULL;
-		LOG_DBG("chat released");
-	}
+	__ASSERT_NO_MSG(at_util_chat != NULL);
+	modem_chat_release(at_util_chat);
+	at_util_chat = NULL;
+	LOG_DBG("chat released");
+	k_mutex_unlock(&at_util_pipe_access);
 }
 
 int modem_at_user_pipe_init(void)
 {
 	/* Initialise workers and setup callbacks */
+	k_mutex_init(&at_util_pipe_access);
 	k_work_init(&at_util_open_pipe_work, at_util_open_pipe_handler);
 	modem_pipelink_attach(at_util_pipelink, at_util_pipelink_callback, NULL);
 	return 0;
