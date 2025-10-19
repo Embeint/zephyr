@@ -3225,7 +3225,8 @@ MODEM_CHAT_SCRIPT_DEFINE(sqn_gm02s_periodic_chat_script,
 	};                                                                                         \
                                                                                                    \
 	MODEM_CELLULAR_DEFINE_AND_INIT_USER_PIPES(inst,                                            \
-						  (user_pipe_0, 3))                                \
+						  (user_pipe_0, 3),                                \
+						  (gnss_pipe, 4))                                  \
                                                                                                    \
 	MODEM_CELLULAR_DEFINE_INSTANCE(inst, 1500, 250, 30000, 5000, false,                        \
 				       &telit_le910cx_baudrate_chat_script,                        \

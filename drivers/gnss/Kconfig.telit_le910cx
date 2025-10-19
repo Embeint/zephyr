@@ -1,0 +1,15 @@
+# Copyright (c) 2025 Embeint Pty Ltd
+# SPDX-License-Identifier: Apache-2.0
+
+config GNSS_TELIT_LE910CX
+	bool "Telit LE910CX GNSS modem driver"
+	default y
+	depends on DT_HAS_TELIT_LE910CX_ENABLED
+	depends on DT_HAS_TELIT_LE910CX_GNSS_ENABLED
+	select MODEM_MODULES
+	select MODEM_CHAT
+	select MODEM_PIPE
+	select MODEM_AT_USER_PIPE
+	select GNSS_NMEA0183
+	help
+	  Enable Telit LE910CX GNSS modem driver.
