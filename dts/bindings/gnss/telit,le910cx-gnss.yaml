@@ -1,0 +1,33 @@
+# Copyright(c) 2025 Embeint Pty Ltd
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Telit LE910Cx GNSS Modem
+
+  Expects to be a child node of a "telit,le910c1tx" modem. Commands are sent
+  over the AT user pipe, so the modem node must also be the "modem" alias.
+  For example:
+
+    aliases {
+      modem = &telit_le910c1;
+    };
+
+    telit_le910c1: telit_le910c1 {
+      compatible = "telit,le910c1tx";
+
+      telit_le910c1_gnss: telit_le910c1_gnss {
+        compatible = "telit,le910cx-gnss";
+      };
+    };
+
+compatible: "telit,le910cx-gnss"
+
+include: base.yaml
+
+properties:
+  active-antenna:
+    type: boolean
+    description:
+      External LNA support should be enabled. If specified, the RF receiver is
+      in low gain mode, suitable for use with active antennas. If not specified,
+      the RF receiver is in high-gain mode, suitable for passive antennas.

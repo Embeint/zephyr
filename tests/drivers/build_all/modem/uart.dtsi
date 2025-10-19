@@ -178,3 +178,14 @@ test_quectel_bg770: quectel_bg770 {
 	mdm-power-gpios = <&test_gpio 0 0>;
 	mdm-reset-gpios = <&test_gpio 0 0>;
 };
+
+test_telit_le910c1tx: telit_le910c1tx {
+	compatible = "telit,le910c1tx";
+
+	mdm-power-gpios = <&test_gpio 0 0>;
+	mdm-reset-gpios = <&test_gpio 0 0>;
+
+	test_telit_le910c1tx_gnss: telit_le910c1tx_gnss {
+		compatible = "telit,le910cx-gnss";
+	};
+};

@@ -1,0 +1,11 @@
+/*
+ * Copyright (c) 2026 Embeint Inc
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+	aliases {
+		modem = &test_telit_le910c1tx;
+	};
+};
