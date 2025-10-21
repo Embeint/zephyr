@@ -345,6 +345,13 @@ static int ppp_enable(struct net_if *iface, bool state)
 	return ret;
 }
 
+uint32_t ppp_peer_async_control_character_map(struct net_if *iface)
+{
+	struct ppp_context *ctx = net_if_l2_data(iface);
+
+	return ctx->lcp.peer_options.async_map;
+}
+
 NET_L2_INIT(PPP_L2, ppp_recv, ppp_send, ppp_enable, ppp_flags);
 
 #if defined(CONFIG_NET_SHELL)
