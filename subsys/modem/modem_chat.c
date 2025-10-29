@@ -209,7 +209,16 @@ static void modem_chat_script_next(struct modem_chat *chat, bool initial)
 
 	/* Continue script */
 	if (modem_chat_script_chat_has_request(chat)) {
-		LOG_DBG("sending: %.*s", script_chat->request_size, script_chat->request);
+		const uint8_t *request_part;
+		uint16_t request_size;
+
+		if (script_chat->request_size == MODEM_CHAT_REQUEST_FN_LEN) {
+			request_size = script_chat->request_fn(&request_part, chat->user_data);
+		} else {
+			request_part = script_chat->request;
+			request_size = script_chat->request_size;
+		}
+		LOG_DBG("sending: %.*s", request_size, request_part);
 		modem_chat_script_clear_response_matches(chat);
 		modem_chat_script_send(chat);
 	} else if (modem_chat_script_chat_has_matches(chat)) {
