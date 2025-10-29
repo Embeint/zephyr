@@ -283,37 +283,39 @@ static bool modem_chat_send_script_request_part(struct modem_chat *chat)
 {
 	const struct modem_chat_script_chat *script_chat =
 		&chat->script->script_chats[chat->script_chat_it];
-
-	const uint8_t *request_part;
-	uint16_t request_size;
-	uint16_t request_part_size;
+	uint32_t total_size;
+	const uint8_t *buf;
+	size_t buf_len;
+	const uint8_t *extra_buf = NULL;
+	size_t extra_len = 0;
 	int ret;
 
-	switch (chat->script_send_state) {
-	case MODEM_CHAT_SCRIPT_SEND_STATE_REQUEST:
-		if (script_chat->request_size == MODEM_CHAT_REQUEST_FN_LEN) {
-			request_size = script_chat->request_fn(&request_part, chat->user_data);
-			request_part += chat->script_send_pos;
-		} else {
-			request_part = (uint8_t *)(&script_chat->request[chat->script_send_pos]);
-			request_size = script_chat->request_size;
-		}
-		break;
+	/* Get the actual request */
+	if (script_chat->request_size == MODEM_CHAT_REQUEST_FN_LEN) {
+		buf_len = script_chat->request_fn(&buf, chat->user_data);
+	} else {
+		buf = script_chat->request;
+		buf_len = script_chat->request_size;
+	}
+	total_size = buf_len + chat->delimiter_size;
 
-	case MODEM_CHAT_SCRIPT_SEND_STATE_DELIMITER:
-		request_part = &chat->delimiter[chat->script_send_pos];
-		request_size = chat->delimiter_size;
-		break;
-
-	default:
-		return false;
+	if (chat->script_send_pos < buf_len) {
+		/* Still sending the request */
+		buf += chat->script_send_pos;
+		buf_len -= chat->script_send_pos;
+		extra_buf = chat->delimiter;
+		extra_len = chat->delimiter_size;
+	} else {
+		/* Purely into the delimiter */
+		buf = &chat->delimiter[chat->script_send_pos - script_chat->request_size];
+		buf_len = total_size - chat->script_send_pos;
 	}
 
-	request_part_size = request_size - chat->script_send_pos;
-	ret = modem_pipe_transmit(chat->pipe, request_part, request_part_size);
+	ret = modem_pipe_transmit_double(chat->pipe, buf, buf_len, extra_buf, extra_len);
 	if (ret < 1) {
 		if (ret < 0) {
-			LOG_ERR("Failed to %s %u bytes. (%d)", "transmit", request_part_size, ret);
+			LOG_ERR("Failed to %s %u bytes. (%d)", "transmit", buf_len + extra_len,
+				ret);
 		}
 		return false;
 	}
@@ -321,7 +323,7 @@ static bool modem_chat_send_script_request_part(struct modem_chat *chat)
 	chat->script_send_pos += (uint16_t)ret;
 
 	/* Return true if all data was sent */
-	return request_size <= chat->script_send_pos;
+	return total_size <= chat->script_send_pos;
 }
 
 static void modem_chat_script_send_handler(struct k_work *item)
@@ -332,26 +334,17 @@ static void modem_chat_script_send_handler(struct k_work *item)
 		return;
 	}
 
-	switch (chat->script_send_state) {
-	case MODEM_CHAT_SCRIPT_SEND_STATE_IDLE:
+	if (chat->script_send_state == MODEM_CHAT_SCRIPT_SEND_STATE_IDLE) {
 		return;
-
-	case MODEM_CHAT_SCRIPT_SEND_STATE_REQUEST:
-		if (!modem_chat_send_script_request_part(chat)) {
-			return;
-		}
-
-		modem_chat_set_script_send_state(chat, MODEM_CHAT_SCRIPT_SEND_STATE_DELIMITER);
-		__fallthrough;
-
-	case MODEM_CHAT_SCRIPT_SEND_STATE_DELIMITER:
-		if (!modem_chat_send_script_request_part(chat)) {
-			return;
-		}
-
-		modem_chat_set_script_send_state(chat, MODEM_CHAT_SCRIPT_SEND_STATE_IDLE);
-		break;
 	}
+
+	if (!modem_chat_send_script_request_part(chat)) {
+		/* Request still in progress */
+		return;
+	}
+
+	/* Request transmission complete */
+	modem_chat_set_script_send_state(chat, MODEM_CHAT_SCRIPT_SEND_STATE_IDLE);
 
 	if (modem_chat_script_chat_has_matches(chat)) {
 		modem_chat_script_set_response_matches(chat);
