@@ -65,12 +65,16 @@ static int modem_backend_tty_open(void *data)
 	return 0;
 }
 
-static int modem_backend_tty_transmit(void *data, const uint8_t *buf, size_t size)
+static int modem_backend_tty_transmit(void *data, const uint8_t *buf, size_t size,
+				      const uint8_t *extra_buf, size_t extra_size)
 {
 	struct modem_backend_tty *backend = (struct modem_backend_tty *)data;
 	int ret;
 
 	ret = nsi_host_write(backend->tty_fd, buf, size);
+	if ((ret == size) && (extra_size > 0)) {
+		ret += nsi_host_write(backend->tty_fd, buf, size);
+	}
 	modem_pipe_notify_transmit_idle(&backend->pipe);
 	return ret;
 }
