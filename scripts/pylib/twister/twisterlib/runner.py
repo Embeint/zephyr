@@ -2028,16 +2028,33 @@ class TwisterRunner:
 
     def process_tasks(
             self, processing_queue: deque, processing_ready: dict[str, TestInstance],
-            lock, results: ExecutionCounter
+            lock, results: ExecutionCounter, job_idx: int
     ) -> bool:
         while True:
             try:
-                task = processing_queue.pop()
+                with lock:
+                    task = processing_queue.pop()
+                    instance: TestInstance = task['test']
+                    process_sleep = False
+
+                    if getattr(instance.testsuite, 'run_sequential', False) and job_idx != 0:
+                        # Force only job 0 to run all steps so that it will never have an
+                        # opportunity to exit early due to an empty processing queue
+
+                        # Put the task back on the queue for job 0 to handle
+                        processing_queue.appendleft(task)
+
+                        # Sleep this process (outside the lock context)
+                        process_sleep = True
+
+                if process_sleep:
+                    # Sleep for a short duration to prevent a queue full of sequential runs from
+                    # busy looping
+                    time.sleep(0.5)
+                    continue
             except IndexError:
                 break
             else:
-                instance: TestInstance = task['test']
-
                 if not self.are_required_apps_processed(
                     instance, processing_queue, processing_ready, task
                 ):
@@ -2059,13 +2076,13 @@ class TwisterRunner:
         return True
 
     def pipeline_mgr(self, processing_queue: deque, processing_ready: dict[str, TestInstance],
-                     lock, results: ExecutionCounter):
+                     lock, results: ExecutionCounter, mgr_idx: int):
         try:
             if sys.platform == 'linux':
                 with self.jobserver.get_job():
-                    return self.process_tasks(processing_queue, processing_ready, lock, results)
+                    return self.process_tasks(processing_queue, processing_ready, lock, results, mgr_idx)
             else:
-                return self.process_tasks(processing_queue, processing_ready, lock, results)
+                return self.process_tasks(processing_queue, processing_ready, lock, results, mgr_idx)
         except Exception as e:
             logger.error(f"General exception: {e}\n{traceback.format_exc()}")
             sys.exit(1)
@@ -2079,9 +2096,9 @@ class TwisterRunner:
 
         processes = []
 
-        for _ in range(self.jobs):
+        for job_idx in range(self.jobs):
             p = Process(target=self.pipeline_mgr,
-                        args=(processing_queue, processing_ready, lock, self.results, ))
+                        args=(processing_queue, processing_ready, lock, self.results, job_idx, ))
             processes.append(p)
             p.start()
         logger.debug(f"Launched {self.jobs} jobs")
