@@ -84,6 +84,9 @@ schema;scenario-schema:
               required: true
             "platform":
               type: str
+    "run_sequential":
+      type: bool
+      required: false
     "required_snippets":
       type: seq
       required: false
