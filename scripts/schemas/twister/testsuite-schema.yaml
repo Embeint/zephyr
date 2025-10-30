@@ -60,6 +60,8 @@ $defs:
         type: array
         items:
           type: string
+      run_sequential:
+        type: boolean
       filter:
         type: string
       levels:
