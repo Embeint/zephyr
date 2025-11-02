@@ -1089,6 +1089,9 @@ struct net_buf_pool {
 	/** Number of uninitialized buffers */
 	uint16_t uninit_count;
 
+	/** Number of free buffers */
+	uint16_t free_count;
+
 	/** Size of user data allocated to this pool */
 	uint8_t user_data_size;
 
@@ -1128,6 +1131,7 @@ struct net_buf_pool {
 		.lock = { },                                                       \
 		.buf_count = _count,                                               \
 		.uninit_count = _count,                                            \
+		.free_count = _count,                                              \
 		.user_data_size = _ud_size,                                        \
 		NET_BUF_POOL_USAGE_INIT(_pool, _count)                             \
 		.destroy = _destroy,                                               \
@@ -1371,6 +1375,19 @@ struct net_buf_pool *net_buf_pool_get(int id);
  * @return Zero-based index for the buffer.
  */
 int net_buf_id(const struct net_buf *buf);
+
+/**
+ * @brief Get the number of buffers currently free in a pool.
+ *
+ * Note that the number of free buffers might already have changed by the time this
+ * function returns if other threads are also allocating or freeing buffers from the
+ * pool.
+ *
+ * @param pool Which pool to check the number of free buffers
+ *
+ * @return Number of buffers currently free in the pool
+ */
+int net_buf_num_free(struct net_buf_pool *pool);
 
 /**
  * @brief Allocate a new fixed buffer from a pool.

@@ -241,6 +241,18 @@ static uint8_t *data_ref(struct net_buf *buf, uint8_t *data)
 	return pool->alloc->cb->ref(buf, data);
 }
 
+int net_buf_num_free(struct net_buf_pool *pool)
+{
+	int num_free = 0;
+
+	__ASSERT_NO_MSG(pool);
+
+	K_SPINLOCK(&pool->lock) {
+		num_free = pool->free_count;
+	}
+	return num_free;
+}
+
 #if defined(CONFIG_NET_BUF_LOG)
 struct net_buf *net_buf_alloc_len_debug(struct net_buf_pool *pool, size_t size,
 					k_timeout_t timeout, const char *func,
@@ -326,6 +338,9 @@ struct net_buf *net_buf_alloc_len(struct net_buf_pool *pool, size_t size,
 
 success:
 	NET_BUF_DBG("allocated buf %p", buf);
+	K_SPINLOCK(&pool->lock) {
+		pool->free_count--;
+	}
 
 	if (size) {
 		__maybe_unused size_t req_size = size;
@@ -465,6 +480,9 @@ void net_buf_unref(struct net_buf *buf)
 		buf->frags = NULL;
 
 		pool = net_buf_pool_get(buf->pool_id);
+		K_SPINLOCK(&pool->lock) {
+			pool->free_count++;
+		}
 
 #if defined(CONFIG_NET_BUF_POOL_USAGE)
 		atomic_inc(&pool->avail_count);
