@@ -7,13 +7,13 @@
 #include <string.h>
 #include <zephyr/llext/symbol.h>
 
-EXPORT_SYMBOL(strcpy);
-EXPORT_SYMBOL(strncpy);
-EXPORT_SYMBOL(strlen);
-EXPORT_SYMBOL(strcmp);
-EXPORT_SYMBOL(strncmp);
-EXPORT_SYMBOL(memcmp);
-EXPORT_SYMBOL(memcpy);
-EXPORT_SYMBOL(memset);
+EXPORT_GROUP_SYMBOL(LIBC, strcpy);
+EXPORT_GROUP_SYMBOL(LIBC, strncpy);
+EXPORT_GROUP_SYMBOL(LIBC, strlen);
+EXPORT_GROUP_SYMBOL(LIBC, strcmp);
+EXPORT_GROUP_SYMBOL(LIBC, strncmp);
+EXPORT_GROUP_SYMBOL(LIBC, memcmp);
+EXPORT_GROUP_SYMBOL(LIBC, memcpy);
+EXPORT_GROUP_SYMBOL(LIBC, memset);
 
 #include <zephyr/syscall_exports_llext.c>
