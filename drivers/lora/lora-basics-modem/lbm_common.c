@@ -424,7 +424,7 @@ release:
 	return ret;
 }
 
-int lbm_lora_recv_async(const struct device *dev, lora_recv_cb cb, void *user_data)
+int lbm_lora_recv_async(const struct device *dev, const struct lora_recv_async_callbacks *cb)
 {
 	const struct lbm_lora_config_common *config = dev->config;
 	struct lbm_lora_data_common *data = dev->data;
@@ -439,6 +439,10 @@ int lbm_lora_recv_async(const struct device *dev, lora_recv_cb cb, void *user_da
 		return 0;
 	}
 
+	if (cb->recv == NULL) {
+		return -EINVAL;
+	}
+
 	/* Ensure available */
 	if (!lbm_modem_acquire(dev)) {
 		return -EBUSY;
@@ -449,8 +453,8 @@ int lbm_lora_recv_async(const struct device *dev, lora_recv_cb cb, void *user_da
 	data->modem_mode = MODE_RX_ASYNC;
 
 	/* Store user state */
-	data->rx_state.async.rx_cb = cb;
-	data->rx_state.async.user_data = user_data;
+	data->rx_state.async.rx_cb = cb->recv;
+	data->rx_state.async.user_data = cb->user_data;
 
 	/* Clear any stale IRQ flags from the previous operation, then re-arm
 	 * DIO1 so packet-received interrupts are delivered.
@@ -610,8 +614,8 @@ static void op_done_async_rx(const struct device *dev)
 		       : pkt_status.signal_rssi_pkt_in_dbm;
 
 	/* Run the user callback */
-	data->rx_state.async.rx_cb(dev, rx_buffer, size, rssi, pkt_status.snr_pkt_in_db,
-				   data->rx_state.async.user_data);
+	data->rx_state.async.recv(dev, rx_buffer, size, rssi, pkt_status.snr_pkt_in_db,
+				  data->rx_state.async.user_data);
 }
 
 static void op_done_work_handler(struct k_work *work)
