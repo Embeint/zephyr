@@ -28,7 +28,8 @@ DEFINE_FAKE_VALUE_FUNC(int, fake_lora_send_async, const struct device *, uint8_t
 DEFINE_FAKE_VALUE_FUNC(int, fake_lora_recv, const struct device *, uint8_t *, uint8_t, k_timeout_t,
 		       int16_t *, int8_t *);
 
-DEFINE_FAKE_VALUE_FUNC(int, fake_lora_recv_async, const struct device *, lora_recv_cb, void *);
+DEFINE_FAKE_VALUE_FUNC(int, fake_lora_recv_async, const struct device *,
+		       const struct lora_recv_async_callbacks *);
 
 #ifdef CONFIG_LORA_FAKE_OPTIONAL_API
 DEFINE_FAKE_VALUE_FUNC(int, fake_lora_cad, const struct device *, k_timeout_t);

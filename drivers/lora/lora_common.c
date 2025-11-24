@@ -20,6 +20,9 @@ static void lora_ed_discard(const struct device *dev, uint8_t *data, uint16_t si
 
 int lora_energy_detect(const struct device *dev, int16_t rssi_threshold, k_timeout_t duration)
 {
+	static const struct lora_recv_async_callbacks discard_cb = {
+		.recv = lora_ed_discard,
+	};
 	k_timepoint_t expiry;
 	bool busy = false;
 	int ret, stop;
@@ -28,7 +31,7 @@ int lora_energy_detect(const struct device *dev, int16_t rssi_threshold, k_timeo
 		return -EINVAL;
 	}
 
-	ret = lora_recv_async(dev, lora_ed_discard, NULL);
+	ret = lora_recv_async(dev, &discard_cb);
 	if (ret < 0) {
 		return ret;
 	}
@@ -53,7 +56,7 @@ int lora_energy_detect(const struct device *dev, int16_t rssi_threshold, k_timeo
 		k_sleep(K_USEC(CONFIG_LORA_ENERGY_DETECT_SAMPLE_INTERVAL_US));
 	}
 
-	stop = lora_recv_async(dev, NULL, NULL);
+	stop = lora_recv_async(dev, NULL);
 	if (stop < 0) {
 		return stop;
 	}

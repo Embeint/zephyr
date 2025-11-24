@@ -56,7 +56,8 @@ DECLARE_FAKE_VALUE_FUNC(int, fake_lora_recv, const struct device *, uint8_t *, u
 			int16_t *, int8_t *);
 
 /** @fake_of{lora_driver_api::recv_async} */
-DECLARE_FAKE_VALUE_FUNC(int, fake_lora_recv_async, const struct device *, lora_recv_cb, void *);
+DECLARE_FAKE_VALUE_FUNC(int, fake_lora_recv_async, const struct device *,
+		       const struct lora_recv_async_callbacks *);
 
 #if defined(CONFIG_LORA_FAKE_OPTIONAL_API) || defined(__DOXYGEN__)
 /** @fake_of{lora_driver_api::cad} */
