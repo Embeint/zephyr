@@ -1222,6 +1222,10 @@ static int sx126x_lora_recv_async(const struct device *dev,
 		return -EINVAL;
 	}
 
+	if (cb->preamble_detected || cb->header_valid) {
+		LOG_DBG("Only the `recv` callback supported");
+	}
+
 	if (!atomic_cas(&data->state, SX126X_REST_STATE, SX126X_STATE_RX)) {
 		LOG_ERR("Busy");
 		k_mutex_unlock(&data->lock);
