@@ -29,7 +29,7 @@ int sx12xx_lora_send_async(const struct device *dev, uint8_t *data,
 int sx12xx_lora_recv(const struct device *dev, uint8_t *data, uint8_t size,
 		     k_timeout_t timeout, int16_t *rssi, int8_t *snr);
 
-int sx12xx_lora_recv_async(const struct device *dev, lora_recv_cb cb, void *user_data);
+int sx12xx_lora_recv_async(const struct device *dev, const struct lora_recv_async_callbacks *cb);
 
 uint32_t sx12xx_airtime(const struct device *dev, uint32_t data_len);
 
