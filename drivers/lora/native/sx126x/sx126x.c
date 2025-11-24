@@ -907,7 +907,7 @@ static int sx126x_lora_recv(const struct device *dev, uint8_t *data_buf,
 }
 
 static int sx126x_lora_recv_async(const struct device *dev,
-				  lora_recv_cb cb, void *user_data)
+				  const struct lora_recv_async_callbacks *cb)
 {
 	struct sx126x_data *data = dev->data;
 	int ret;
@@ -945,8 +945,8 @@ static int sx126x_lora_recv_async(const struct device *dev,
 		return ret;
 	}
 
-	data->rx_cb = cb;
-	data->rx_cb_user_data = user_data;
+	data->rx_cb = cb->recv;
+	data->rx_cb_user_data = cb->user_data;
 
 	/* Set packet parameters */
 	ret = sx126x_set_packet_params(dev,
