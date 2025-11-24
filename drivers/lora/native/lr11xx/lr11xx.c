@@ -1123,6 +1123,10 @@ static int lr11xx_lora_recv_async(const struct device *dev,
 		return -EINVAL;
 	}
 
+	if (cb->preamble_detected || cb->header_valid) {
+		LOG_DBG("Only the `recv` callback supported");
+	}
+
 	if (!atomic_cas(&data->state, LR11XX_REST_STATE, LR11XX_STATE_RX)) {
 		LOG_ERR("Busy");
 		k_mutex_unlock(&data->lock);

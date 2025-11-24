@@ -305,6 +305,16 @@ struct lora_modem_config {
  */
 
 /**
+ * @typedef lora_event_cb()
+ * @brief Callback API for receiving events asynchronously
+ *
+ * @param dev       LoRa device
+ * @param user_data User data from @ref lora_recv_async_callbacks
+ */
+typedef void (*lora_event_cb)(const struct device *dev, void *user_data);
+
+/**
+ * @typedef lora_recv_cb()
  * @brief Callback API for receiving data asynchronously
  *
  * @see lora_recv() for argument descriptions.
@@ -373,6 +383,10 @@ typedef int (*lora_api_recv)(const struct device *dev, uint8_t *data,
 
 /** Callbacks for asynchronous reception */
 struct lora_recv_async_callbacks {
+	/** Callback when a packet preamble is detected */
+	lora_event_cb preamble_detected;
+	/** Callback when a valid LoRa header is received */
+	lora_event_cb header_valid;
 	/** Callback when a packet is received */
 	lora_recv_cb recv;
 	/** User data provided to callbacks */
