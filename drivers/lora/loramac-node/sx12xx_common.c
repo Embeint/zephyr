@@ -411,7 +411,7 @@ int sx12xx_lora_recv(const struct device *dev, uint8_t *data, uint8_t size,
 	return size;
 }
 
-int sx12xx_lora_recv_async(const struct device *dev, lora_recv_cb cb, void *user_data)
+int sx12xx_lora_recv_async(const struct device *dev, const struct lora_recv_async_callbacks *cb)
 {
 	/* Cancel ongoing reception */
 	if (cb == NULL) {
@@ -422,14 +422,18 @@ int sx12xx_lora_recv_async(const struct device *dev, lora_recv_cb cb, void *user
 		return 0;
 	}
 
+	if (cb->recv == NULL) {
+		return -EINVAL;
+	}
+
 	/* Ensure available */
 	if (!modem_acquire(&dev_data)) {
 		return -EBUSY;
 	}
 
 	/* Store parameters */
-	dev_data.async_rx_cb = cb;
-	dev_data.async_user_data = user_data;
+	dev_data.async_rx_cb = cb->recv;
+	dev_data.async_user_data = cb->user_data;
 
 	/* Start reception */
 	Radio.SetMaxPayloadLength(dev_data.modem, 255);

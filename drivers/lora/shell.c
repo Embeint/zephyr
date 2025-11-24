@@ -492,6 +492,9 @@ static void lora_shell_discard(const struct device *dev, uint8_t *data, uint16_t
 
 static int cmd_lora_rssi(const struct shell *sh, size_t argc, char **argv)
 {
+	static const struct lora_recv_async_callbacks discard_cb = {
+		.recv = lora_shell_discard,
+	};
 	const struct device *dev;
 	int16_t rssi;
 	int ret, stop;
@@ -504,7 +507,7 @@ static int cmd_lora_rssi(const struct shell *sh, size_t argc, char **argv)
 		return -ENODEV;
 	}
 
-	ret = lora_recv_async(dev, lora_shell_discard, NULL);
+	ret = lora_recv_async(dev, &discard_cb);
 	if (ret < 0) {
 		shell_error(sh, "Failed to enter receive mode: %i", ret);
 		return ret;
@@ -514,7 +517,7 @@ static int cmd_lora_rssi(const struct shell *sh, size_t argc, char **argv)
 
 	ret = lora_rssi(dev, &rssi);
 
-	stop = lora_recv_async(dev, NULL, NULL);
+	stop = lora_recv_async(dev, NULL);
 	if (stop < 0) {
 		shell_error(sh, "Failed to leave receive mode: %i", stop);
 		return stop;

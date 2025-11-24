@@ -1098,7 +1098,7 @@ static int lr11xx_lora_recv(const struct device *dev, uint8_t *data_buf,
 }
 
 static int lr11xx_lora_recv_async(const struct device *dev,
-				  lora_recv_cb cb, void *user_data)
+				  const struct lora_recv_async_callbacks *cb)
 {
 	struct lr11xx_data *data = dev->data;
 	int ret;
@@ -1136,8 +1136,8 @@ static int lr11xx_lora_recv_async(const struct device *dev,
 		return ret;
 	}
 
-	data->rx_cb = cb;
-	data->rx_cb_user_data = user_data;
+	data->rx_cb = cb->recv;
+	data->rx_cb_user_data = cb->user_data;
 
 	/* Set packet parameters */
 	ret = lr11xx_set_packet_params(dev,
