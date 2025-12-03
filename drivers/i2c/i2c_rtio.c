@@ -286,6 +286,7 @@ int i2c_rtio_sda_toggle(struct i2c_rtio *ctx, uint8_t cycles)
 	}
 
 	sqe->op = RTIO_OP_I2C_SDA_TOGGLE;
+	sqe->flags = 0;
 	sqe->iodev = iodev;
 	sqe->cycles = cycles;
 
