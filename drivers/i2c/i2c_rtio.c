@@ -213,6 +213,7 @@ int i2c_rtio_configure(struct i2c_rtio *ctx, uint32_t i2c_config)
 	}
 
 	sqe->op = RTIO_OP_I2C_CONFIGURE;
+	sqe->flags = 0;
 	sqe->iodev = iodev;
 	sqe->i2c_config = i2c_config;
 
@@ -245,6 +246,7 @@ int i2c_rtio_recover(struct i2c_rtio *ctx)
 	}
 
 	sqe->op = RTIO_OP_I2C_RECOVER;
+	sqe->flags = 0;
 	sqe->iodev = iodev;
 
 	rtio_submit(r, 1);
@@ -276,6 +278,7 @@ int i2c_rtio_sda_toggle(struct i2c_rtio *ctx, uint8_t cycles)
 	}
 
 	sqe->op = RTIO_OP_I2C_SDA_TOGGLE;
+	sqe->flags = 0;
 	sqe->iodev = iodev;
 	sqe->cycles = cycles;
 
