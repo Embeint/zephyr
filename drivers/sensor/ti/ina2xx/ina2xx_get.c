@@ -11,6 +11,7 @@
 
 static int ina2xx_get_bus_voltage(const struct device *dev, struct sensor_value *val)
 {
+#ifdef CONFIG_INA2XX_HAS_CHANNEL_BUS_VOLTAGE
 	const struct ina2xx_config *config = dev->config;
 	const struct ina2xx_channel *ch = config->channels->voltage;
 	const size_t bytes = (ch->reg->size + 7) / 8;
@@ -38,10 +39,14 @@ static int ina2xx_get_bus_voltage(const struct device *dev, struct sensor_value 
 	value.s32 = (ch->mult * value.s32) / ch->div;
 
 	return sensor_value_from_micro(val, value.s32);
+#else
+	return -ENOTSUP;
+#endif /* CONFIG_INA2XX_HAS_CHANNEL_BUS_VOLTAGE */
 }
 
 static int ina2xx_get_shunt_voltage(const struct device *dev, struct sensor_value *val)
 {
+#ifdef CONFIG_INA2XX_HAS_CHANNEL_SHUNT_VOLTAGE
 	const struct ina2xx_config *config = dev->config;
 	const struct ina2xx_channel *ch = config->channels->vshunt;
 	const size_t bytes = (ch->reg->size + 7) / 8;
@@ -69,10 +74,14 @@ static int ina2xx_get_shunt_voltage(const struct device *dev, struct sensor_valu
 	value.s32 = (ch->mult * value.s32) / ch->div;
 
 	return sensor_value_from_micro(val, value.s32);
+#else
+	return -ENOTSUP;
+#endif /* CONFIG_INA2XX_HAS_CHANNEL_SHUNT_VOLTAGE */
 }
 
 static int ina2xx_get_current(const struct device *dev, struct sensor_value *val)
 {
+#ifdef CONFIG_INA2XX_HAS_CHANNEL_CURRENT
 	const struct ina2xx_config *config = dev->config;
 	const struct ina2xx_channel *ch = config->channels->current;
 	const size_t bytes = (ch->reg->size + 7) / 8;
@@ -100,10 +109,14 @@ static int ina2xx_get_current(const struct device *dev, struct sensor_value *val
 	value.s32 = ((config->current_lsb * value.s32) / ch->div) * ch->mult;
 
 	return sensor_value_from_micro(val, value.s32);
+#else
+	return -ENOTSUP;
+#endif /* CONFIG_INA2XX_HAS_CHANNEL_CURRENT */
 }
 
 static int ina2xx_get_power(const struct device *dev, struct sensor_value *val)
 {
+#ifdef CONFIG_INA2XX_HAS_CHANNEL_POWER
 	const struct ina2xx_config *config = dev->config;
 	const struct ina2xx_channel *ch = config->channels->power;
 	const size_t bytes = (ch->reg->size + 7) / 8;
@@ -126,10 +139,14 @@ static int ina2xx_get_power(const struct device *dev, struct sensor_value *val)
 	value = ((config->current_lsb * value) / ch->div) * ch->mult;
 
 	return sensor_value_from_micro(val, value);
+#else
+	return -ENOTSUP;
+#endif /* CONFIG_INA2XX_HAS_CHANNEL_POWER */
 }
 
 static int ina2xx_get_die_temp(const struct device *dev, struct sensor_value *val)
 {
+#ifdef CONFIG_INA2XX_HAS_CHANNEL_DIE_TEMP
 	const struct ina2xx_config *config = dev->config;
 	const struct ina2xx_channel *ch = config->channels->die_temp;
 	const size_t bytes = (ch->reg->size + 7) / 8;
@@ -154,10 +171,14 @@ static int ina2xx_get_die_temp(const struct device *dev, struct sensor_value *va
 	value.s64 = (ch->mult * value.s64) / ch->div;
 
 	return sensor_value_from_micro(val, value.s64);
+#else
+	return -ENOTSUP;
+#endif /* CONFIG_INA2XX_HAS_CHANNEL_DIE_TEMP */
 }
 
 static int ina2xx_get_energy(const struct device *dev, struct sensor_value *val)
 {
+#ifdef CONFIG_INA2XX_HAS_CHANNEL_ENERGY
 	const struct ina2xx_config *config = dev->config;
 	const struct ina2xx_channel *ch = config->channels->energy;
 	const size_t bytes = (ch->reg->size + 7) / 8;
@@ -178,10 +199,14 @@ static int ina2xx_get_energy(const struct device *dev, struct sensor_value *val)
 	value = ((value * config->current_lsb) / ch->div) * ch->mult;
 
 	return sensor_value_from_micro(val, value);
+#else
+	return -ENOTSUP;
+#endif /* CONFIG_INA2XX_HAS_CHANNEL_ENERGY */
 }
 
 static int ina2xx_get_charge(const struct device *dev, struct sensor_value *val)
 {
+#ifdef CONFIG_INA2XX_HAS_CHANNEL_CHARGE
 	const struct ina2xx_config *config = dev->config;
 	const struct ina2xx_channel *ch = config->channels->charge;
 	const size_t bytes = (ch->reg->size + 7) / 8;
@@ -206,10 +231,12 @@ static int ina2xx_get_charge(const struct device *dev, struct sensor_value *val)
 	value.s64 = ((config->current_lsb * value.s64) / ch->div) * ch->mult;
 
 	return sensor_value_from_micro(val, value.s64);
+#else
+	return -ENOTSUP;
+#endif /* CONFIG_INA2XX_HAS_CHANNEL_CHARGE */
 }
 
-int ina2xx_channel_get(const struct device *dev, enum sensor_channel chan,
-				  struct sensor_value *val)
+int ina2xx_channel_get(const struct device *dev, enum sensor_channel chan, struct sensor_value *val)
 {
 	/* Extended channels */
 	if (chan == (enum sensor_channel)SENSOR_CHAN_INA2XX_ENERGY) {
