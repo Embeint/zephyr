@@ -17,3 +17,10 @@ description: |
 compatible: "ti,bq25186"
 
 include: ti,bq2518x-common.yaml
+
+properties:
+  ntc-charger-control-disable:
+    type: boolean
+    description: |
+      Disable thermistor control over the charger. Alerts are still generated.
+      Clears the TS_EN bit in the control register.
