@@ -168,7 +168,7 @@ static int ina2xx_adc_run(const struct device *dev)
 
 	if (in_shutdown) {
 		/* Return to shutdown mode */
-		(void)ina23x_reg_write(&config->bus, INA230_REG_CONFIG, config->config);
+		(void)ina2xx_reg_write(&config->bus, INA230_REG_CONFIG, config->config);
 	}
 
 	return ret;
@@ -179,7 +179,7 @@ int ina230_sample_fetch(const struct device *dev, enum sensor_channel chan)
 	int ret;
 
 	/* Run the ADC to get new data */
-	ret = ina230_adc_run(dev);
+	ret = ina2xx_adc_run(dev);
 	if (ret < 0) {
 		LOG_ERR("Failed to run sample");
 		return ret;
