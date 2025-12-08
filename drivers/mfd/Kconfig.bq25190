@@ -1,0 +1,18 @@
+# Copyright (c) 2025 Embeint Pty Ltd
+# SPDX-License-Identifier: Apache-2.0
+
+config MFD_BQ25190
+	bool "BQ25190 battery charger, regulator, ADC multi-function device driver"
+	default y
+	depends on DT_HAS_TI_BQ25190_ENABLED
+	select I2C
+	help
+	  Enable the Texas Instruments BQ25190 Linear Battery Charger with
+	  Integrated Buck-Boost, DVS Buck, LDOs and ADC multi-function device driver
+
+config MFD_BQ25190_INIT_PRIORITY
+	int "BQ25190 MFD initialization priority"
+	default MFD_INIT_PRIORITY
+	depends on MFD_BQ25190
+	help
+	  Multi-function device initialization priority for BQ25190.
