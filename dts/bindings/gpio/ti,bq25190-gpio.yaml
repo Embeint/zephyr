@@ -1,0 +1,13 @@
+# Copyright (c), 2025 Embeint Inc
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Texas Instruments BQ25190 PMIC GPIO
+
+compatible: "ti,bq25190-gpio"
+
+include: gpio-controller.yaml
+
+gpio-cells:
+  - pin
+  - flags
