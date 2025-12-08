@@ -1,0 +1,27 @@
+# Copyright (c) 2025 Embeint Pty Ltd
+# SPDX-License-Identifier: Apache-2.0
+
+config REGULATOR_BQ25190
+	bool "BQ25190 PMIC regulator driver"
+	default y
+	depends on DT_HAS_TI_BQ25190_REGULATOR_ENABLED
+	select I2C
+	select GPIO
+	select MFD
+	help
+	  Enable the Texas Instruments BQ25190 PMIC regulator driver
+
+if REGULATOR_BQ25190
+
+config REGULATOR_BQ25190_INIT_PRIORITY
+	int "BQ25190 regulator driver init priority"
+	default 56
+	help
+	  Init priority for the TI BQ25190 regulator driver.
+	  It must be greater than the MFD init priority.
+
+module = REGULATOR_BQ25190
+module-str = BQ25190 Regulator
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # REGULATOR_BQ25190

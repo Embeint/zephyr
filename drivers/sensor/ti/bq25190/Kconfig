@@ -1,0 +1,27 @@
+# Copyright (c) 2025 Embeint Pty Ltd
+#
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig SENSOR_BQ25190
+	bool "BQ25190 ADC channel sensor"
+	default y
+	depends on DT_HAS_TI_BQ25190_SENSOR_ENABLED
+	select I2C
+	select MFD
+	help
+	  Enable the Texas Instruments BQ25190 PMIC ADC sensor driver
+
+if SENSOR_BQ25190
+
+config SENSOR_BQ25190_INIT_PRIORITY
+	int "BQ25190 sensor driver init priority"
+	default 85
+	help
+	  Init priority for the TI BQ25190 sensor driver.
+	  It must be greater than I2C init priority.
+
+module = SENSOR_BQ25190
+module-str = BQ25190 Sensor
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # SENSOR_BQ25190
