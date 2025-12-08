@@ -1,0 +1,26 @@
+# Copyright (c), 2025 Embeint Inc
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Texas Instruments BQ25190 PMIC ADC Sensor
+
+  Interface to the internal ADC measurement channels
+
+compatible: "ti,bq25190-sensor"
+
+properties:
+  adc-resolution:
+    type: int
+    enum:
+      - 11
+      - 10
+      - 9
+    default: 9
+    description: |
+      Effective resolution of the ADC, driven by the sampling speed.
+      Default is the POR value.
+
+  adcin-bias:
+    type: boolean
+    description: |
+      Enable the 80uA internal biasing for the ADCIN pin.
