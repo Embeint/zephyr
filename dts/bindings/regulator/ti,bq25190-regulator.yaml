@@ -1,0 +1,61 @@
+# Copyright (c), 2025 Embeint Inc
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Texas Instruments BQ25190 PMIC
+
+  The PMIC has one buck converter, one buck-boost converter, and two LDOs.
+  The regulators need to be defined as child nodes, strictly following the
+  BUCK, BUCK_BOOST, LDO1..2, node names. For
+  example:
+
+  pmic@6c {
+    reg = <0x6c>;
+    ...
+    regulators {
+      compatible = "ti,bq25190-regulator";
+
+      BUCK {
+        /* all properties for BUCK */
+      };
+      BUCK_BOOST {
+        /* all properties for BUCK_BOOST */
+      };
+      LDO1 {
+        /* all properties for LDO1 */
+      };
+      LDO2 {
+        /* all properties for LDO2 */
+      };
+    };
+  };
+
+compatible: "ti,bq25190-regulator"
+
+child-binding:
+  include:
+    - name: regulator.yaml
+      property-allowlist:
+        - regulator-always-on
+        - regulator-boot-on
+        - regulator-boot-off
+        - regulator-min-microvolt
+        - regulator-max-microvolt
+        - regulator-init-microvolt
+
+  properties:
+    ldo-mode-switch:
+      type: boolean
+      description: |
+        LDO is configured as a switch instead of a voltage regulator.
+        Only valid for the LDO nodes.
+
+    gpio-controlled:
+      type: boolean
+      description: |
+        BQ25190 GPIO state controls regulator state. Use when an external
+        driver needs the GPIO node.
+                Buck Regulator: GPIO3
+          Buck Boost Regulator: GPIO2
+         LDO1 Regulator/Switch: GPIO4
+         LDO2 Regulator/Switch: GPIO1

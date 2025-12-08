@@ -1,0 +1,63 @@
+# Copyright (c), 2025 Embeint Inc
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Texas Instruments BQ25190 PMIC Battery Charger
+
+compatible: "ti,bq25190-charger"
+
+include: battery.yaml
+
+properties:
+  constant-charge-current-max-microamp:
+    required: true
+    description: |
+      The charge current target for the constant current phase of the charge profile.
+      This value will be set at initialization time. Range: 5 mA to 1000 mA.
+      The value specified will be rounded down to the closest implemented value.
+
+  constant-charge-voltage-max-microvolt:
+    required: true
+    description: |
+      The voltage regulation target for the constant voltage phase of the battery charging profile.
+      This value will be set at initialization time. Range: 3.50 V to 4.65 V.
+      The value specified will be rounded down to the closest implemented value.
+
+  vin-overvoltage-protection-millivolt:
+    type: int
+    enum:
+      - 5700
+      - 18500
+    default: 18500
+    description: |
+      Vin overvoltage protection threshold. Default is the POR value.
+
+  sys-regulation-voltage:
+    type: string
+    enum:
+      - "VBAT"
+      - "4.4V"
+      - "4.5V"
+      - "4.6V"
+      - "4.7V"
+      - "4.8V"
+      - "4.9V"
+      - "Passthrough"
+    default: "4.5V"
+    description: |
+      SYS regulation voltage target when Vin present. Default is the POR value.
+
+  input-current-limit-microamp:
+    type: int
+    enum:
+      - 25000
+      - 50000
+      - 90000
+      - 200000
+      - 300000
+      - 475000
+      - 665000
+      - 1050000
+    default: 475000
+    description: |
+      Vin input current limit. Default is the POR value.
