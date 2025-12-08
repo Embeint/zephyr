@@ -1,0 +1,20 @@
+# Copyright (c) 2025 Embeint Pty Ltd
+#
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig CHARGER_BQ25190
+	bool "BQ25190 Battery Charger"
+	default y
+	depends on DT_HAS_TI_BQ25190_CHARGER_ENABLED
+	select I2C
+	select MFD
+	help
+	  Enable the Texas Instruments BQ25190 PMIC Battery Charger
+
+if CHARGER_BQ25190
+
+module = CHARGER_BQ25190
+module-str = BQ25190 Charger
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # CHARGER_BQ25190

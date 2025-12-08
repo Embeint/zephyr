@@ -1,0 +1,20 @@
+# Copyright (c) 2025 Embeint Pty Ltd
+# SPDX-License-Identifier: Apache-2.0
+
+description: Texas Instruments BQ25190
+
+compatible: "ti,bq25190"
+
+include: i2c-device.yaml
+
+properties:
+  reg:
+    required: true
+
+  int-gpios:
+    type: phandle-array
+    description: GPIO for interrupt input
+
+  enable-gpios:
+    type: phandle-array
+    description: GPIO for chip enable
