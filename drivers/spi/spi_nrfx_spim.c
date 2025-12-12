@@ -19,6 +19,7 @@
 #include <hal/nrf_clock.h>
 #endif
 #include <nrfx_spim.h>
+#include <nrf_sys_event.h>
 #include <string.h>
 #include <zephyr/linker/devicetree_regions.h>
 
@@ -32,6 +33,18 @@ LOG_MODULE_REGISTER(spi_nrfx_spim, CONFIG_SPI_LOG_LEVEL);
 #if (CONFIG_SPI_NRFX_RAM_BUFFER_SIZE > 0)
 #define SPI_BUFFER_IN_RAM 1
 #endif
+
+#if DT_ANY_INST_HAS_BOOL_STATUS_OKAY(cross_power_domain_gpios)
+#ifdef CONFIG_SOC_SERIES_NRF54LX
+#ifdef CONFIG_NRF_SYS_EVENT
+#define SPIM_HAS_CROSS_DOMAIN_GPIOS 1
+#else
+#error "cross-power-domain-gpios" handling requires CONFIG_NRF_SYS_EVENT
+#endif /* CONFIG_NRF_SYS_EVENT */
+#else
+#error "cross-power-domain-gpios" only valid for nRF54LX series
+#endif /* CONFIG_SOC_SERIES_NRF54LX */
+#endif /* DT_ANY_INST_HAS_BOOL_STATUS_OKAY(cross_power_domain_gpios) */
 
 struct spi_nrfx_data {
 	nrfx_spim_t spim;
@@ -55,6 +68,9 @@ struct spi_nrfx_config {
 	nrfx_gpiote_t *wake_gpiote;
 	uint32_t wake_pin;
 	void *mem_reg;
+#ifdef SPIM_HAS_CROSS_DOMAIN_GPIOS
+	bool cross_domain_gpios;
+#endif /* SPIM_HAS_CROSS_DOMAIN_GPIOS */
 };
 
 static void event_handler(const nrfx_spim_event_t *p_event, void *p_context);
@@ -526,6 +542,12 @@ static int spim_resume(const struct device *dev)
 	struct spi_nrfx_data *dev_data = dev->data;
 	(void)dev_data;
 
+#ifdef SPIM_HAS_CROSS_DOMAIN_GPIOS
+	if (dev_config->cross_domain_gpios) {
+		nrf_sys_event_request_global_constlat();
+	}
+#endif /* SPIM_HAS_CROSS_DOMAIN_GPIOS */
+
 	(void)pinctrl_apply_state(dev_config->pcfg, PINCTRL_STATE_DEFAULT);
 	/* nrfx_spim_init() will be called at configuration before
 	 * the next transfer.
@@ -553,6 +575,12 @@ static void spim_suspend(const struct device *dev)
 	(void)err;
 
 	(void)pinctrl_apply_state(dev_config->pcfg, PINCTRL_STATE_SLEEP);
+
+#ifdef SPIM_HAS_CROSS_DOMAIN_GPIOS
+	if (dev_config->cross_domain_gpios) {
+		nrf_sys_event_release_global_constlat();
+	}
+#endif /* SPIM_HAS_CROSS_DOMAIN_GPIOS */
 }
 
 static int spim_nrfx_pm_action(const struct device *dev, enum pm_device_action action)
@@ -689,6 +717,10 @@ static int spi_nrfx_deinit(const struct device *dev)
 						    wake_gpios,		       \
 						    WAKE_PIN_NOT_USED),	       \
 		.mem_reg = DMM_DEV_TO_REG(DT_DRV_INST(inst)),		       \
+		COND_CODE_1(SPIM_HAS_CROSS_DOMAIN_GPIOS,		       \
+			(.cross_domain_gpios =				       \
+				SPIM_PROP(idx, cross_power_domain_gpios),),    \
+			())						       \
 	};								       \
 	BUILD_ASSERT(!DT_INST_NODE_HAS_PROP(inst, wake_gpios) ||	       \
 		     !(DT_GPIO_FLAGS(DT_DRV_INST(inst), wake_gpios) &	       \
