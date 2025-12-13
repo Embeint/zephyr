@@ -14,9 +14,12 @@ source "subsys/logging/Kconfig.template.log_config"
 
 config MFD_INIT_PRIORITY
 	int "Initialization priority"
-	default 80
+	default 55
 	help
 	  Multi-function devices initialization priority.
+	  Default is set to be after the defaults for GPIO,
+	  I2C and SPI (40, 50, 50), which are the common MFD
+	  device dependencies.
 
 source "drivers/mfd/Kconfig.ad559x"
 source "drivers/mfd/Kconfig.adp5585"
