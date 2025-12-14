@@ -46,6 +46,15 @@ DEVICE_DT_GET(DT_PHANDLE(NRF7002_NODE, iovdd_regulator));
 #error "nRF70 device either needs iovdd-ctrl-gpios or iovdd-regulator property"
 #endif
 
+#if DT_PROP(NRF7002_NODE, cs_gpio_low_on_deinit)
+#if DT_SPI_DEV_HAS_CS_GPIOS(NRF7002_NODE)
+#define CS_DEINIT_LOW 1
+const struct gpio_dt_spec cs_gpio = SPI_CS_GPIOS_DT_SPEC_GET(NRF7002_NODE);
+#else
+#error cs-gpio-low-on-deinit only works for GPIO controlled CS lines
+#endif /* DT_SPI_DEV_HAS_CS_GPIOS(NRF7002_NODE) */
+#endif
+
 static const struct gpio_dt_spec bucken_spec =
 GPIO_DT_SPEC_GET(NRF7002_NODE, bucken_gpios);
 
@@ -205,6 +214,15 @@ static int rpu_gpio_config(void)
 		return ret;
 	}
 
+#ifdef CS_DEINIT_LOW
+	/* Force the CS pin to ground */
+	ret = gpio_pin_configure(cs_gpio.port, cs_gpio.pin, GPIO_OUTPUT | GPIO_OUTPUT_LOW);
+	if (ret) {
+		LOG_ERR("CS grounding failed...");
+		/* Not critical error, don't fail the function */
+	}
+#endif
+
 #ifdef NRF70_IOVDD_GPIO
 	ret = gpio_pin_configure_dt(&iovdd_ctrl_spec, GPIO_OUTPUT);
 	if (ret) {
@@ -228,6 +246,15 @@ static int rpu_gpio_remove(void)
 		LOG_ERR("BUCKEN GPIO remove failed...");
 		return ret;
 	}
+
+#ifdef CS_DEINIT_LOW
+	/* Force the CS pin to ground before disabling IOVDD */
+	ret = gpio_pin_set_raw(cs_gpio.port, cs_gpio.pin, 0);
+	if (ret) {
+		LOG_ERR("CS grounding failed...");
+		/* Not critical error, don't fail the function */
+	}
+#endif
 
 #ifdef NRF70_IOVDD_GPIO
 	ret = gpio_pin_configure_dt(&iovdd_ctrl_spec, GPIO_DISCONNECTED);
@@ -282,6 +309,14 @@ static int rpu_pwron(void)
 			regulator_is_enabled(iovdd_regulator) ? 1 : 0);
 #endif
 
+#ifdef CS_DEINIT_LOW
+	/* Return the CS pin to VDDIO after enabling IOVDD */
+	ret = gpio_pin_set_raw(cs_gpio.port, cs_gpio.pin, 1);
+	if (ret) {
+		LOG_ERR("CS control failed...");
+		/* Not critical error, don't fail the function */
+	}
+#endif
 
 	return ret;
 }
@@ -289,6 +324,15 @@ static int rpu_pwron(void)
 static int rpu_pwroff(void)
 {
 	int ret;
+
+#ifdef CS_DEINIT_LOW
+	/* Force the CS pin to ground before disabling IOVDD */
+	ret = gpio_pin_set_raw(cs_gpio.port, cs_gpio.pin, 0);
+	if (ret) {
+		LOG_ERR("CS grounding failed...");
+		/* Not critical error, don't fail the function */
+	}
+#endif
 
 #ifdef NRF70_IOVDD_GPIO
 	ret = gpio_pin_set_dt(&iovdd_ctrl_spec, 0); /* IOVDD CNTRL = 0 */
