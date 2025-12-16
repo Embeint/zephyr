@@ -18,6 +18,7 @@ struct charger_bq25190_config {
 	uint32_t max_voltage_microvolt;
 	uint8_t sys_reg;
 	uint8_t tmr_ilim;
+	uint8_t ntc_ctrl;
 };
 
 /* Charging current limits */
@@ -47,6 +48,11 @@ struct charger_bq25190_config {
 #define BQ25190_STAT2_CHG_CONST_CURRENT (0b01 << 6)
 #define BQ25190_STAT2_CHG_CONST_VOLTAGE (0b10 << 6)
 #define BQ25190_STAT2_CHG_DONE          (0b11 << 6)
+
+#define BQ25190_NTC_CTRL_TS_MONITOR_EN   BIT(7)
+#define BQ25190_NTC_CTRL_TS_MONITOR_DIS  0x00
+#define BQ25190_NTC_CTRL_TS_FAULT_BAT_EN BIT(6)
+#define BQ25190_NTC_CTRL_TS_FAULT_VIN_EN BIT(5)
 
 /*
  * For ICHG <= 35mA = ICHGCODE + 5mA
@@ -274,6 +280,10 @@ int charger_bq25190_init(const struct device *dev)
 	if (ret < 0) {
 		return ret;
 	}
+	ret = mfd_bq25190_reg_write(config->mfd, BQ25190_REG_NTC_CTRL, config->ntc_ctrl);
+	if (ret < 0) {
+		return ret;
+	}
 	val.const_charge_current_ua = config->initial_current_microamp;
 	ret = bq25190_set_prop(dev, CHARGER_PROP_CONSTANT_CHARGE_CURRENT_UA, &val);
 	if (ret < 0) {
@@ -298,6 +308,10 @@ int charger_bq25190_init(const struct device *dev)
 		.tmr_ilim = (DT_INST_ENUM_IDX(n, input_current_limit_microamp) << 0) |             \
 			    BQ25190_TMR_ILIM_PB_LONG_PRESS_10S |                                   \
 			    BQ25190_TMR_ILIM_AUTO_WAKE_TIMER_2000MS, /* POR defaults */            \
+		.ntc_ctrl = (DT_INST_PROP(n, ts_monitoring_disable)                                \
+				     ? BQ25190_NTC_CTRL_TS_MONITOR_DIS                             \
+				     : BQ25190_NTC_CTRL_TS_MONITOR_EN) |                           \
+			    BQ25190_NTC_CTRL_TS_FAULT_VIN_EN,                                      \
 	};                                                                                         \
                                                                                                    \
 	DEVICE_DT_INST_DEFINE(n, charger_bq25190_init, NULL, NULL, &charger_bq25190_config##n,     \
