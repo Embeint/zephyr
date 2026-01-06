@@ -67,3 +67,9 @@ properties:
     description: |
       Disable thermistor monitoring, allowing charging while the TS pin is
       outside configured limits.
+
+  battery-always-present:
+    type: boolean
+    description: |
+      Mark battery as always present, enabling the charge status to be
+      monitored.
