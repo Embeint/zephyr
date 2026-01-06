@@ -40,6 +40,9 @@ BUILD_ASSERT(sizeof(struct bs25190_adc_registers) == 16);
 
 struct sensor_bq25190_data {
 	struct bs25190_adc_registers adc_regs;
+	struct mfd_bq25190_cb int_cb;
+	struct k_sem done;
+	bool int_pin_available;
 };
 
 #define FLAG1_ADC_DONE 0x08
@@ -65,6 +68,16 @@ struct sensor_bq25190_data {
 #define ADC_DISABLE_IIN   BIT(7)
 
 LOG_MODULE_REGISTER(bq25190_sensor, CONFIG_SENSOR_BQ25190_LOG_LEVEL);
+
+static void bq25190_interrupt(uint8_t flags[4], void *user_ctx)
+{
+	struct k_sem *done = user_ctx;
+
+	if (flags[1] & FLAG1_ADC_DONE) {
+		LOG_DBG("ADC_DONE interrupt");
+		k_sem_give(done);
+	}
+}
 
 int bq25190_sample_fetch(const struct device *dev, enum sensor_channel chan)
 {
@@ -98,6 +111,9 @@ int bq25190_sample_fetch(const struct device *dev, enum sensor_channel chan)
 		break;
 	}
 
+	/* Clear any pending interrupts */
+	(void)k_sem_take(&data->done, K_NO_WAIT);
+
 	/* Start the single shot sampling */
 	LOG_DBG("Triggering single-shot ADC, resolution %02X, delay %d ms", config->resolution,
 		delay_ms);
@@ -107,21 +123,27 @@ int bq25190_sample_fetch(const struct device *dev, enum sensor_channel chan)
 		return ret;
 	}
 
-	/* Wait until measurements should be complete */
-	k_sleep(K_MSEC(delay_ms));
+	if (data->int_pin_available) {
+		/* Wait for the interrupt to occur (same overall timeout as polling) */
+		ret = k_sem_take(&data->done, K_MSEC(delay_ms + (10 * poll_ms)));
+		sampled = ret == 0;
+	} else {
+		/* Wait until measurements should be complete */
+		k_sleep(K_MSEC(delay_ms));
 
-	/* Poll until ADC_DONE or timeout */
-	for (int i = 0; i < 10; i++) {
-		ret = mfd_bq25190_reg_read(config->mfd, BQ25190_REG_FLAG1, &val);
-		if (ret < 0) {
-			return ret;
+		/* Poll until ADC_DONE or timeout */
+		for (int i = 0; i < 10; i++) {
+			ret = mfd_bq25190_reg_read(config->mfd, BQ25190_REG_FLAG1, &val);
+			if (ret < 0) {
+				return ret;
+			}
+			if (val & FLAG1_ADC_DONE) {
+				LOG_DBG("Sampling complete after %d ms", delay_ms + (i * poll_ms));
+				sampled = true;
+				break;
+			}
+			k_sleep(K_MSEC(poll_ms));
 		}
-		if (val & FLAG1_ADC_DONE) {
-			LOG_DBG("Sampling complete after %d ms", delay_ms + (i * poll_ms));
-			sampled = true;
-			break;
-		}
-		k_sleep(K_MSEC(poll_ms));
 	}
 
 	if (!sampled) {
@@ -169,11 +191,21 @@ int bq25190_channel_get(const struct device *dev, enum sensor_channel chan,
 int sensor_bq25190_init(const struct device *dev)
 {
 	const struct sensor_bq25190_config *config = dev->config;
+	struct sensor_bq25190_data *data = dev->data;
 	uint8_t val;
 	int ret;
 
+	k_sem_init(&data->done, 0, 1);
+
 	if (!device_is_ready(config->mfd)) {
 		return -ENODEV;
+	}
+
+	/* Register for callbacks if available */
+	data->int_cb.interrupt = bq25190_interrupt;
+	data->int_cb.user_ctx = &data->done;
+	if (mfd_bq25190_register_callback(config->mfd, &data->int_cb) == 0) {
+		data->int_pin_available = true;
 	}
 
 	/* Clear any previous flags (register is clear on read) */
