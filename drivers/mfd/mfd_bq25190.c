@@ -21,7 +21,11 @@ struct mfd_bq25190_config {
 };
 
 struct mfd_bq25190_data {
+	const struct mfd_bq25190_config *config;
 	struct k_mutex access;
+	struct gpio_callback int_cb;
+	struct k_work int_work;
+	sys_slist_t callback_list;
 };
 
 #define BQ25190_SHIP_RST_SW_RST 0x80
@@ -64,6 +68,52 @@ int mfd_bq25190_reg_update(const struct device *dev, uint8_t reg, uint8_t mask, 
 	return ret;
 }
 
+int mfd_bq25190_register_callback(const struct device *dev, struct mfd_bq25190_cb *cb)
+{
+	const struct mfd_bq25190_config *config = dev->config;
+	struct mfd_bq25190_data *data = dev->data;
+
+	if (config->int_gpio.port == NULL) {
+		return -ENODEV;
+	}
+
+	sys_slist_append(&data->callback_list, &cb->node);
+	return 0;
+}
+
+static void mfd_bq25190_int_handle(struct k_work *work)
+{
+	struct mfd_bq25190_data *data = CONTAINER_OF(work, struct mfd_bq25190_data, int_work);
+	const uint8_t reg = BQ25190_REG_FLAG0;
+	struct mfd_bq25190_cb *cb;
+	uint8_t flags[4];
+	int ret;
+
+	/* Read the 4 flag registers */
+	ret = i2c_write_read_dt(&data->config->i2c, &reg, sizeof(uint8_t), flags, sizeof(flags));
+	if (ret < 0) {
+		/* What to do here? */
+		return;
+	}
+
+	/* Notify interested parties of interrupt flags */
+	SYS_SLIST_FOR_EACH_CONTAINER(&data->callback_list, cb, node) {
+		cb->interrupt(flags, cb->user_ctx);
+	}
+}
+
+static void mfd_bq25190_gpio_callback(const struct device *dev, struct gpio_callback *cb,
+				      uint32_t pins)
+{
+	struct mfd_bq25190_data *data = CONTAINER_OF(cb, struct mfd_bq25190_data, int_cb);
+
+	ARG_UNUSED(cb);
+	ARG_UNUSED(pins);
+
+	/* Schedule work to handle the interrupt */
+	k_work_submit(&data->int_work);
+}
+
 static int mfd_bq25190_init(const struct device *dev)
 {
 	const struct mfd_bq25190_config *config = dev->config;
@@ -71,7 +121,11 @@ static int mfd_bq25190_init(const struct device *dev)
 	uint8_t reg;
 	int ret;
 
+	data->config = config;
 	k_mutex_init(&data->access);
+	sys_slist_init(&data->callback_list);
+	k_work_init(&data->int_work, mfd_bq25190_int_handle);
+	gpio_init_callback(&data->int_cb, mfd_bq25190_gpio_callback, BIT(config->int_gpio.pin));
 
 	if (!i2c_is_ready_dt(&config->i2c)) {
 		return -ENODEV;
@@ -112,6 +166,15 @@ static int mfd_bq25190_init(const struct device *dev)
 		if (ret < 0) {
 			return -EIO;
 		}
+	}
+
+	if (config->int_gpio.port) {
+		/* Configure the interrupts (if pin provided) after reset */
+		ret = gpio_add_callback(config->int_gpio.port, &data->int_cb);
+		if (ret < 0) {
+			return ret;
+		}
+		ret = gpio_pin_interrupt_configure_dt(&config->int_gpio, GPIO_INT_EDGE_TO_ACTIVE);
 	}
 
 	return ret;
