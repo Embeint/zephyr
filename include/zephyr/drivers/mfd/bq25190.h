@@ -5,6 +5,8 @@
 
 #include <stdint.h>
 
+#include <zephyr/sys/slist.h>
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MFD_BQ25190_H_
 #define ZEPHYR_INCLUDE_DRIVERS_MFD_BQ25190_H_
 
@@ -137,6 +139,31 @@ int mfd_bq25190_reg_write(const struct device *dev, uint8_t reg, uint8_t data);
  * @retval -errno In case of any bus error (see i2c_reg_update_byte())
  */
 int mfd_bq25190_reg_update(const struct device *dev, uint8_t reg, uint8_t mask, uint8_t data);
+
+/** @brief BQ25190 MFD callback structure. */
+struct mfd_bq25190_cb {
+	/** @brief Common BQ25190 interrupt has occurred
+	 *
+	 * @param flags Value of the 4 interrupt flag registers
+	 * @param user_ctx User context pointer
+	 */
+	void (*interrupt)(uint8_t flags[4], void *user_ctx);
+
+	/* User provided context pointer */
+	void *user_ctx;
+
+	sys_snode_t node;
+};
+
+/**
+ * @brief Register for notifications on the common IRQ
+ *
+ * @param dev bq25190 MFD device
+ * @param cb Callback structure to register
+ * @retval 0 If successful
+ * @retval -ENODEV If no interrupt pin available
+ */
+int mfd_bq25190_register_callback(const struct device *dev, struct mfd_bq25190_cb *cb);
 
 /** @} */
 
