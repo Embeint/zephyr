@@ -19,6 +19,14 @@ struct charger_bq25190_config {
 	uint8_t sys_reg;
 	uint8_t tmr_ilim;
 	uint8_t ntc_ctrl;
+	bool battery_always_present;
+};
+
+struct charger_bq25190_data {
+	struct mfd_bq25190_cb int_cb;
+	charger_status_notifier_t charger_status_notifier;
+	charger_online_notifier_t charger_online_notifier;
+	bool int_pin_available;
 };
 
 /* Charging current limits */
@@ -40,6 +48,11 @@ struct charger_bq25190_config {
 #define BQ25190_TMR_ILIM_AUTO_WAKE_TIMER_1000MS (0b01 << 3)
 #define BQ25190_TMR_ILIM_AUTO_WAKE_TIMER_2000MS (0b10 << 3)
 #define BQ25190_TMR_ILIM_AUTO_WAKE_TIMER_4000MS (0b11 << 3)
+
+#define BQ25190_MASK2_CHG_STATUS_INT BIT(7)
+
+#define BQ25190_FLAG2_CHG_STATUS BIT(7)
+#define BQ25190_FLAG2_VIN_PGOOD  BIT(1)
 
 #define BQ25190_STAT2_VIN_POWER_GOOD 0x02
 
@@ -210,7 +223,7 @@ static int bq25190_get_status(const struct device *dev, enum charger_status *sta
 		return 0;
 	}
 
-	switch (FIELD_GET(BQ25190_STAT2_CHG_STAT_MASK, stat2)) {
+	switch (stat2 & BQ25190_STAT2_CHG_STAT_MASK) {
 	case BQ25190_STAT2_CHG_ENABLED:
 		*status = CHARGER_STATUS_NOT_CHARGING;
 		break;
@@ -245,11 +258,19 @@ static int bq25190_get_prop(const struct device *dev, charger_prop_t prop,
 static int bq25190_set_prop(const struct device *dev, charger_prop_t prop,
 			    const union charger_propval *val)
 {
+	struct charger_bq25190_data *data = dev->data;
+
 	switch (prop) {
 	case CHARGER_PROP_CONSTANT_CHARGE_CURRENT_UA:
 		return bq25190_set_charge_current(dev, val->const_charge_current_ua);
 	case CHARGER_PROP_CONSTANT_CHARGE_VOLTAGE_UV:
 		return bq25190_set_charge_voltage(dev, val->const_charge_voltage_uv);
+	case CHARGER_PROP_STATUS_NOTIFICATION:
+		data->charger_status_notifier = val->status_notification;
+		return 0;
+	case CHARGER_PROP_ONLINE_NOTIFICATION:
+		data->charger_online_notifier = val->online_notification;
+		return 0;
 	default:
 		return -ENOTSUP;
 	}
@@ -261,14 +282,55 @@ static DEVICE_API(charger, bq25190_api) = {
 	.charge_enable = bq25190_charge_enable,
 };
 
+static void bq25190_interrupt(uint8_t flags[4], void *user_ctx)
+{
+	const struct device *dev = user_ctx;
+	struct charger_bq25190_data *data = dev->data;
+
+	if ((flags[2] & BQ25190_FLAG2_CHG_STATUS) && (data->charger_status_notifier)) {
+		enum charger_status prop;
+
+		if (bq25190_get_status(dev, &prop) == 0) {
+			data->charger_status_notifier(prop);
+		}
+	}
+	if ((flags[2] & BQ25190_FLAG2_VIN_PGOOD) && (data->charger_online_notifier)) {
+		enum charger_online prop;
+
+		if (bq25190_get_online(dev, &prop) == 0) {
+			data->charger_online_notifier(prop);
+		}
+	}
+}
+
 int charger_bq25190_init(const struct device *dev)
 {
 	const struct charger_bq25190_config *config = dev->config;
+	struct charger_bq25190_data *data = dev->data;
 	union charger_propval val;
 	int ret;
 
 	if (!device_is_ready(config->mfd)) {
 		return -ENODEV;
+	}
+
+	/* Register for callbacks if available */
+	data->int_cb.interrupt = bq25190_interrupt;
+	data->int_cb.user_ctx = (void *)dev;
+	if (mfd_bq25190_register_callback(config->mfd, &data->int_cb) == 0) {
+		data->int_pin_available = true;
+		if (config->battery_always_present) {
+			/* Enable the charge status interrupt. This is disabled by default
+			 * due to the following datasheet note:
+			 * when the battery is not present, the device will switch between CC and CV
+			 * which can drive the MCU to keep servicing it's ISR
+			 */
+			ret = mfd_bq25190_reg_update(config->mfd, BQ25190_REG_MASK2,
+						     BQ25190_MASK2_CHG_STATUS_INT, 0);
+			if (ret < 0) {
+				return ret;
+			}
+		}
 	}
 
 	/* Write initial configuration */
@@ -312,9 +374,11 @@ int charger_bq25190_init(const struct device *dev)
 				     ? BQ25190_NTC_CTRL_TS_MONITOR_DIS                             \
 				     : BQ25190_NTC_CTRL_TS_MONITOR_EN) |                           \
 			    BQ25190_NTC_CTRL_TS_FAULT_VIN_EN,                                      \
+		.battery_always_present = DT_INST_PROP(n, battery_always_present),                 \
 	};                                                                                         \
-                                                                                                   \
-	DEVICE_DT_INST_DEFINE(n, charger_bq25190_init, NULL, NULL, &charger_bq25190_config##n,     \
-			      POST_KERNEL, CONFIG_CHARGER_INIT_PRIORITY, &bq25190_api);
+	static struct charger_bq25190_data charger_bq25190_data##n;                                \
+	DEVICE_DT_INST_DEFINE(n, charger_bq25190_init, NULL, &charger_bq25190_data##n,             \
+			      &charger_bq25190_config##n, POST_KERNEL,                             \
+			      CONFIG_CHARGER_INIT_PRIORITY, &bq25190_api);
 
 DT_INST_FOREACH_STATUS_OKAY(CHARGER_BQ25190_DEFINE)
