@@ -15,8 +15,9 @@
 
 struct mfd_bq25190_config {
 	struct i2c_dt_spec i2c;
-	struct gpio_dt_spec int_gpios;
-	struct gpio_dt_spec enable_gpios;
+	struct gpio_dt_spec int_gpio;
+	struct gpio_dt_spec enable_gpio;
+	bool buck_gpio_controlled_voltage;
 };
 
 struct mfd_bq25190_data {
@@ -83,17 +84,34 @@ static int mfd_bq25190_init(const struct device *dev)
 	}
 
 	/* GPIO Configuration */
-	if (config->enable_gpios.port) {
-		gpio_pin_configure_dt(&config->enable_gpios, GPIO_OUTPUT_ACTIVE);
+	if (config->enable_gpio.port) {
+		gpio_pin_configure_dt(&config->enable_gpio, GPIO_OUTPUT_ACTIVE);
 	}
-	if (config->int_gpios.port) {
-		gpio_pin_configure_dt(&config->int_gpios, GPIO_INPUT);
+	if (config->int_gpio.port) {
+		gpio_pin_configure_dt(&config->int_gpio, GPIO_INPUT);
 	}
 
 	/* Soft reset the device */
 	ret = i2c_reg_write_byte_dt(&config->i2c, BQ25190_REG_SHIP_RST, BQ25190_SHIP_RST_SW_RST);
 	if (ret || (reg != BQ25190_PART_INFORMATION_EXPECTED)) {
 		return -EIO;
+	}
+
+	if (!config->buck_gpio_controlled_voltage) {
+		/* Disable the default behaviour of setting the BUCK voltage from GPIO3 and
+		 * GPIO4. We do this here instead of in the GPIO driver as the GPIO driver
+		 * may not be compiled while the regulator driver is.
+		 */
+		ret = i2c_reg_write_byte_dt(&config->i2c, BQ25190_REG_GPIO3_CTRL,
+					    BQ25190_GPIO_CTRL_INPUT_LEVEL_SENSITIVE);
+		if (ret < 0) {
+			return -EIO;
+		}
+		ret = i2c_reg_write_byte_dt(&config->i2c, BQ25190_REG_GPIO4_CTRL,
+					    BQ25190_GPIO_CTRL_INPUT_LEVEL_SENSITIVE);
+		if (ret < 0) {
+			return -EIO;
+		}
 	}
 
 	return ret;
@@ -104,8 +122,9 @@ static int mfd_bq25190_init(const struct device *dev)
                                                                                                    \
 	static const struct mfd_bq25190_config mfd_bq25190_config##n = {                           \
 		.i2c = I2C_DT_SPEC_INST_GET(n),                                                    \
-		.int_gpios = GPIO_DT_SPEC_INST_GET_OR(n, int_gpios, {0}),                          \
-		.enable_gpios = GPIO_DT_SPEC_INST_GET_OR(n, enable_gpios, {0}),                    \
+		.int_gpio = GPIO_DT_SPEC_INST_GET_OR(n, int_gpios, {0}),                           \
+		.enable_gpio = GPIO_DT_SPEC_INST_GET_OR(n, enable_gpios, {0}),                     \
+		.buck_gpio_controlled_voltage = DT_INST_PROP(n, buck_gpio_controlled_voltage),     \
 	};                                                                                         \
                                                                                                    \
 	DEVICE_DT_INST_DEFINE(n, mfd_bq25190_init, NULL, &mfd_bq25190_data##n,                     \

@@ -18,3 +18,11 @@ properties:
   enable-gpios:
     type: phandle-array
     description: GPIO for chip enable
+
+  buck-gpio-controlled-voltage:
+    type: boolean
+    description: |
+      Keep the IC default behaviour of setting the
+      BUCK regulator voltage from the state of GPIO3
+      and GPIO4, instead of setting these pins to
+      inputs and explicitly setting the voltage.
