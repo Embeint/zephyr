@@ -19,6 +19,7 @@ struct charger_bq25190_config {
 	uint8_t sys_reg;
 	uint8_t tmr_ilim;
 	uint8_t ntc_ctrl;
+	uint8_t ic_ctrl;
 	bool battery_always_present;
 };
 
@@ -66,6 +67,10 @@ struct charger_bq25190_data {
 #define BQ25190_NTC_CTRL_TS_MONITOR_DIS  0x00
 #define BQ25190_NTC_CTRL_TS_FAULT_BAT_EN BIT(6)
 #define BQ25190_NTC_CTRL_TS_FAULT_VIN_EN BIT(5)
+
+#define BQ25190_IC_CTRL_RECHARGE_THRESHOLD_200MV BIT(5)
+#define BQ25190_IC_CTRL_RECHARGE_THRESHOLD_100MV 0x00
+#define BQ25190_IC_CTRL_TMR2X_EN                 BIT(4)
 
 /*
  * For ICHG <= 35mA = ICHGCODE + 5mA
@@ -346,6 +351,10 @@ int charger_bq25190_init(const struct device *dev)
 	if (ret < 0) {
 		return ret;
 	}
+	ret = mfd_bq25190_reg_write(config->mfd, BQ25190_REG_IC_CTRL, config->ic_ctrl);
+	if (ret < 0) {
+		return ret;
+	}
 	val.const_charge_current_ua = config->initial_current_microamp;
 	ret = bq25190_set_prop(dev, CHARGER_PROP_CONSTANT_CHARGE_CURRENT_UA, &val);
 	if (ret < 0) {
@@ -374,6 +383,10 @@ int charger_bq25190_init(const struct device *dev)
 				     ? BQ25190_NTC_CTRL_TS_MONITOR_DIS                             \
 				     : BQ25190_NTC_CTRL_TS_MONITOR_EN) |                           \
 			    BQ25190_NTC_CTRL_TS_FAULT_VIN_EN,                                      \
+		.ic_ctrl = BQ25190_IC_CTRL_TMR2X_EN |                                              \
+			   (DT_INST_PROP(n, re_charge_voltage_microvolt) == 100000                 \
+				    ? BQ25190_IC_CTRL_RECHARGE_THRESHOLD_100MV                     \
+				    : BQ25190_IC_CTRL_RECHARGE_THRESHOLD_200MV),                   \
 		.battery_always_present = DT_INST_PROP(n, battery_always_present),                 \
 	};                                                                                         \
 	static struct charger_bq25190_data charger_bq25190_data##n;                                \
