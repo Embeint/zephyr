@@ -17,6 +17,7 @@ struct mfd_bq25190_config {
 	struct i2c_dt_spec i2c;
 	struct gpio_dt_spec int_gpio;
 	struct gpio_dt_spec enable_gpio;
+	bool buck_reset_force_1v8;
 	bool buck_gpio_controlled_voltage;
 };
 
@@ -145,6 +146,27 @@ static int mfd_bq25190_init(const struct device *dev)
 		gpio_pin_configure_dt(&config->int_gpio, GPIO_INPUT);
 	}
 
+	if (config->buck_reset_force_1v8) {
+		/* Soft-resetting the device re-enables the default behaviour of setting the BUCK
+		 * voltage from GPIO3 and GPIO4. If GPIO3 or GPIO4 were configured to be high
+		 * outputs, the BUCK voltage could immediately change to any of 1.8V, 3.3V, 2.5V
+		 * or 1.2V upon reset. Force GPIO3 and GPIO4 to the low state so that upon reset,
+		 * the default value of Selection 1 is used (1.8V).
+		 */
+		ret = i2c_reg_write_byte_dt(&config->i2c, BQ25190_REG_GPIO3_CTRL,
+					    BQ25190_GPIO_CTRL_FORCED_LOW);
+		if (ret < 0) {
+			return -EIO;
+		}
+		ret = i2c_reg_write_byte_dt(&config->i2c, BQ25190_REG_GPIO4_CTRL,
+					    BQ25190_GPIO_CTRL_FORCED_LOW);
+		if (ret < 0) {
+			return -EIO;
+		}
+		/* Give some minimal time for the logic level to change */
+		k_sleep(K_MSEC(1));
+	}
+
 	/* Soft reset the device */
 	ret = i2c_reg_write_byte_dt(&config->i2c, BQ25190_REG_SHIP_RST, BQ25190_SHIP_RST_SW_RST);
 	if (ret || (reg != BQ25190_PART_INFORMATION_EXPECTED)) {
@@ -187,6 +209,7 @@ static int mfd_bq25190_init(const struct device *dev)
 		.i2c = I2C_DT_SPEC_INST_GET(n),                                                    \
 		.int_gpio = GPIO_DT_SPEC_INST_GET_OR(n, int_gpios, {0}),                           \
 		.enable_gpio = GPIO_DT_SPEC_INST_GET_OR(n, enable_gpios, {0}),                     \
+		.buck_reset_force_1v8 = DT_INST_PROP(n, buck_reset_force_1v8),                     \
 		.buck_gpio_controlled_voltage = DT_INST_PROP(n, buck_gpio_controlled_voltage),     \
 	};                                                                                         \
                                                                                                    \
