@@ -62,6 +62,15 @@ properties:
     description: |
       Vin input current limit. Default is the POR value.
 
+  re-charge-voltage-microvolt:
+    enum:
+      - 100000
+      - 200000
+    default: 100000
+    description: |
+      Voltage below maximum to automatically start charging again. Default is
+      the POR value.
+
   ts-monitoring-disable:
     type: boolean
     description: |
