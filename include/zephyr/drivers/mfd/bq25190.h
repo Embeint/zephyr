@@ -90,6 +90,9 @@ enum mfd_bq25190_gpio_cfg {
 	BQ25190_GPIO_CTRL_INPUT_NEGATIVE_EDGE_TRIGGER = (0b1011 << 4),
 };
 
+/* Delay before the PMIC enters shipping mode after I2C command */
+#define BQ25190_SHIP_MODE_ENTER_DELAY_MS 1000
+
 /**
  * @brief Read single register from bq25190
  *
@@ -160,10 +163,24 @@ struct mfd_bq25190_cb {
  *
  * @param dev bq25190 MFD device
  * @param cb Callback structure to register
+ *
  * @retval 0 If successful
  * @retval -ENODEV If no interrupt pin available
  */
 int mfd_bq25190_register_callback(const struct device *dev, struct mfd_bq25190_cb *cb);
+
+/**
+ * @brief Enter ship mode
+ *
+ * Ship mode is the lowest quiescent current state for the device with BATFET being turned off.
+ * Ship mode is existed by Vin being applied or the MR pin being pulled low for over 1 second.
+ *
+ * @param dev bq25190 MFD device
+ *
+ * @retval 0 If successful
+ * @retval -errno In case of any bus error (see i2c_reg_update_byte())
+ */
+int mfd_bq25190_ship_mode(const struct device *dev);
 
 /** @} */
 
