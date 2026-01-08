@@ -29,7 +29,10 @@ struct mfd_bq25190_data {
 	sys_slist_t callback_list;
 };
 
-#define BQ25190_SHIP_RST_SW_RST 0x80
+#define BQ25190_SHIP_RST_SW_RST           0x80
+#define BQ25190_SHIP_RST_EN_RST_SHIP_MASK (0b11 << 5)
+#define BQ25190_SHIP_RST_EN_RST_HW_RESET  (0b01 << 5)
+#define BQ25190_SHIP_RST_EN_RST_SHIP_MODE (0b10 << 5)
 
 #define BQ25190_PART_INFORMATION_EXPECTED 0x01
 
@@ -67,6 +70,12 @@ int mfd_bq25190_reg_update(const struct device *dev, uint8_t reg, uint8_t mask, 
 	ret = i2c_reg_update_byte_dt(&config->i2c, reg, mask, data);
 	k_mutex_unlock(&dev_data->access);
 	return ret;
+}
+
+int mfd_bq25190_ship_mode(const struct device *dev)
+{
+	return mfd_bq25190_reg_update(dev, BQ25190_REG_SHIP_RST, BQ25190_SHIP_RST_EN_RST_SHIP_MASK,
+				      BQ25190_SHIP_RST_EN_RST_SHIP_MODE);
 }
 
 int mfd_bq25190_register_callback(const struct device *dev, struct mfd_bq25190_cb *cb)
