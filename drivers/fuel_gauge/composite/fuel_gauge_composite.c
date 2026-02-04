@@ -23,11 +23,13 @@ struct composite_config {
 	uint32_t charge_capacity_microamp_hours;
 	int32_t factory_internal_resistance_micro_ohms;
 	enum battery_chemistry chemistry;
+	bool secondary_fallback;
 	bool fg_channels;
 };
 
 struct composite_data {
 	int64_t next_reading;
+	bool primary_success;
 };
 
 LOG_MODULE_REGISTER(composite_fg);
@@ -53,10 +55,19 @@ static int composite_channel_get(const struct device *dev, enum sensor_channel c
 				 struct sensor_value *val)
 {
 	const struct composite_config *config = dev->config;
-	int rc;
+	struct composite_data *data = dev->data;
+	int rc = -ENOTSUP;
 
-	rc = sensor_channel_get(config->source_primary, chan, val);
+	if (data->primary_success) {
+		/* Primary sensor sampled successfully */
+		rc = sensor_channel_get(config->source_primary, chan, val);
+	}
 	if ((rc == -ENOTSUP) && config->source_secondary) {
+		/* Primary sensor doesn't support the channel OR failed to sample.
+		 * If the primary sensor failed to sample, the only API compliant way `get` can be
+		 * called is if `source-secondary-fallback` exists and the secondary measurement
+		 * succeeded.
+		 */
 		rc = sensor_channel_get(config->source_secondary, chan, val);
 	}
 	return rc;
@@ -168,7 +179,13 @@ static int composite_get_prop(const struct device *dev, fuel_gauge_prop_t prop,
 	if (k_uptime_ticks() >= data->next_reading) {
 		/* Trigger a sample on the input devices */
 		rc = composite_fetch(config->source_primary);
-		if ((rc == 0) && config->source_secondary) {
+		data->primary_success = rc == 0;
+		/* Run the secondary source if it exists and either:
+		 *     It is a fallback source and the primary source failed
+		 *     It is not a fallback source and the primary succeeded
+		 */
+		if (config->source_secondary &&
+		    (data->primary_success ^ config->secondary_fallback)) {
 			rc = composite_fetch(config->source_secondary);
 		}
 		if (rc != 0) {
@@ -265,6 +282,7 @@ static DEVICE_API(fuel_gauge, composite_api) = {
 			DT_INST_PROP_OR(inst, charge_full_design_microamp_hours, 0),               \
 		.factory_internal_resistance_micro_ohms = BATTERY_RESISTANCE(inst),                \
 		.chemistry = BATTERY_CHEMISTRY_DT_GET(inst),                                       \
+		.secondary_fallback = DT_INST_PROP(inst, source_secondary_fallback),               \
 		.fg_channels = DT_INST_PROP(inst, fuel_gauge_channels),                            \
 	};                                                                                         \
 	static struct composite_data composite_##inst##_data;                                      \
