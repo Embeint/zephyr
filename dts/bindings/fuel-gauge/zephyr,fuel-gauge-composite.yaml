@@ -25,6 +25,13 @@ properties:
 
       Device must implement the sensor API.
 
+  source-secondary-fallback:
+    type: boolean
+    description: |
+      Instead of the secondary device being used for channels the primary
+      source does not expose, use it as a fallback measurement for the case
+      the primary device fails.
+
   fuel-gauge-channels:
     type: boolean
     description: |
