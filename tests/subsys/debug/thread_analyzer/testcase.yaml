@@ -27,6 +27,7 @@ tests:
       regex:
         - "(.*)0x([0-9a-fA-F]+)([ ]+) : STACK: unused [0-9]+ usage [0-9]+ / [0-9]+ (.*)"
         - "(.*)ISR0([ ]+) : STACK: unused [0-9]+ usage [0-9]+ / [0-9]+ (.*)"
+        - "Custom callback: (.*) Usage [0-9]+/[0-9]+ User 'USER DATA'"
   debug.thread_analyzer.printk.userspace:
     filter: CONFIG_ARCH_HAS_USERSPACE
     extra_configs:
@@ -38,6 +39,7 @@ tests:
       regex:
         - "(.*)0x([0-9a-fA-F]+)([ ]+) : STACK: unused [0-9]+ usage [0-9]+ / [0-9]+ (.*)"
         - "(.*)ISR0([ ]+) : STACK: unused [0-9]+ usage [0-9]+ / [0-9]+ (.*)"
+        - "Custom callback: (.*) Usage [0-9]+/[0-9]+ User 'USER DATA'"
   debug.thread_analyzer.printk.userspace.priv_stack:
     filter: CONFIG_ARCH_HAS_USERSPACE
     extra_configs:
@@ -56,6 +58,7 @@ tests:
         - "(.*)0x([0-9a-fA-F]+)([ ]+) : STACK: unused [0-9]+ usage [0-9]+ / [0-9]+ (.*)"
         - "(.*)PRIV_STACK: unused [0-9]+ usage [0-9]+ / [0-9]+"
         - "(.*)ISR0([ ]+) : STACK: unused [0-9]+ usage [0-9]+ / [0-9]+ (.*)"
+        - "Custom callback: (.*) Usage [0-9]+/[0-9]+ User 'USER DATA'"
   debug.thread_analyzer.log_backend:
     extra_configs:
       - CONFIG_THREAD_ANALYZER_USE_LOG=y
@@ -67,6 +70,7 @@ tests:
       regex:
         - "(.*)0x([0-9a-fA-F]+)([ ]+) : STACK: unused [0-9]+ usage [0-9]+ / [0-9]+ (.*)"
         - "(.*)ISR0([ ]+) : STACK: unused [0-9]+ usage [0-9]+ / [0-9]+ (.*)"
+        - "Custom callback: (.*) Usage [0-9]+/[0-9]+ User 'USER DATA'"
   debug.thread_analyzer.log_backend.userspace:
     filter: CONFIG_ARCH_HAS_USERSPACE
     extra_configs:
@@ -80,3 +84,4 @@ tests:
       regex:
         - "(.*)0x([0-9a-fA-F]+)([ ]+) : STACK: unused [0-9]+ usage [0-9]+ / [0-9]+ (.*)"
         - "(.*)ISR0([ ]+) : STACK: unused [0-9]+ usage [0-9]+ / [0-9]+ (.*)"
+        - "Custom callback: (.*) Usage [0-9]+/[0-9]+ User 'USER DATA'"
