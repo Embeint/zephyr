@@ -57,6 +57,15 @@ struct thread_analyzer_info {
  */
 typedef void (*thread_analyzer_cb)(struct thread_analyzer_info *info);
 
+/** @brief Thread analyzer stack size callback function
+ *
+ *  Callback function with thread analysis information and user data pointer.
+ *
+ *  @param info Thread analysis information.
+ *  @param user_data User provided context
+ */
+typedef void (*thread_analyzer_ud_cb)(struct thread_analyzer_info *info, void *user_data);
+
 /** @brief Run the thread analyzer and provide information to the callback
  *
  *  This function analyzes the current state for all threads and calls
@@ -68,6 +77,17 @@ typedef void (*thread_analyzer_cb)(struct thread_analyzer_info *info);
  *  @param cpu cpu to analyze, ignored if THREAD_ANALYZER_AUTO_SEPARATE_CORES=n
  */
 void thread_analyzer_run(thread_analyzer_cb cb, unsigned int cpu);
+
+/** @brief Run the thread analyzer and provide information to the callback
+ *
+ *  Same behaviour as @ref thread_analyzer_run with the addition of an arbitrary
+ *  user data pointer.
+ *
+ *  @param cb The callback function handler
+ *  @param cpu cpu to analyze, ignored if THREAD_ANALYZER_AUTO_SEPARATE_CORES=n
+ *  @param user_data User provided callback context (Cannot be NULL)
+ */
+void thread_analyzer_ud_run(thread_analyzer_ud_cb cb, unsigned int cpu, void *user_data);
 
 /** @brief Run the thread analyzer and print stack size statistics.
  *
