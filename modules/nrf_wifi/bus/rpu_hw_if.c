@@ -21,6 +21,7 @@
 #include <zephyr/drivers/wifi/nrf_wifi/bus/rpu_hw_if.h>
 #include <zephyr/drivers/wifi/nrf_wifi/bus/qspi_if.h>
 
+#include "mspi_if.h"
 #include "spi_if.h"
 
 LOG_MODULE_REGISTER(wifi_nrf_bus, CONFIG_WIFI_NRF70_BUSLIB_LOG_LEVEL);
@@ -602,6 +603,8 @@ int rpu_sleep(void)
 {
 #if CONFIG_NRF70_ON_QSPI
 	return qspi_cmd_sleep_rpu(&qspi_perip);
+#elif CONFIG_NRF70_ON_MSPI
+	return mspi_cmd_sleep_rpu_fn();
 #else
 	return spim_cmd_sleep_rpu_fn();
 #endif
@@ -666,6 +669,8 @@ int rpu_wrsr2(uint8_t data)
 
 #if CONFIG_NRF70_ON_QSPI
 	ret = qspi_cmd_wakeup_rpu(&qspi_perip, data);
+#elif CONFIG_NRF70_ON_MSPI
+	ret = mspi_cmd_rpu_wakeup_fn(data);
 #else
 	ret = spim_cmd_rpu_wakeup_fn(data);
 #endif
@@ -678,6 +683,8 @@ int rpu_rdsr2(void)
 {
 #if CONFIG_NRF70_ON_QSPI
 	return qspi_validate_rpu_wake_writecmd(&qspi_perip);
+#elif CONFIG_NRF70_ON_MSPI
+	return mspi_validate_rpu_wake_writecmd();
 #else
 	return spi_validate_rpu_wake_writecmd();
 #endif
@@ -687,6 +694,8 @@ int rpu_rdsr1(void)
 {
 #if CONFIG_NRF70_ON_QSPI
 	return qspi_wait_while_rpu_awake(&qspi_perip);
+#elif CONFIG_NRF70_ON_MSPI
+	return mspi_wait_while_rpu_awake();
 #else
 	return spim_wait_while_rpu_awake();
 #endif
@@ -703,6 +712,8 @@ int rpu_read_reg(uint8_t reg_addr, uint8_t *reg_value)
 {
 #if CONFIG_NRF70_ON_QSPI
 	return qspi_read_reg(&qspi_perip, reg_addr, reg_value);
+#elif CONFIG_NRF70_ON_MSPI
+	return mspi_read_reg(reg_addr, reg_value);
 #else
 	return spim_read_reg_wrapper(NULL, reg_addr, reg_value);
 #endif
@@ -719,6 +730,8 @@ int rpu_write_reg(uint8_t reg_addr, uint8_t reg_value)
 {
 #if CONFIG_NRF70_ON_QSPI
 	return qspi_write_reg(&qspi_perip, reg_addr, reg_value);
+#elif CONFIG_NRF70_ON_MSPI
+	return mspi_write_reg(reg_addr, reg_value);
 #else
 	return spim_write_reg_wrapper(NULL, reg_addr, reg_value);
 #endif
