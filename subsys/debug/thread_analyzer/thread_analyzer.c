@@ -109,7 +109,6 @@ static void thread_analyze_cb(const struct k_thread *cthread, void *user_data)
 #endif
 	size_t size = thread->stack_info.size;
 	struct ta_cb_user_data *ud = user_data;
-	unsigned int cpu = ud->cpu;
 	struct thread_analyzer_info info;
 	char hexname[PTR_STR_MAXLEN + 1];
 	const char *name;
@@ -155,7 +154,7 @@ static void thread_analyze_cb(const struct k_thread *cthread, void *user_data)
 	}
 
 	if (IS_ENABLED(CONFIG_THREAD_ANALYZER_AUTO_SEPARATE_CORES)) {
-		if (k_thread_runtime_stats_cpu_get(cpu, &rt_stats_all) != 0) {
+		if (k_thread_runtime_stats_cpu_get(ud->cpu, &rt_stats_all) != 0) {
 			ret++;
 		}
 	} else {
