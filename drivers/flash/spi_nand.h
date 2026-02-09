@@ -27,7 +27,7 @@ enum spi_nand_cmd {
 	/** Read data from NAND cache */
 	SPI_NAND_CMD_READ_CACHE = 0x03,
 	/** Write memory contents to NAND cache */
-	SPI_NAND_CMD_PROGRAM_LOAD = 0x2,
+	SPI_NAND_CMD_PROGRAM_LOAD = 0x02,
 	/** Copy data from NAND cache to main storage */
 	SPI_NAND_CMD_PROGRAM_EXECUTE = 0x10,
 	/** Erase a single block in main storage */
@@ -57,6 +57,20 @@ enum spi_nand_feature_block_prot {
 	SPI_NAND_FEATURE_BLOCK_PROT_DISABLE_ALL = 0x00,
 };
 
+/* Micron:
+ * BIT6 BIT5 BIT4  State
+ *    0    0    0  No errors
+ *    0    0    1  Errors detected and corrected
+ *    0    1    0  Errors detected but not corrected
+ *    0    1    1  Errors detected and corrected. Refresh recommended
+ *    1    0    1  Errors detected and corrected. Refresh necessary
+ * Macronix:
+ * BIT5 BIT4  State
+ *    0    0  No errors
+ *    0    1  Errors detected and corrected
+ *    1    0  Errors detected but not corrected
+ *    1    1  Errors detected and corrected. Refresh recommended
+ */
 enum spi_nand_feature_status {
 	/** Operation in progress */
 	SPI_NAND_FEATURE_STATUS_OIP = BIT(0),
@@ -66,7 +80,17 @@ enum spi_nand_feature_status {
 	SPI_NAND_FEATURE_STATUS_ERASE_FAIL = BIT(2),
 	/** Page program operation failed */
 	SPI_NAND_FEATURE_STATUS_PROGRAM_FAIL = BIT(3),
-	/** Page program operation failed */
+	/** No ECC errors */
+	SPI_NAND_ECC_NO_ERRORS = 0x00,
+	/** ECC errors detected and corrected */
+	SPI_NAND_ECC_ERROR_CORRECTED = BIT(4),
+	/** ECC errors detected and NOT corrected */
+	SPI_NAND_ECC_ERROR_NOT_CORRECTED = BIT(5),
+	/** Mask for the common ECC status bits */
+	SPI_NAND_ECC_ERROR_CORRECTED_REFRESH = BIT(4) | BIT(5),
+	/** Mask for the common ECC status bits */
+	SPI_NAND_ECC_MASK = BIT(4) | BIT(5),
+	/** Read page to cache operation is executing */
 	SPI_NAND_FEATURE_STATUS_CACHE_BUSY = BIT(7),
 };
 
@@ -154,7 +178,7 @@ struct spi_nand_onfi_parameter_page {
 	/** Number of bits per cell */
 	uint8_t bits_per_cell;
 	/** Bad blocks maximum per LUN */
-	uint16_t back_blocks_per_lun;
+	uint16_t bad_blocks_per_lun;
 	/** Block endurance */
 	uint16_t block_endurance;
 	/** Guaranteed valid blocks at beginning of target */

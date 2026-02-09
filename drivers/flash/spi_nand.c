@@ -61,24 +61,16 @@ struct spi_nand_data {
  */
 #define NAND_ACCESS_ADDRESSED BIT(0)
 
-/* Indicates that addressed access uses a 8-bit address regardless of
- * spi_nand_data::flag_8bit_addr.
- */
+/* Indicates that addressed access uses a 8-bit address */
 #define NAND_ACCESS_8BIT_ADDR BIT(1)
 
-/* Indicates that addressed access uses a 16-bit address regardless of
- * spi_nand_data::flag_16bit_addr.
- */
+/* Indicates that addressed access uses a 16-bit address */
 #define NAND_ACCESS_16BIT_ADDR BIT(2)
 
-/* Indicates that addressed access uses a 24-bit address regardless of
- * spi_nand_data::flag_32bit_addr.
- */
+/* Indicates that addressed access uses a 24-bit address */
 #define NAND_ACCESS_24BIT_ADDR BIT(3)
 
-/* Indicates that addressed access uses a 32-bit address regardless of
- * spi_nand_data::flag_32bit_addr.
- */
+/* Indicates that addressed access uses a 32-bit address */
 #define NAND_ACCESS_32BIT_ADDR BIT(4)
 
 /* Indicates that an access command is performing a write.  If not
@@ -399,7 +391,7 @@ static int spi_nand_write(const struct device *dev, off_t addr, const void *src,
 		return -EINVAL;
 	}
 
-	/* All erases must be block aligned in both start address and size */
+	/* All writes must be page aligned in both start address and size */
 	if (addr % write_block) {
 		return -EINVAL;
 	}
@@ -443,7 +435,7 @@ static int spi_nand_write(const struct device *dev, off_t addr, const void *src,
 			break;
 		}
 		if (status & SPI_NAND_FEATURE_STATUS_PROGRAM_FAIL) {
-			LOG_ERR("Erase operation failed");
+			LOG_ERR("Program operation failed");
 			ret = -EIO;
 			break;
 		}
@@ -598,7 +590,7 @@ static int onfi_parameters_load(const struct device *dev)
 	 */
 	page_size = config->parameters->write_block_size;
 	for (int i = 0; i < page_size; i += sizeof(onfi)) {
-		ret = spi_nand_read_from_cache(dev, 0, &onfi, sizeof(onfi));
+		ret = spi_nand_read_from_cache(dev, i, &onfi, sizeof(onfi));
 		if (ret != 0) {
 			return ret;
 		}
@@ -660,6 +652,7 @@ static int spi_nand_configure(const struct device *dev)
 {
 	const struct spi_nand_config *config = dev->config;
 	uint8_t jedec_id[SPI_NAND_MAX_ID_LEN];
+	uint8_t status;
 	int ret;
 
 	/* Validate bus and CS is ready */
@@ -674,7 +667,10 @@ static int spi_nand_configure(const struct device *dev)
 	if (ret != 0) {
 		goto release;
 	}
-	k_sleep(K_USEC(config->reset_us));
+	ret = spi_nand_wait_until_ready(dev, "reset", config->reset_us, 100, &status);
+	if (ret != 0) {
+		goto release;
+	}
 
 	/* Validate JEDEC ID */
 	ret = spi_nand_cmd_read_dummy(dev, SPI_NAND_CMD_READ_ID, jedec_id, SPI_NAND_MAX_ID_LEN);
@@ -684,7 +680,8 @@ static int spi_nand_configure(const struct device *dev)
 	if (memcmp(jedec_id, config->jedec_id, sizeof(jedec_id)) != 0) {
 		LOG_ERR("Device id %02x %02x does not match config %02x %02x", jedec_id[0],
 			jedec_id[1], config->jedec_id[0], config->jedec_id[1]);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto release;
 	}
 
 	/* Load the ONFI parameter information */

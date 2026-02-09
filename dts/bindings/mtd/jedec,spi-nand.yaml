@@ -44,7 +44,7 @@ properties:
     type: int
     required: true
     description: |
-      Maximum erase duration in microseconds.
+      Maximum program duration in microseconds.
 
   page-read-duration-max:
     type: int
