@@ -23,6 +23,8 @@ manifest:
       url-base: https://github.com/zephyrproject-rtos
     - name: babblesim
       url-base: https://github.com/BabbleSim
+    - name: embeint
+      url-base: https://github.com/embeint
 
   group-filter: [-babblesim, -optional]
 
@@ -369,7 +371,8 @@ manifest:
       groups:
         - tee
     - name: trusted-firmware-m
-      revision: 04aa7243e04946b5422b124bea9c0675ab6b120f
+      remote: embeint
+      revision: 582e132ff0ab7db80f321a60576bf2f12383384a
       path: modules/tee/tf-m/trusted-firmware-m
       groups:
         - tee
