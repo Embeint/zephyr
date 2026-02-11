@@ -372,7 +372,7 @@ manifest:
         - tee
     - name: trusted-firmware-m
       remote: embeint
-      revision: 582e132ff0ab7db80f321a60576bf2f12383384a
+      revision: d607f68f388eb8756011db988967e4d9f6a8ce20
       path: modules/tee/tf-m/trusted-firmware-m
       groups:
         - tee
