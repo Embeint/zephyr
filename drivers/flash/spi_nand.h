@@ -14,7 +14,7 @@
 #include <zephyr/sys/util.h>
 #include <zephyr/toolchain.h>
 
-#define SPI_NAND_MAX_ID_LEN 2
+#define SPI_NAND_MAX_ID_LEN 8
 
 /** SPI NAND commands */
 enum spi_nand_cmd {
@@ -81,15 +81,15 @@ enum spi_nand_feature_status {
 	/** Page program operation failed */
 	SPI_NAND_FEATURE_STATUS_PROGRAM_FAIL = BIT(3),
 	/** No ECC errors */
-	SPI_NAND_ECC_NO_ERRORS = 0x00,
+	SPI_NAND_FEATURE_ECC_NO_ERRORS = 0x00,
 	/** ECC errors detected and corrected */
-	SPI_NAND_ECC_ERROR_CORRECTED = BIT(4),
+	SPI_NAND_FEATURE_ECC_ERROR_CORRECTED = BIT(4),
 	/** ECC errors detected and NOT corrected */
-	SPI_NAND_ECC_ERROR_NOT_CORRECTED = BIT(5),
+	SPI_NAND_FEATURE_ECC_ERROR_NOT_CORRECTED = BIT(5),
+	/** ECC errors detected, corrected and data should be refreshed */
+	SPI_NAND_FEATURE_ECC_ERROR_CORRECTED_REFRESH = BIT(4) | BIT(5),
 	/** Mask for the common ECC status bits */
-	SPI_NAND_ECC_ERROR_CORRECTED_REFRESH = BIT(4) | BIT(5),
-	/** Mask for the common ECC status bits */
-	SPI_NAND_ECC_MASK = BIT(4) | BIT(5),
+	SPI_NAND_FEATURE_ECC_MASK = BIT(4) | BIT(5),
 	/** Read page to cache operation is executing */
 	SPI_NAND_FEATURE_STATUS_CACHE_BUSY = BIT(7),
 };

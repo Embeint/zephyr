@@ -48,7 +48,9 @@ struct spi_nand_config {
 	/* Shift to apply to get page address */
 	uint8_t addr_page_shift;
 	/* Expected JEDEC ID, from jedec-id property */
-	uint8_t jedec_id[SPI_NAND_MAX_ID_LEN];
+	const uint8_t *jedec_id;
+	/* Length of the JEDEC ID */
+	uint8_t jedec_id_len;
 };
 
 struct spi_nand_data {
@@ -181,6 +183,7 @@ static int spi_nand_access(const struct device *const dev, uint8_t opcode, unsig
 
 	const struct spi_buf_set tx_set = {
 		.buffers = spi_buf,
+		/* Non zero length means that data follows opcode, so there are two buffers to tx */
 		.count = (length != 0) ? 2 : 1,
 	};
 
@@ -296,6 +299,7 @@ static int spi_nand_wait_until_ready(const struct device *dev, const char *op, u
 static int spi_nand_page_read_to_cache(const struct device *dev, uint32_t page)
 {
 	const struct spi_nand_config *config = dev->config;
+	uint8_t ecc_status;
 	uint8_t status;
 	int ret;
 
@@ -307,7 +311,26 @@ static int spi_nand_page_read_to_cache(const struct device *dev, uint32_t page)
 	}
 
 	/* Wait until the read to cache completes (poll with no delays) */
-	return spi_nand_wait_until_ready(dev, "read", config->page_read_us, 0, &status);
+	ret = spi_nand_wait_until_ready(dev, "read", config->page_read_us, 0, &status);
+	if (ret != 0) {
+		return ret;
+	}
+
+	/* Validate data integrity from ECC */
+	ecc_status = status & SPI_NAND_FEATURE_ECC_MASK;
+	switch (ecc_status) {
+	case SPI_NAND_FEATURE_ECC_ERROR_NOT_CORRECTED:
+		LOG_WRN("ECC uncorrectable error on page %06x", page);
+		/* Unique error code for corrupt data (retrying the read won't work) */
+		return -EBADMSG;
+	case SPI_NAND_FEATURE_ECC_ERROR_CORRECTED_REFRESH:
+	case SPI_NAND_FEATURE_ECC_ERROR_CORRECTED:
+		LOG_DBG("ECC errors corrected on page %06x", page);
+		break;
+	case SPI_NAND_FEATURE_ECC_NO_ERRORS:
+		break;
+	}
+	return 0;
 }
 
 /** Read data from cache, assumes device already acquired */
@@ -346,24 +369,31 @@ static int spi_nand_read(const struct device *dev, off_t addr, void *dest, size_
 		return -EINVAL;
 	}
 
+	if (size == 0) {
+		/* No work to do */
+		return 0;
+	}
+
 	acquire_device(dev);
 
 	while (size > 0) {
 		page_address = addr >> config->addr_page_shift;
 		page_offset = addr & config->addr_offset_mask;
 		bytes_to_end = config->parameters->write_block_size - page_offset;
-		bytes_to_read = min(size, bytes_to_end);
+		bytes_to_read = MIN(size, bytes_to_end);
 
 		/* Copy data from main storage to cache */
 		LOG_DBG("Read %d from %06x:%03x", bytes_to_read, page_address, page_offset);
 		ret = spi_nand_page_read_to_cache(dev, page_address);
 		if (ret != 0) {
+			LOG_DBG("Copy from NAND to device cache failed (%d)", ret);
 			break;
 		}
 
 		/* Read data out of cache */
 		ret = spi_nand_read_from_cache(dev, page_offset, dest_u8, bytes_to_read);
 		if (ret != 0) {
+			LOG_DBG("Read from device cache failed (%d)", ret);
 			break;
 		}
 
@@ -385,6 +415,11 @@ static int spi_nand_write(const struct device *dev, off_t addr, const void *src,
 	uint32_t page_address;
 	uint8_t status;
 	int ret = 0;
+
+	if (size == 0) {
+		/* No work to do */
+		return 0;
+	}
 
 	/* Write area must be subregion of device */
 	if (!valid_region(dev, addr, size)) {
@@ -408,23 +443,26 @@ static int spi_nand_write(const struct device *dev, off_t addr, const void *src,
 			break;
 		}
 
+		page_address = addr >> config->addr_page_shift;
+		LOG_DBG("Write %d to %06x:000", write_block, page_address);
+
 		/* Copy data to cache (at offset 0) */
 		ret = spi_nand_access(dev, SPI_NAND_CMD_PROGRAM_LOAD,
 				      NAND_ACCESS_WRITE | NAND_ACCESS_ADDRESSED |
 					      NAND_ACCESS_16BIT_ADDR,
 				      0, src_u8, write_block);
 		if (ret != 0) {
+			LOG_DBG("Copy to device cache failed (%d)", ret);
 			break;
 		}
 
 		/* Program the cache to the appropriate page */
-		page_address = addr >> config->addr_page_shift;
-		LOG_DBG("Write %d to %06x:000", write_block, page_address);
 		ret = spi_nand_access(dev, SPI_NAND_CMD_PROGRAM_EXECUTE,
 				      NAND_ACCESS_WRITE | NAND_ACCESS_ADDRESSED |
 					      NAND_ACCESS_24BIT_ADDR,
 				      page_address, NULL, 0);
 		if (ret != 0) {
+			LOG_DBG("Program from cache to NAND failed (%d)", ret);
 			break;
 		}
 
@@ -456,6 +494,11 @@ static int spi_nand_erase(const struct device *dev, off_t addr, size_t size)
 	uint32_t page_address;
 	uint8_t status;
 	int ret = 0;
+
+	if (size == 0) {
+		/* No work to do */
+		return 0;
+	}
 
 	/* Erase area must be subregion of device */
 	if (!valid_region(dev, addr, size)) {
@@ -579,8 +622,10 @@ static int onfi_parameters_load(const struct device *dev)
 		return ret;
 	}
 
-	/* Explicilty set CRCs to be mismatched, since static analysis doesn't know
-	 * config->parameters->write_block_size is always non-zero.
+	/* The compiler does not know that config->parameters->write_block_size is always non-zero.
+	 * As a result, it believes it is possible for the loop to be skipped, leaving both CRC
+	 * variables uninitialized at the comparison point below the loop. Explicitly set the values
+	 * to suppress the warnings.
 	 */
 	computed_crc = 0;
 	onfi.integrity_crc = 1;
@@ -607,13 +652,12 @@ static int onfi_parameters_load(const struct device *dev)
 		return -ENOSPC;
 	}
 
-	/* NULL terminate for display */
-	onfi.device_manufacturer[11] = '\0';
-	onfi.device_model[19] = '\0';
-
-	/* Display parameters from ONFI block */
-	LOG_DBG("     Manufacturer: %s", onfi.device_manufacturer);
-	LOG_DBG("            Model: %s", onfi.device_model);
+	/* Display parameters from ONFI block.
+	 * "%{N}s" pads a string to N characters.
+	 * "%.{N}s" prints at most N characters.
+	 */
+	LOG_DBG("     Manufacturer: %.12s", onfi.device_manufacturer);
+	LOG_DBG("            Model: %.20s", onfi.device_model);
 	LOG_DBG(" Page Size (data): %d", onfi.data_bytes_per_page);
 	LOG_DBG("Page Size (spare): %d", onfi.spare_bytes_per_page);
 	LOG_DBG("  Pages per Block: %d", onfi.pages_per_block);
@@ -673,13 +717,13 @@ static int spi_nand_configure(const struct device *dev)
 	}
 
 	/* Validate JEDEC ID */
-	ret = spi_nand_cmd_read_dummy(dev, SPI_NAND_CMD_READ_ID, jedec_id, SPI_NAND_MAX_ID_LEN);
+	ret = spi_nand_cmd_read_dummy(dev, SPI_NAND_CMD_READ_ID, jedec_id, config->jedec_id_len);
 	if (ret != 0) {
 		goto release;
 	}
-	if (memcmp(jedec_id, config->jedec_id, sizeof(jedec_id)) != 0) {
-		LOG_ERR("Device id %02x %02x does not match config %02x %02x", jedec_id[0],
-			jedec_id[1], config->jedec_id[0], config->jedec_id[1]);
+	if (memcmp(jedec_id, config->jedec_id, config->jedec_id_len) != 0) {
+		LOG_HEXDUMP_ERR(config->jedec_id, config->jedec_id_len, "Expected JEDEC ID");
+		LOG_HEXDUMP_ERR(jedec_id, config->jedec_id_len, "Queried JEDEC ID");
 		ret = -EINVAL;
 		goto release;
 	}
@@ -759,10 +803,21 @@ static DEVICE_API(flash, spi_nand_api) = {
 /* clang-format on */
 
 #define SPI_NAND_INST(idx)                                                                         \
+	BUILD_ASSERT(IS_POWER_OF_TWO(DT_INST_PROP(idx, write_block_size)),                         \
+		     "write-block-size must be a power of 2");                                     \
+	BUILD_ASSERT(IS_POWER_OF_TWO(DT_INST_PROP(idx, erase_block_size)),                         \
+		     "erase-block-size must be a power of 2");                                     \
+	BUILD_ASSERT(DT_INST_PROP(idx, erase_block_size) % DT_INST_PROP(idx, write_block_size) ==  \
+			     0,                                                                    \
+		     "erase-block-size must be a multiple of write-block-size");                   \
+	BUILD_ASSERT(DT_INST_PROP(idx, size_bytes) % DT_INST_PROP(idx, erase_block_size) == 0,     \
+		     "size-bytes must be a multiple of erase-block-size");                         \
 	static const struct flash_parameters spi_nand_##idx##_parameters = {                       \
 		.write_block_size = DT_INST_PROP(idx, write_block_size),                           \
 		.erase_value = 0xff,                                                               \
 	};                                                                                         \
+	static const uint8_t spi_nand_##idx##_jedec_id[] = DT_INST_PROP(idx, jedec_id);            \
+	BUILD_ASSERT(ARRAY_SIZE(spi_nand_##idx##_jedec_id) <= SPI_NAND_MAX_ID_LEN);                \
 	static const struct spi_nand_config spi_nand_##idx##_config = {                            \
 		.spi = SPI_DT_SPEC_INST_GET(idx, SPI_WORD_SET(8)),                                 \
 		.parameters = &spi_nand_##idx##_parameters,                                        \
@@ -774,7 +829,8 @@ static DEVICE_API(flash, spi_nand_api) = {
 		.reset_us = DT_INST_PROP(idx, reset_duration_max),                                 \
 		.addr_offset_mask = DT_INST_PROP(idx, write_block_size) - 1,                       \
 		.addr_page_shift = LOG2(DT_INST_PROP(idx, write_block_size)),                      \
-		.jedec_id = DT_INST_PROP(idx, jedec_id),                                           \
+		.jedec_id = spi_nand_##idx##_jedec_id,                                             \
+		.jedec_id_len = ARRAY_SIZE(spi_nand_##idx##_jedec_id),                             \
 		DEFINE_PAGE_LAYOUT(idx)};                                                          \
 	static struct spi_nand_data spi_nand_##idx##_data;                                         \
 	PM_DEVICE_DT_INST_DEFINE(idx, spi_nand_pm_control);                                        \
