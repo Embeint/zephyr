@@ -619,6 +619,18 @@ static void wpas_remove_certs(struct wpa_supplicant *wpa_s)
 }
 #endif
 
+static void pbkdf2_string_format(const uint8_t *psk, char output[WIFI_PSK_MAX_LEN + 1])
+{
+	uint8_t rem_len = WIFI_PSK_MAX_LEN + 1;
+
+	/* Chunk the formatting into 4 byte groups to reduce overhead */
+	for (int i = 0; i < WIFI_PSK_PBKDF2_KEY_LEN; i += 4) {
+		snprintf(output + (2 * i), rem_len, "%02x%02x%02x%02x", psk[i + 0], psk[i + 1],
+			 psk[i + 2], psk[i + 3]);
+		rem_len -= 8;
+	}
+}
+
 static int wpas_add_and_config_network(struct wpa_supplicant *wpa_s,
 				       struct wifi_connect_req_params *params,
 				       bool mode_ap)
@@ -703,15 +715,26 @@ static int wpas_add_and_config_network(struct wpa_supplicant *wpa_s,
 
 	if (params->security != WIFI_SECURITY_TYPE_NONE) {
 		if (params->psk) {
-			if ((params->psk_length < WIFI_PSK_MIN_LEN) ||
-			    (params->psk_length > WIFI_PSK_MAX_LEN)) {
-				wpa_printf(MSG_ERROR,
-					   "Passphrase should be in range (%d-%d) characters",
-					   WIFI_PSK_MIN_LEN, WIFI_PSK_MAX_LEN);
-				goto out;
+			if (params->psk_is_pbkdf2) {
+				if (params->psk_length != WIFI_PSK_PBKDF2_KEY_LEN) {
+					wpa_printf(MSG_ERROR,
+						  "PBKDF2 key must be %d bytes",
+						  WIFI_PSK_PBKDF2_KEY_LEN);
+					goto out;
+				}
+				/* Convert byte array to hex string */
+				pbkdf2_string_format(params->psk, psk_null_terminated);
+			} else {
+				if ((params->psk_length < WIFI_PSK_MIN_LEN) ||
+				    (params->psk_length > WIFI_PSK_MAX_LEN)) {
+					wpa_printf(MSG_ERROR,
+						   "Passphrase should be in range (%d-%d) characters",
+						   WIFI_PSK_MIN_LEN, WIFI_PSK_MAX_LEN);
+					goto out;
+				}
+				strncpy(psk_null_terminated, params->psk, WIFI_PSK_MAX_LEN);
+				psk_null_terminated[params->psk_length] = '\0';
 			}
-			strncpy(psk_null_terminated, params->psk, WIFI_PSK_MAX_LEN);
-			psk_null_terminated[params->psk_length] = '\0';
 		}
 
 		/* SAP - only open and WPA2-PSK are supported for now */
@@ -787,8 +810,12 @@ static int wpas_add_and_config_network(struct wpa_supplicant *wpa_s,
 				goto out;
 			}
 		} else if (params->security == WIFI_SECURITY_TYPE_PSK_SHA256) {
-			if (!wpa_cli_cmd_v("set_network %d psk \"%s\"",
-					   resp.network_id, psk_null_terminated)) {
+			/* Pre-computed key has no quotes */
+			const char *psk_format = params->psk_is_pbkdf2 ?
+				"set_network %d psk %s" :
+				"set_network %d psk \"%s\"";
+
+			if (!wpa_cli_cmd_v(psk_format, resp.network_id, psk_null_terminated)) {
 				goto out;
 			}
 
@@ -806,8 +833,12 @@ static int wpas_add_and_config_network(struct wpa_supplicant *wpa_s,
 			}
 		} else if (params->security == WIFI_SECURITY_TYPE_PSK ||
 			   params->security == WIFI_SECURITY_TYPE_WPA_PSK) {
-			if (!wpa_cli_cmd_v("set_network %d psk \"%s\"",
-					   resp.network_id, psk_null_terminated)) {
+			/* Pre-computed key has no quotes */
+			const char *psk_format = params->psk_is_pbkdf2 ?
+				"set_network %d psk %s" :
+				"set_network %d psk \"%s\"";
+
+			if (!wpa_cli_cmd_v(psk_format, resp.network_id, psk_null_terminated)) {
 				goto out;
 			}
 
