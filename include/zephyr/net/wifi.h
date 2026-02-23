@@ -303,6 +303,8 @@ const char *wifi_bandwidth_txt(enum wifi_frequency_bandwidths bandwidth);
 #define WIFI_PSK_MIN_LEN 8
 /** Maximum PSK length */
 #define WIFI_PSK_MAX_LEN 64
+/** Length of the PBKDF2 key */
+#define WIFI_PSK_PBKDF2_KEY_LEN 32
 /** Max SAW password length */
 #define WIFI_SAE_PSWD_MAX_LEN 128
 /** MAC address length */
