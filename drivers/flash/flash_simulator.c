@@ -15,6 +15,7 @@
 #include <zephyr/sys/util.h>
 #include <zephyr/random/random.h>
 #include <zephyr/stats/stats.h>
+#include <zephyr/pm/device.h>
 #include <string.h>
 
 #ifdef CONFIG_ARCH_POSIX
@@ -431,15 +432,28 @@ static int flash_mock_init(const struct device *dev)
 #endif /* DT_NODE_HAS_PROP(DT_PARENT(SOC_NV_FLASH_NODE), memory_region) */
 #endif /* CONFIG_ARCH_POSIX */
 
+static int flash_sim_pm_control(const struct device *dev, enum pm_device_action action)
+{
+	/* No action needed, exists only to enable validating get/put balancing in tests */
+	return 0;
+}
+
 static int flash_init(const struct device *dev)
 {
+	int rc;
+
 	FLASH_SIM_STATS_INIT_AND_REG(flash_sim_stats, STATS_SIZE_32, "flash_sim_stats");
 	FLASH_SIM_STATS_INIT_AND_REG(flash_sim_thresholds, STATS_SIZE_32,
 			   "flash_sim_thresholds");
-	return flash_mock_init(dev);
+	rc = flash_mock_init(dev);
+	if (rc == 0) {
+		rc = pm_device_driver_init(dev, flash_sim_pm_control);
+	}
+	return rc;
 }
 
-DEVICE_DT_INST_DEFINE(0, flash_init, NULL,
+PM_DEVICE_DT_INST_DEFINE(0, flash_sim_pm_control);
+DEVICE_DT_INST_DEFINE(0, flash_init, PM_DEVICE_DT_INST_GET(0),
 		    NULL, NULL, POST_KERNEL, CONFIG_FLASH_INIT_PRIORITY,
 		    &flash_sim_api);
 
