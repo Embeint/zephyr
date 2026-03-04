@@ -136,6 +136,7 @@ static int ina2xx_adc_run(const struct device *dev)
 {
 	const struct ina2xx_config *config = dev->config;
 	bool in_shutdown = config->adc_mode == 0;
+	k_timepoint_t timeout;
 	uint16_t reg;
 	int ret;
 
@@ -157,10 +158,17 @@ static int ina2xx_adc_run(const struct device *dev)
 	/* Wait until we expect the sampling to be complete */
 	k_sleep(K_USEC(config->conv_duration_us));
 
+	/* Poll for 10ms or the conversion duration, whichever is higher */
+	timeout = sys_timepoint_calc(K_USEC(MAX(10 * USEC_PER_MSEC, config->conv_duration_us)));
+
 	/* Poll conversion complete bit */
 	while (1) {
 		ret = ina2xx_reg_read_16(&config->bus, INA230_REG_MASK, &reg);
 		if ((ret != 0) || (reg & INA230_REG_MASK_CNVR)) {
+			break;
+		}
+		if (sys_timepoint_expired(timeout)) {
+			ret = -ETIMEDOUT;
 			break;
 		}
 		k_sleep(K_MSEC(1));
