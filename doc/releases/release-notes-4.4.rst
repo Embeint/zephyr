@@ -179,6 +179,7 @@ New APIs and options
   * :c:macro:`PDM_DT_IO_CFG_GET`
   * :c:macro:`PDM_DT_HAS_LEFT_CHANNEL`
   * :c:macro:`PDM_DT_HAS_RIGHT_CHANNEL`
+  * :c:member:`pcm_stream_cfg.gain_db`
 
 * Bluetooth
 
