@@ -8,6 +8,7 @@
  * @brief Driver for Nordic Semiconductor nRF UARTE
  */
 
+#include <zephyr/drivers/clock_control/nrf_clock_control.h>
 #include <zephyr/drivers/uart.h>
 #include <zephyr/drivers/pinctrl.h>
 #include <zephyr/pm/device.h>
@@ -262,6 +263,10 @@ struct uarte_nrfx_data {
 #endif
 #ifdef UARTE_ANY_ASYNC
 	struct uarte_async_cb *async;
+#endif
+#ifdef CONFIG_UART_NRFX_UARTE_HFXO_ON_ACTIVE
+	struct onoff_client hfxo_client;
+	struct k_poll_signal hfxo_ready;
 #endif
 	atomic_val_t poll_out_lock;
 	atomic_t flags;
@@ -2952,6 +2957,26 @@ static void uarte_pm_resume(const struct device *dev)
 {
 	const struct uarte_nrfx_config *cfg = dev->config;
 
+#ifdef CONFIG_UART_NRFX_UARTE_HFXO_ON_ACTIVE
+	struct onoff_manager *mgr = z_nrf_clock_control_get_onoff(CLOCK_CONTROL_NRF_SUBSYS_HF);
+	struct uarte_nrfx_data *data = dev->data;
+	struct k_poll_event sevt = K_POLL_EVENT_INITIALIZER(K_POLL_TYPE_SIGNAL,
+							    K_POLL_MODE_NOTIFY_ONLY,
+							    &data->hfxo_ready);
+	int err;
+
+	k_poll_signal_reset(&data->hfxo_ready);
+	sys_notify_init_signal(&data->hfxo_client.notify, &data->hfxo_ready);
+	err = onoff_request(mgr, &data->hfxo_client);
+	__ASSERT_NO_MSG(err >= 0);
+
+	/* Don't wait for the HFXO if in an ISR context */
+	if (!k_is_in_isr()) {
+		err = k_poll(&sevt, 1, K_FOREVER);
+		__ASSERT_NO_MSG(err == 0);
+	}
+#endif
+
 	if (IS_ENABLED(CONFIG_PM_DEVICE_RUNTIME) || !LOW_POWER_ENABLED(cfg)) {
 		uarte_periph_enable(dev);
 	}
@@ -2962,6 +2987,7 @@ static int uarte_pm_suspend(const struct device *dev)
 	NRF_UARTE_Type *uarte = get_uarte_instance(dev);
 	const struct uarte_nrfx_config *cfg = dev->config;
 	struct uarte_nrfx_data *data = dev->data;
+	int err;
 
 	(void)data;
 
@@ -3022,7 +3048,17 @@ static int uarte_pm_suspend(const struct device *dev)
 	}
 
 	nrf_uarte_disable(uarte);
-	return pinctrl_apply_state(cfg->pcfg, PINCTRL_STATE_SLEEP);
+	err = pinctrl_apply_state(cfg->pcfg, PINCTRL_STATE_SLEEP);
+
+#ifdef CONFIG_UART_NRFX_UARTE_HFXO_ON_ACTIVE
+	struct onoff_manager *mgr = z_nrf_clock_control_get_onoff(CLOCK_CONTROL_NRF_SUBSYS_HF);
+	int onoff_err;
+
+	sys_notify_init_signal(&data->hfxo_client.notify, &data->hfxo_ready);
+	onoff_err = onoff_cancel_or_release(mgr, &data->hfxo_client);
+	__ASSERT_NO_MSG(onoff_err >= 0);
+#endif
+	return err;
 }
 
 static int uarte_nrfx_pm_action(const struct device *dev, enum pm_device_action action)
@@ -3092,8 +3128,9 @@ static int uarte_tx_path_init(const struct device *dev)
 static int uarte_instance_init(const struct device *dev,
 			       uint8_t interrupts_active)
 {
-	int err;
+	__maybe_unused struct uarte_nrfx_data *data = dev->data;
 	const struct uarte_nrfx_config *cfg = dev->config;
+	int err;
 
 #if defined(CONFIG_SOC_SERIES_BSIM_NRFXX)
 	/* For simulation the DT provided peripheral address needs to be corrected */
@@ -3123,9 +3160,11 @@ static int uarte_instance_init(const struct device *dev,
 	nrf_uarte_configure(uarte, &cfg->hw_config);
 #endif
 
-#ifdef UARTE_ANY_ASYNC
-	struct uarte_nrfx_data *data = dev->data;
+#ifdef CONFIG_UART_NRFX_UARTE_HFXO_ON_ACTIVE
+	k_poll_signal_init(&data->hfxo_ready);
+#endif
 
+#ifdef UARTE_ANY_ASYNC
 	if (data->async) {
 		err = uarte_async_init(dev);
 		if (err < 0) {
