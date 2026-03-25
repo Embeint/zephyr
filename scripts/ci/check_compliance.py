@@ -146,6 +146,15 @@ def get_vendor_prefixes(path, errfn = print) -> set[str]:
                 errfn("Did you forget the tab character?")
     return vendor_prefixes
 
+def file_to_list(path) -> list[str]:
+    """
+    Load the contents of a file into a list, one line per element,
+    newlines stripped, lines starting with # ignored
+    """
+    with open(path) as f:
+        output = [line.strip() for line in f.readlines() if not line.startswith('#')]
+    return output
+
 class FmtdFailure(Failure):
     def __init__(
         self, severity, title, file, line=None, col=None, desc="", end_line=None, end_col=None
@@ -1273,6 +1282,11 @@ Missing SoC names or CONFIG_SOC vs soc.yml out of sync:
                           ":!/doc/security/vulnerabilities.rst",
                           cwd=GIT_TOP)
 
+        # Load extensions to UNDEF_KCONFIG_ALLOWLIST
+        undef_kconfig_allowlist_extra = []
+        if path := os.environ.get("UNDEF_KCONFIG_ALLOWLIST_FILE", None):
+            undef_kconfig_allowlist_extra = file_to_list(path)
+
         # splitlines() supports various line terminators
         for grep_line in grep_stdout.splitlines():
             path, lineno, line = grep_line.split("\0")
@@ -1283,6 +1297,7 @@ Missing SoC names or CONFIG_SOC vs soc.yml out of sync:
                 sym_name = sym_name[len(self.CONFIG_):]  # Strip CONFIG_
                 if sym_name not in defined_syms and \
                    sym_name not in self.UNDEF_KCONFIG_ALLOWLIST and \
+                   sym_name not in undef_kconfig_allowlist_extra and \
                    not (sym_name.endswith("_MODULE") and sym_name[:-7] in defined_syms) \
                    and not sym_name.startswith("BOARD_REVISION_"):
 
