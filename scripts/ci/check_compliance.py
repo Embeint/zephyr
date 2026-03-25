@@ -1203,9 +1203,25 @@ https://docs.zephyrproject.org/latest/build/kconfig/tips.html#menuconfig-symbols
         """
         Checks that there are no references to undefined Kconfig symbols within
         the Kconfig files
+
+        kconfiglib warning format:
+            "warning: undefined symbol MY_SYMBOL:\n\n- Referenced at ..."
         """
+        _sym_re = re.compile(r"undefined symbol (\w+)")
+
+        # Load list of configs to ignore for this check
+        undef_kconfig_allowlist_extra = []
+        if path := os.environ.get("UNDEF_KCONFIG_INSIDE_ALLOWLIST_FILE", None):
+            logging.info(f"Loading allowed undefined symbols from {path}")
+            undef_kconfig_allowlist_extra = file_to_list(path)
+
+        def is_allowed(warning):
+            m = _sym_re.search(warning)
+            return m is not None and m.group(1) in undef_kconfig_allowlist_extra
+
         undef_ref_warnings = "\n\n\n".join(warning for warning in kconf.warnings
-                                           if "undefined symbol" in warning)
+                                           if "undefined symbol" in warning and
+                                           not is_allowed(warning))
 
         if undef_ref_warnings:
             self.failure(f"Undefined Kconfig symbols:\n\n {undef_ref_warnings}")
@@ -1284,7 +1300,8 @@ Missing SoC names or CONFIG_SOC vs soc.yml out of sync:
 
         # Load extensions to UNDEF_KCONFIG_ALLOWLIST
         undef_kconfig_allowlist_extra = []
-        if path := os.environ.get("UNDEF_KCONFIG_ALLOWLIST_FILE", None):
+        if path := os.environ.get("UNDEF_KCONFIG_OUTSIDE_ALLOWLIST_FILE", None):
+            logging.info(f"Loading extra UNDEF_KCONFIG_ALLOWLIST values from {path}")
             undef_kconfig_allowlist_extra = file_to_list(path)
 
         # splitlines() supports various line terminators
