@@ -55,6 +55,10 @@ BUILD_ASSERT(sizeof(CONFIG_MODEM_CELLULAR_APN) - 1 < MODEM_CELLULAR_DATA_APN_LEN
 			"CONFIG_MODEM_CELLULAR_APN too long for data->apn");
 #endif
 
+/* Zephyr networking interface states:
+ *    NET_IF_LOWER_UP: Carrier is on in AWAIT_REGISTERED and REGISTERED
+ *     NET_IF_DORMANT: Interface is dormant in every state except REGISTERED
+ */
 enum modem_cellular_state {
 	MODEM_CELLULAR_STATE_IDLE = 0,
 	MODEM_CELLULAR_STATE_RESET_PULSE,
@@ -1387,6 +1391,9 @@ static int modem_cellular_on_await_registered_state_enter(struct modem_cellular_
 	const struct modem_cellular_config *config =
 		(const struct modem_cellular_config *)data->dev->config;
 
+	/* PHY is now up and searching for network */
+	net_if_carrier_on(modem_ppp_get_iface(data->ppp));
+
 	if (modem_ppp_attach(data->ppp, data->dlci1_pipe) < 0) {
 		return -EAGAIN;
 	}
@@ -1423,6 +1430,7 @@ static void modem_cellular_await_registered_event_handler(struct modem_cellular_
 		break;
 
 	case MODEM_CELLULAR_EVENT_SUSPEND:
+		net_if_carrier_off(modem_ppp_get_iface(data->ppp));
 		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_INIT_POWER_OFF);
 		break;
 
@@ -1439,7 +1447,6 @@ static int modem_cellular_on_await_registered_state_leave(struct modem_cellular_
 
 static int modem_cellular_on_registered_state_enter(struct modem_cellular_data *data)
 {
-	net_if_carrier_on(modem_ppp_get_iface(data->ppp));
 	net_if_dormant_off(modem_ppp_get_iface(data->ppp));
 	modem_cellular_start_timer(data, MODEM_CELLULAR_PERIODIC_SCRIPT_TIMEOUT);
 	return 0;
