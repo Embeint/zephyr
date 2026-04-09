@@ -70,7 +70,7 @@ enum modem_cellular_state {
 	MODEM_CELLULAR_STATE_RUN_APN_SCRIPT,
 	MODEM_CELLULAR_STATE_RUN_DIAL_SCRIPT,
 	MODEM_CELLULAR_STATE_AWAIT_REGISTERED,
-	MODEM_CELLULAR_STATE_CARRIER_ON,
+	MODEM_CELLULAR_STATE_REGISTERED,
 	MODEM_CELLULAR_STATE_DORMANT,
 	MODEM_CELLULAR_STATE_INIT_POWER_OFF,
 	MODEM_CELLULAR_STATE_RUN_SHUTDOWN_SCRIPT,
@@ -246,8 +246,8 @@ static const char *modem_cellular_state_str(enum modem_cellular_state state)
 		return "run apn script";
 	case MODEM_CELLULAR_STATE_RUN_DIAL_SCRIPT:
 		return "run dial script";
-	case MODEM_CELLULAR_STATE_CARRIER_ON:
-		return "carrier on";
+	case MODEM_CELLULAR_STATE_REGISTERED:
+		return "registered";
 	case MODEM_CELLULAR_STATE_DORMANT:
 		return "dormant";
 	case MODEM_CELLULAR_STATE_INIT_POWER_OFF:
@@ -1419,7 +1419,7 @@ static void modem_cellular_await_registered_event_handler(struct modem_cellular_
 		break;
 
 	case MODEM_CELLULAR_EVENT_REGISTERED:
-		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_CARRIER_ON);
+		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_REGISTERED);
 		break;
 
 	case MODEM_CELLULAR_EVENT_SUSPEND:
@@ -1437,14 +1437,14 @@ static int modem_cellular_on_await_registered_state_leave(struct modem_cellular_
 	return 0;
 }
 
-static int modem_cellular_on_carrier_on_state_enter(struct modem_cellular_data *data)
+static int modem_cellular_on_registered_state_enter(struct modem_cellular_data *data)
 {
 	net_if_carrier_on(modem_ppp_get_iface(data->ppp));
 	modem_cellular_start_timer(data, MODEM_CELLULAR_PERIODIC_SCRIPT_TIMEOUT);
 	return 0;
 }
 
-static void modem_cellular_carrier_on_event_handler(struct modem_cellular_data *data,
+static void modem_cellular_registered_event_handler(struct modem_cellular_data *data,
 						    enum modem_cellular_event evt)
 {
 	const struct modem_cellular_config *config =
@@ -1480,7 +1480,7 @@ static void modem_cellular_carrier_on_event_handler(struct modem_cellular_data *
 	}
 }
 
-static int modem_cellular_on_carrier_on_state_leave(struct modem_cellular_data *data)
+static int modem_cellular_on_registered_state_leave(struct modem_cellular_data *data)
 {
 	modem_cellular_stop_timer(data);
 
@@ -1710,8 +1710,8 @@ static int modem_cellular_on_state_enter(struct modem_cellular_data *data)
 		ret = modem_cellular_on_await_registered_state_enter(data);
 		break;
 
-	case MODEM_CELLULAR_STATE_CARRIER_ON:
-		ret = modem_cellular_on_carrier_on_state_enter(data);
+	case MODEM_CELLULAR_STATE_REGISTERED:
+		ret = modem_cellular_on_registered_state_enter(data);
 		break;
 
 	case MODEM_CELLULAR_STATE_DORMANT:
@@ -1779,8 +1779,8 @@ static int modem_cellular_on_state_leave(struct modem_cellular_data *data)
 		ret = modem_cellular_on_await_registered_state_leave(data);
 		break;
 
-	case MODEM_CELLULAR_STATE_CARRIER_ON:
-		ret = modem_cellular_on_carrier_on_state_leave(data);
+	case MODEM_CELLULAR_STATE_REGISTERED:
+		ret = modem_cellular_on_registered_state_leave(data);
 		break;
 
 	case MODEM_CELLULAR_STATE_DORMANT:
@@ -1894,8 +1894,8 @@ static void modem_cellular_event_handler(struct modem_cellular_data *data,
 		modem_cellular_await_registered_event_handler(data, evt);
 		break;
 
-	case MODEM_CELLULAR_STATE_CARRIER_ON:
-		modem_cellular_carrier_on_event_handler(data, evt);
+	case MODEM_CELLULAR_STATE_REGISTERED:
+		modem_cellular_registered_event_handler(data, evt);
 		break;
 
 	case MODEM_CELLULAR_STATE_DORMANT:
@@ -2005,7 +2005,7 @@ static int modem_cellular_get_signal(const struct device *dev,
 	struct modem_cellular_data *data = (struct modem_cellular_data *)dev->data;
 
 	if ((data->state != MODEM_CELLULAR_STATE_AWAIT_REGISTERED) &&
-	    (data->state != MODEM_CELLULAR_STATE_CARRIER_ON)) {
+	    (data->state != MODEM_CELLULAR_STATE_REGISTERED)) {
 		return -ENODATA;
 	}
 
