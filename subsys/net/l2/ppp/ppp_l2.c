@@ -517,6 +517,21 @@ static void net_ppp_mgmt_evt_handler(struct net_mgmt_event_callback *cb, uint64_
 	}
 }
 
+void ppp_backend_link_dead(struct net_if *iface)
+{
+	struct ppp_context *ctx;
+
+	if (net_if_l2(iface) != &NET_L2_GET_NAME(PPP)) {
+		return;
+	}
+
+	ctx = net_if_l2_data(iface);
+
+	if (net_if_is_carrier_ok(iface)) {
+		ppp_lcp_close_async(ctx);
+	}
+}
+
 void net_ppp_init(struct net_if *iface)
 {
 	struct ppp_context *ctx = net_if_l2_data(iface);

@@ -598,6 +598,22 @@ struct net_if;
 /** @endcond */
 
 /**
+ * @brief Notify L2 that the PPP link has died
+ *
+ * Should only be called by implementations of @ref ppp_api.
+ *
+ * @param iface PPP network interface.
+ */
+#if defined(CONFIG_NET_L2_PPP)
+void ppp_backend_link_dead(struct net_if *iface);
+#else
+static inline void ppp_backend_link_dead(struct net_if *iface)
+{
+	ARG_UNUSED(iface);
+}
+#endif
+
+/**
  * @brief Retrieve the PPP peers Asynchronous Control Character Map
  *
  * @param iface PPP network interface.
