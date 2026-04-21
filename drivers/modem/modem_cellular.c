@@ -2850,7 +2850,10 @@ MODEM_CHAT_SCRIPT_DEFINE(telit_le910cx_ready_chat_script,
 
 MODEM_CHAT_SCRIPT_CMDS_DEFINE(telit_le910cx_periodic_chat_script_cmds,
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG?", ok_match),
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT#RFSTS", ok_match));
+			      /* RFSTS can be ignored by the modem if a GPSACP command is executing
+			       * on a different DLCI channel.
+			       */
+			      MODEM_CHAT_SCRIPT_CMD_RESP_NONE("AT#RFSTS", 500));
 
 MODEM_CHAT_SCRIPT_DEFINE(telit_le910cx_periodic_chat_script,
 			 telit_le910cx_periodic_chat_script_cmds, abort_matches,
