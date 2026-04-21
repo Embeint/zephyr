@@ -1434,6 +1434,13 @@ static void modem_cellular_await_registered_event_handler(struct modem_cellular_
 		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_INIT_POWER_OFF);
 		break;
 
+	case MODEM_CELLULAR_EVENT_PPP_DEAD:
+		if (net_if_is_admin_up(modem_ppp_get_iface(data->ppp))) {
+			modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_AWAIT_PPP_DEAD);
+			modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_RUN_DIAL_SCRIPT);
+		}
+		break;
+
 	default:
 		break;
 	}
@@ -1474,6 +1481,13 @@ static void modem_cellular_registered_event_handler(struct modem_cellular_data *
 
 	case MODEM_CELLULAR_EVENT_DEREGISTERED:
 		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_AWAIT_PPP_DEAD);
+		break;
+
+	case MODEM_CELLULAR_EVENT_PPP_DEAD:
+		if (net_if_is_admin_up(modem_ppp_get_iface(data->ppp))) {
+			modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_AWAIT_PPP_DEAD);
+			modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_RUN_DIAL_SCRIPT);
+		}
 		break;
 
 	case MODEM_CELLULAR_EVENT_SUSPEND:
