@@ -1423,7 +1423,6 @@ static void modem_cellular_await_registered_event_handler(struct modem_cellular_
 		break;
 
 	case MODEM_CELLULAR_EVENT_SUSPEND:
-		net_if_carrier_off(modem_ppp_get_iface(data->ppp));
 		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_INIT_POWER_OFF);
 		break;
 	case MODEM_CELLULAR_EVENT_RING:
@@ -1491,7 +1490,6 @@ static void modem_cellular_registered_event_handler(struct modem_cellular_data *
 		break;
 
 	case MODEM_CELLULAR_EVENT_SUSPEND:
-		net_if_carrier_off(modem_ppp_get_iface(data->ppp));
 		modem_chat_release(&data->chat);
 		modem_ppp_release(data->ppp);
 		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_INIT_POWER_OFF);
@@ -1546,7 +1544,6 @@ static void modem_cellular_await_ppp_dead_event_handler(struct modem_cellular_da
 
 static int modem_cellular_on_await_ppp_dead_state_leave(struct modem_cellular_data *data)
 {
-	net_if_carrier_off(modem_ppp_get_iface(data->ppp));
 	modem_chat_release(&data->chat);
 	modem_ppp_release(data->ppp);
 
