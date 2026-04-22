@@ -295,6 +295,12 @@ static int le910cx_gnss_pm_control(const struct device *dev, enum pm_device_acti
 		if (rc == 0) {
 			rc = modem_chat_run_script(&data->modem_chat_ctx,
 						   &gnss_disable_chat_script);
+			if (rc != 0) {
+				/* Retry once on failure */
+				LOG_DBG("Retrying disable command");
+				rc = modem_chat_run_script(&data->modem_chat_ctx,
+							   &gnss_disable_chat_script);
+			}
 			if (rc < 0) {
 				LOG_WRN("Failed to disable GNSS");
 			}
@@ -316,6 +322,11 @@ static int le910cx_gnss_pm_control(const struct device *dev, enum pm_device_acti
 		}
 		/* Enable the GNSS functionality */
 		rc = modem_chat_run_script(&data->modem_chat_ctx, &gnss_enable_chat_script);
+		if (rc != 0) {
+			/* Retry once on failure */
+			LOG_DBG("Retrying enable command");
+			rc = modem_chat_run_script(&data->modem_chat_ctx, &gnss_enable_chat_script);
+		}
 		modem_at_user_pipe_release();
 		if (rc == 0) {
 			data->next_poll = k_uptime_get() + data->fix_interval;
