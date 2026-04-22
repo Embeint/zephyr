@@ -285,7 +285,6 @@ void le910cx_pipelink_callback(struct modem_pipelink *link, enum modem_pipelink_
 
 static int le910cx_gnss_pm_control(const struct device *dev, enum pm_device_action action)
 {
-	const struct le910cx_gnss_config *config = dev->config;
 	struct le910cx_gnss_data *data = dev->data;
 	int rc = 0;
 
@@ -313,7 +312,6 @@ static int le910cx_gnss_pm_control(const struct device *dev, enum pm_device_acti
 		rc = modem_at_user_pipe_claim(&data->modem_chat_ctx, K_MSEC(100));
 		if (rc < 0) {
 			LOG_DBG("Failed to claim AT pipe");
-			(void)pm_device_runtime_put(config->modem);
 			return rc;
 		}
 		/* Enable the GNSS functionality */
@@ -322,8 +320,6 @@ static int le910cx_gnss_pm_control(const struct device *dev, enum pm_device_acti
 		if (rc == 0) {
 			data->next_poll = k_uptime_get() + data->fix_interval;
 			k_work_schedule(&data->location_poll, K_TIMEOUT_ABS_MS(data->next_poll));
-		} else {
-			(void)pm_device_runtime_put(config->modem);
 		}
 		break;
 	case PM_DEVICE_ACTION_TURN_OFF:
