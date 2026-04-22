@@ -1334,7 +1334,7 @@ static void modem_cellular_run_apn_script_event_handler(struct modem_cellular_da
 		modem_chat_run_script_async(&data->chat, &data->apn_script);
 		break;
 	case MODEM_CELLULAR_EVENT_SCRIPT_SUCCESS:
-		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_RUN_DIAL_SCRIPT);
+		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_AWAIT_REGISTERED);
 		break;
 	case MODEM_CELLULAR_EVENT_SCRIPT_FAILED:
 		modem_cellular_start_timer(data, MODEM_CELLULAR_PERIODIC_SCRIPT_TIMEOUT);
@@ -1368,7 +1368,7 @@ static void modem_cellular_run_dial_script_event_handler(struct modem_cellular_d
 		modem_cellular_start_timer(data, MODEM_CELLULAR_PERIODIC_SCRIPT_TIMEOUT);
 		break;
 	case MODEM_CELLULAR_EVENT_SCRIPT_SUCCESS:
-		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_AWAIT_REGISTERED);
+		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_REGISTERED);
 		break;
 
 	case MODEM_CELLULAR_EVENT_SUSPEND:
@@ -1383,6 +1383,9 @@ static void modem_cellular_run_dial_script_event_handler(struct modem_cellular_d
 static int modem_cellular_on_run_dial_script_state_leave(struct modem_cellular_data *data)
 {
 	modem_chat_release(&data->chat);
+	if (modem_ppp_attach(data->ppp, data->dlci2_pipe) < 0) {
+		return -EAGAIN;
+	}
 	return 0;
 }
 
@@ -1390,10 +1393,6 @@ static int modem_cellular_on_await_registered_state_enter(struct modem_cellular_
 {
 	const struct modem_cellular_config *config =
 		(const struct modem_cellular_config *)data->dev->config;
-
-	if (modem_ppp_attach(data->ppp, data->dlci2_pipe) < 0) {
-		return -EAGAIN;
-	}
 
 	modem_cellular_start_timer(data, MODEM_CELLULAR_PERIODIC_SCRIPT_TIMEOUT);
 	if (modem_chat_attach(&data->chat, data->dlci1_pipe) < 0) {
@@ -1423,18 +1422,11 @@ static void modem_cellular_await_registered_event_handler(struct modem_cellular_
 		break;
 
 	case MODEM_CELLULAR_EVENT_REGISTERED:
-		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_REGISTERED);
+		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_RUN_DIAL_SCRIPT);
 		break;
 
 	case MODEM_CELLULAR_EVENT_SUSPEND:
 		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_INIT_POWER_OFF);
-		break;
-
-	case MODEM_CELLULAR_EVENT_PPP_DEAD:
-		if (net_if_is_admin_up(modem_ppp_get_iface(data->ppp))) {
-			modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_AWAIT_PPP_DEAD);
-			modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_RUN_DIAL_SCRIPT);
-		}
 		break;
 
 	default:
@@ -1445,12 +1437,14 @@ static void modem_cellular_await_registered_event_handler(struct modem_cellular_
 static int modem_cellular_on_await_registered_state_leave(struct modem_cellular_data *data)
 {
 	modem_cellular_stop_timer(data);
+	modem_chat_release(&data->chat);
 	return 0;
 }
 
 static int modem_cellular_on_registered_state_enter(struct modem_cellular_data *data)
 {
 	net_if_dormant_off(modem_ppp_get_iface(data->ppp));
+	modem_chat_attach(&data->chat, data->dlci1_pipe);
 	modem_cellular_start_timer(data, MODEM_CELLULAR_PERIODIC_SCRIPT_TIMEOUT);
 	return 0;
 }
