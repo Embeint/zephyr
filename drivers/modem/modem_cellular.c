@@ -126,7 +126,7 @@ struct modem_cellular_data {
 	struct modem_cmux_dlci dlci2;
 	struct modem_pipe *dlci1_pipe;
 	struct modem_pipe *dlci2_pipe;
-	/* Points to dlci2_pipe or NULL. Used for shutdown script if not NULL */
+	/* Points to dlci1_pipe or NULL. Used for shutdown script if not NULL */
 	struct modem_pipe *cmd_pipe;
 	uint8_t dlci1_receive_buf[MODEM_CMUX_WORK_BUFFER_SIZE];
 	/* DLCI 2 is only used for chat scripts. */
@@ -1248,6 +1248,7 @@ static void modem_cellular_open_dlci1_event_handler(struct modem_cellular_data *
 {
 	switch (evt) {
 	case MODEM_CELLULAR_EVENT_DLCI1_OPENED:
+		data->cmd_pipe = data->dlci1_pipe;
 		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_OPEN_DLCI2);
 		break;
 
@@ -1277,7 +1278,6 @@ static void modem_cellular_open_dlci2_event_handler(struct modem_cellular_data *
 {
 	switch (evt) {
 	case MODEM_CELLULAR_EVENT_DLCI2_OPENED:
-		data->cmd_pipe = data->dlci2_pipe;
 		if (modem_cellular_has_apn(data)) {
 			modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_RUN_APN_SCRIPT);
 		} else {
@@ -1361,7 +1361,7 @@ static void modem_cellular_run_dial_script_event_handler(struct modem_cellular_d
 
 	switch (evt) {
 	case MODEM_CELLULAR_EVENT_TIMEOUT:
-		modem_chat_attach(&data->chat, data->dlci1_pipe);
+		modem_chat_attach(&data->chat, data->dlci2_pipe);
 		modem_chat_run_script_async(&data->chat, config->dial_chat_script);
 		break;
 	case MODEM_CELLULAR_EVENT_SCRIPT_FAILED:
@@ -1391,12 +1391,12 @@ static int modem_cellular_on_await_registered_state_enter(struct modem_cellular_
 	const struct modem_cellular_config *config =
 		(const struct modem_cellular_config *)data->dev->config;
 
-	if (modem_ppp_attach(data->ppp, data->dlci1_pipe) < 0) {
+	if (modem_ppp_attach(data->ppp, data->dlci2_pipe) < 0) {
 		return -EAGAIN;
 	}
 
 	modem_cellular_start_timer(data, MODEM_CELLULAR_PERIODIC_SCRIPT_TIMEOUT);
-	if (modem_chat_attach(&data->chat, data->dlci2_pipe) < 0) {
+	if (modem_chat_attach(&data->chat, data->dlci1_pipe) < 0) {
 		return -EAGAIN;
 	}
 
