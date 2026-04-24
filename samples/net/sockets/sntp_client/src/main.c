@@ -18,11 +18,12 @@ LOG_MODULE_REGISTER(net_sntp_client_sample, LOG_LEVEL_DBG);
 
 static K_SEM_DEFINE(sntp_async_received, 0, 1);
 static void sntp_service_handler(struct net_socket_service_event *pev);
+static struct k_work_delayable timeout_work;
 
 NET_SOCKET_SERVICE_SYNC_DEFINE_STATIC(service_sntp_async, sntp_service_handler, 1);
 
 int dns_query(const char *host, uint16_t port, int family, int socktype, struct sockaddr *addr,
-			  socklen_t *addrlen)
+	      socklen_t *addrlen)
 {
 	struct addrinfo hints = {
 		.ai_family = family,
@@ -51,10 +52,20 @@ int dns_query(const char *host, uint16_t port, int family, int socktype, struct 
 	return 0;
 }
 
+static void sntp_timeout_handler(struct k_work *work)
+{
+	/* Close the service */
+	LOG_WRN("SNTP query timed out, cancelling");
+	sntp_close_async(&service_sntp_async);
+}
+
 static void sntp_service_handler(struct net_socket_service_event *pev)
 {
 	struct sntp_time s_time;
 	int rc;
+
+	/* Cancel timeout handler */
+	k_work_cancel_delayable(&timeout_work);
 
 	/* Read the response from the socket */
 	rc = sntp_read_async(pev, &s_time);
@@ -67,15 +78,11 @@ static void sntp_service_handler(struct net_socket_service_event *pev)
 	sntp_close_async(&service_sntp_async);
 
 	LOG_INF("SNTP Time: %llu (async)", s_time.seconds);
-
-	/* Notify test thread */
-	k_sem_give(&sntp_async_received);
 }
 
 static void do_sntp(int family)
 {
 	char *family_str = family == AF_INET ? "IPv4" : "IPv6";
-	struct sntp_time s_time;
 	struct sntp_ctx ctx;
 	struct sockaddr addr;
 	socklen_t addrlen;
@@ -83,60 +90,41 @@ static void do_sntp(int family)
 
 	/* Get SNTP server */
 	rv = dns_query(CONFIG_NET_SAMPLE_SNTP_SERVER_ADDRESS, CONFIG_NET_SAMPLE_SNTP_SERVER_PORT,
-				   family, SOCK_DGRAM, &addr, &addrlen);
+		       family, SOCK_DGRAM, &addr, &addrlen);
 	if (rv != 0) {
 		LOG_ERR("Failed to lookup %s SNTP server (%d)", family_str, rv);
 		return;
 	}
 
-	rv = sntp_init(&ctx, &addr, addrlen);
-	if (rv < 0) {
-		LOG_ERR("Failed to init SNTP %s ctx: %d", family_str, rv);
-		goto end;
+	for (int i = 0; i < 5; i++) {
+		rv = sntp_init_async(&ctx, &addr, addrlen, &service_sntp_async);
+		if (rv < 0) {
+			LOG_ERR("Failed to initialise SNTP context (%d)", rv);
+			goto end;
+		}
+
+		LOG_INF("Sending query");
+		rv = sntp_send_async(&ctx);
+		LOG_INF("Query sent");
+		if (rv < 0) {
+			LOG_ERR("Failed to send SNTP query (%d)", rv);
+			goto end;
+		}
+
+		k_work_schedule(&timeout_work, i == 3 ? K_MSEC(1) : K_MSEC(500));
+		k_sleep(K_SECONDS(1));
 	}
-
-	LOG_INF("Sending SNTP %s request...", family_str);
-	rv = sntp_query(&ctx, 4 * MSEC_PER_SEC, &s_time);
-	if (rv < 0) {
-		LOG_ERR("SNTP %s request failed: %d", family_str, rv);
-		goto end;
-	}
-
-	LOG_INF("SNTP Time: %llu", s_time.seconds);
-
-	sntp_close(&ctx);
-
-	rv = sntp_init_async(&ctx, &addr, addrlen, &service_sntp_async);
-	if (rv < 0) {
-		LOG_ERR("Failed to initialise SNTP context (%d)", rv);
-		goto end;
-	}
-
-	rv = sntp_send_async(&ctx);
-	if (rv < 0) {
-		LOG_ERR("Failed to send SNTP query (%d)", rv);
-		goto end;
-	}
-
-	/* Wait for the response to be received asynchronously */
-	rv = k_sem_take(&sntp_async_received, K_MSEC(CONFIG_NET_SAMPLE_SNTP_SERVER_TIMEOUT_MS));
-	if (rv < 0) {
-		LOG_INF("SNTP response timed out (%d)", rv);
-	}
-
+	return;
 end:
-	sntp_close(&ctx);
+	sntp_close_async(&service_sntp_async);
 }
 
 int main(void)
 {
+	k_work_init_delayable(&timeout_work, sntp_timeout_handler);
+
 	wait_for_network();
 
 	do_sntp(AF_INET);
-
-#if defined(CONFIG_NET_IPV6)
-	do_sntp(AF_INET6);
-#endif
-
 	return 0;
 }
