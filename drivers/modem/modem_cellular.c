@@ -73,6 +73,7 @@ enum modem_cellular_state {
 	MODEM_CELLULAR_STATE_WAIT_FOR_APN,
 	MODEM_CELLULAR_STATE_RUN_APN_SCRIPT,
 	MODEM_CELLULAR_STATE_RUN_DIAL_SCRIPT,
+	MODEM_CELLULAR_STATE_RUN_NETWORK_SCRIPT,
 	MODEM_CELLULAR_STATE_AWAIT_REGISTERED,
 	MODEM_CELLULAR_STATE_REGISTERED,
 	MODEM_CELLULAR_STATE_AWAIT_PPP_DEAD,
@@ -205,7 +206,9 @@ struct modem_cellular_config {
 	bool autostarts;
 	/* Run at modem boot to initiate modem */
 	const struct modem_chat_script *init_chat_script;
-	/* Run once CMUX configured to initiate connection */
+	/* Run once CMUX configured to initiate network connection */
+	const struct modem_chat_script *network_chat_script;
+	/* Run once network registered to initiate PPP connection */
 	const struct modem_chat_script *dial_chat_script;
 	/* Run once modem is waiting for registration to network */
 	const struct modem_chat_script *ready_chat_script;
@@ -244,6 +247,8 @@ static const char *modem_cellular_state_str(enum modem_cellular_state state)
 		return "open dlci2";
 	case MODEM_CELLULAR_STATE_WAIT_FOR_APN:
 		return "wait for apn";
+	case MODEM_CELLULAR_STATE_RUN_NETWORK_SCRIPT:
+		return "run network script";
 	case MODEM_CELLULAR_STATE_AWAIT_REGISTERED:
 		return "await registered";
 	case MODEM_CELLULAR_STATE_RUN_APN_SCRIPT:
@@ -1328,16 +1333,53 @@ static int modem_cellular_on_run_apn_script_state_enter(struct modem_cellular_da
 static void modem_cellular_run_apn_script_event_handler(struct modem_cellular_data *data,
 							enum modem_cellular_event evt)
 {
+	const struct modem_cellular_config *config =
+		(const struct modem_cellular_config *)data->dev->config;
+
 	switch (evt) {
 	case MODEM_CELLULAR_EVENT_TIMEOUT:
 		modem_chat_attach(&data->chat, data->dlci1_pipe);
 		modem_chat_run_script_async(&data->chat, &data->apn_script);
 		break;
 	case MODEM_CELLULAR_EVENT_SCRIPT_SUCCESS:
-		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_AWAIT_REGISTERED);
+		if (config->network_chat_script) {
+			modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_RUN_NETWORK_SCRIPT);
+		} else {
+			modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_AWAIT_REGISTERED);
+		}
 		break;
 	case MODEM_CELLULAR_EVENT_SCRIPT_FAILED:
 		modem_cellular_start_timer(data, MODEM_CELLULAR_PERIODIC_SCRIPT_TIMEOUT);
+		break;
+	case MODEM_CELLULAR_EVENT_SUSPEND:
+		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_INIT_POWER_OFF);
+		break;
+	default:
+		break;
+	}
+}
+
+static int modem_cellular_on_run_network_script_state_enter(struct modem_cellular_data *data)
+{
+	modem_cellular_start_timer(data, K_NO_WAIT);
+	return 0;
+}
+
+static void modem_cellular_run_network_script_event_handler(struct modem_cellular_data *data,
+							    enum modem_cellular_event evt)
+{
+	const struct modem_cellular_config *config =
+		(const struct modem_cellular_config *)data->dev->config;
+
+	switch (evt) {
+	case MODEM_CELLULAR_EVENT_TIMEOUT:
+		modem_chat_run_script_async(&data->chat, config->network_chat_script);
+		break;
+	case MODEM_CELLULAR_EVENT_SCRIPT_FAILED:
+		modem_cellular_start_timer(data, MODEM_CELLULAR_PERIODIC_SCRIPT_TIMEOUT);
+		break;
+	case MODEM_CELLULAR_EVENT_SCRIPT_SUCCESS:
+		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_AWAIT_REGISTERED);
 		break;
 	case MODEM_CELLULAR_EVENT_SUSPEND:
 		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_INIT_POWER_OFF);
@@ -1711,6 +1753,10 @@ static int modem_cellular_on_state_enter(struct modem_cellular_data *data)
 		ret = modem_cellular_on_run_apn_script_state_enter(data);
 		break;
 
+	case MODEM_CELLULAR_STATE_RUN_NETWORK_SCRIPT:
+		ret = modem_cellular_on_run_network_script_state_enter(data);
+		break;
+
 	case MODEM_CELLULAR_STATE_RUN_DIAL_SCRIPT:
 		ret = modem_cellular_on_run_dial_script_state_enter(data);
 		break;
@@ -1893,6 +1939,10 @@ static void modem_cellular_event_handler(struct modem_cellular_data *data,
 
 	case MODEM_CELLULAR_STATE_RUN_APN_SCRIPT:
 		modem_cellular_run_apn_script_event_handler(data, evt);
+		break;
+
+	case MODEM_CELLULAR_STATE_RUN_NETWORK_SCRIPT:
+		modem_cellular_run_network_script_event_handler(data, evt);
 		break;
 
 	case MODEM_CELLULAR_STATE_RUN_DIAL_SCRIPT:
@@ -2833,10 +2883,15 @@ MODEM_CHAT_SCRIPT_CMDS_DEFINE(telit_le910cx_init_chat_script_cmds,
 MODEM_CHAT_SCRIPT_DEFINE(telit_le910cx_init_chat_script, telit_le910cx_init_chat_script_cmds,
 			 abort_matches, modem_cellular_chat_callback_handler, 10);
 
+MODEM_CHAT_SCRIPT_CMDS_DEFINE(telit_le910cx_network_chat_script_cmds,
+			      /* V.24 RTS/DTR control can reset the CFUN state back to 4 */
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CFUN=1", ok_match));
+
+MODEM_CHAT_SCRIPT_DEFINE(telit_le910cx_network_chat_script, telit_le910cx_network_chat_script_cmds,
+			 abort_matches, modem_cellular_chat_callback_handler, 10);
+
 MODEM_CHAT_SCRIPT_CMDS_DEFINE(telit_le910cx_dial_chat_script_cmds,
 			      MODEM_CHAT_SCRIPT_CMD_RESP("ATE0", ok_match),
-			      /* V.24 RTS/DTR control can reset the CFUN state back to 4 */
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CFUN=1", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP_NONE("ATD*99***1#\r", 0));
 
 MODEM_CHAT_SCRIPT_DEFINE(telit_le910cx_dial_chat_script, telit_le910cx_dial_chat_script_cmds,
@@ -3045,10 +3100,10 @@ MODEM_CHAT_SCRIPT_DEFINE(sqn_gm02s_periodic_chat_script,
 				   (,), inst, __VA_ARGS__)                                         \
 	);
 
-/* Helper to define modem instance */
-#define MODEM_CELLULAR_DEFINE_INSTANCE(inst, power_ms, reset_ms, startup_ms, shutdown_ms, start,   \
+#define _MODEM_CELLULAR_DEFINE_INSTANCE(inst, power_ms, reset_ms, startup_ms, shutdown_ms, start,  \
 				       set_baudrate_script,                                        \
 				       init_script,                                                \
+				       network_script,                                             \
 				       dial_script,                                                \
 				       ready_script,                                               \
 				       periodic_script,                                            \
@@ -3065,6 +3120,7 @@ MODEM_CHAT_SCRIPT_DEFINE(sqn_gm02s_periodic_chat_script,
 		.autostarts = DT_INST_PROP_OR(inst, autostarts, (start)),                          \
 		.set_baudrate_chat_script    = (set_baudrate_script),                              \
 		.init_chat_script            = (init_script),                                      \
+		.network_chat_script         = (network_script),                                   \
 		.dial_chat_script            = (dial_script),                                      \
 		.ready_chat_script           = (ready_script),                                     \
 		.periodic_chat_script = (periodic_script),                                         \
@@ -3079,6 +3135,43 @@ MODEM_CHAT_SCRIPT_DEFINE(sqn_gm02s_periodic_chat_script,
 			      &MODEM_CELLULAR_INST_NAME(data, inst),                               \
 			      &MODEM_CELLULAR_INST_NAME(config, inst), POST_KERNEL,                \
 			      CONFIG_MODEM_CELLULAR_INIT_PRIORITY, &modem_cellular_api);
+
+/* Helper to define modem instance */
+#define MODEM_CELLULAR_DEFINE_INSTANCE(inst, power_ms, reset_ms, startup_ms, shutdown_ms, start,   \
+				       set_baudrate_script,                                        \
+				       init_script,                                                \
+				       dial_script,                                                \
+				       ready_script,                                               \
+				       periodic_script,                                            \
+				       shutdown_script)                                            \
+	_MODEM_CELLULAR_DEFINE_INSTANCE(inst, power_ms, reset_ms, startup_ms, shutdown_ms, start,  \
+				       set_baudrate_script,                                        \
+				       init_script,                                                \
+				       NULL,                                                       \
+				       dial_script,                                                \
+				       ready_script,                                               \
+				       periodic_script,                                            \
+				       shutdown_script)
+
+/* Helper to define modem instance with network script */
+#define MODEM_CELLULAR_DEFINE_NET_INSTANCE(inst, power_ms, reset_ms, startup_ms, shutdown_ms,      \
+				       start,                                                      \
+				       set_baudrate_script,                                        \
+				       init_script,                                                \
+				       network_script,                                             \
+				       dial_script,                                                \
+				       ready_script,                                               \
+				       periodic_script,                                            \
+				       shutdown_script)                                            \
+	_MODEM_CELLULAR_DEFINE_INSTANCE(inst, power_ms, reset_ms, startup_ms, shutdown_ms, start,  \
+				       set_baudrate_script,                                        \
+				       init_script,                                                \
+				       network_script,                                             \
+				       dial_script,                                                \
+				       ready_script,                                               \
+				       periodic_script,                                            \
+				       shutdown_script)
+
 
 #define MODEM_CELLULAR_DEVICE_QUECTEL_BG9X(inst)                                                   \
 	MODEM_DT_INST_PPP_DEFINE(inst, MODEM_CELLULAR_INST_NAME(ppp, inst), NULL, 98, 1500, 64);   \
@@ -3272,13 +3365,14 @@ MODEM_CHAT_SCRIPT_DEFINE(sqn_gm02s_periodic_chat_script,
 						  (user_pipe_0, 3),                                \
 						  (gnss_pipe, 4))                                  \
                                                                                                    \
-	MODEM_CELLULAR_DEFINE_INSTANCE(inst, 1500, 250, 30000, 5000, false,                        \
-				       &telit_le910cx_baudrate_chat_script,                        \
-				       &telit_le910cx_init_chat_script,                            \
-				       &telit_le910cx_dial_chat_script,                            \
-				       &telit_le910cx_ready_chat_script,                           \
-				       &telit_le910cx_periodic_chat_script,                        \
-				       NULL)
+	MODEM_CELLULAR_DEFINE_NET_INSTANCE(inst, 1500, 250, 30000, 5000, false,                    \
+					   &telit_le910cx_baudrate_chat_script,                    \
+					   &telit_le910cx_init_chat_script,                        \
+					   &telit_le910cx_network_chat_script,                     \
+					   &telit_le910cx_dial_chat_script,                        \
+					   &telit_le910cx_ready_chat_script,                       \
+					   &telit_le910cx_periodic_chat_script,                    \
+					   NULL)
 
 #define MODEM_CELLULAR_DEVICE_TELIT_ME910G1(inst)                                                  \
 	MODEM_DT_INST_PPP_DEFINE(inst, MODEM_CELLULAR_INST_NAME(ppp, inst), NULL, 98, 1500, 64);   \
