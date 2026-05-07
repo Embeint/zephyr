@@ -13,9 +13,8 @@
 #define AT_UTIL_MODEM_NODE    DT_ALIAS(modem)
 #define AT_UTIL_PIPELINK_NAME _CONCAT(user_pipe_, CONFIG_MODEM_AT_USER_PIPE_IDX)
 
-#define AT_UTIL_STATE_OPENED_BIT                0
-#define AT_UTIL_STATE_PIPE_CLAIMED_BIT          1
-#define AT_UTIL_STATE_PIPE_AT_ECHO_DISABLED_BIT 2
+#define AT_UTIL_STATE_OPENED_BIT       0
+#define AT_UTIL_STATE_PIPE_CLAIMED_BIT 1
 
 MODEM_PIPELINK_DT_DECLARE(AT_UTIL_MODEM_NODE, AT_UTIL_PIPELINK_NAME);
 
@@ -37,13 +36,18 @@ static void at_util_pipe_callback(struct modem_pipe *pipe, enum modem_pipe_event
 	switch (event) {
 	case MODEM_PIPE_EVENT_OPENED:
 		LOG_INF("pipe opened");
+
+#ifdef CONFIG_MODEM_CELLULAR_USER_PIPE_SETUP_CMD_ENABLED
+		const char *setup_cmd = CONFIG_MODEM_CELLULAR_USER_PIPE_SETUP_CMD "\r";
+
+		modem_pipe_transmit(pipe, setup_cmd, strlen(setup_cmd));
+#endif /* CONFIG_MODEM_CELLULAR_USER_PIPE_SETUP_CMD_ENABLED */
 		atomic_set_bit(&at_util_state, AT_UTIL_STATE_OPENED_BIT);
 		break;
 
 	case MODEM_PIPE_EVENT_CLOSED:
 		LOG_INF("pipe closed");
 		atomic_clear_bit(&at_util_state, AT_UTIL_STATE_OPENED_BIT);
-		atomic_clear_bit(&at_util_state, AT_UTIL_STATE_PIPE_AT_ECHO_DISABLED_BIT);
 		break;
 
 	default:
@@ -87,16 +91,6 @@ static void at_util_open_pipe_handler(struct k_work *work)
 	modem_pipe_open_async(pipe);
 }
 
-#ifdef CONFIG_MODEM_CMUX_DLCI_AT_ECHO_DEDICATED
-MODEM_CHAT_MATCH_DEFINE(ok_match, "OK", "", NULL);
-MODEM_CHAT_MATCHES_DEFINE(abort_matches, MODEM_CHAT_MATCH("ERROR", "", NULL));
-MODEM_CHAT_SCRIPT_CMDS_DEFINE(
-	ate_disable_script_cmds,
-	MODEM_CHAT_SCRIPT_CMD_RESP(CONFIG_MODEM_CMUX_DLCI_AT_ECHO_DISABLE_COMMAND, ok_match));
-
-MODEM_CHAT_SCRIPT_DEFINE(ate_disable_script, ate_disable_script_cmds, abort_matches, NULL, 1);
-#endif /* CONFIG_MODEM_CMUX_DLCI_AT_ECHO_DEDICATED */
-
 int modem_at_user_pipe_claim(struct modem_chat *chat, k_timeout_t timeout)
 {
 	struct modem_pipe *pipe = modem_pipelink_get_pipe(at_util_pipelink);
@@ -127,13 +121,6 @@ int modem_at_user_pipe_claim(struct modem_chat *chat, k_timeout_t timeout)
 	at_util_chat = chat;
 	modem_chat_attach(at_util_chat, pipe);
 
-#ifdef CONFIG_MODEM_CMUX_DLCI_AT_ECHO_DEDICATED
-	if (!atomic_test_and_set_bit(&at_util_state, AT_UTIL_STATE_PIPE_AT_ECHO_DISABLED_BIT)) {
-		/* AT echo has not yet been disabled */
-		LOG_DBG("disabling echo");
-		(void)modem_chat_run_script(at_util_chat, &ate_disable_script);
-	}
-#endif /* CONFIG_MODEM_CMUX_DLCI_AT_ECHO_DEDICATED */
 	LOG_DBG("chat attached");
 	return 0;
 }

@@ -67,6 +67,15 @@ config MODEM_CELLULAR_USER_PIPE_BUFFER_SIZES
 	int "The size of the buffers used for each user pipe in bytes."
 	default 128
 
+config MODEM_CELLULAR_USER_PIPE_SETUP_CMD
+	string "Command to run when user pipe DLCI opened"
+	default "ATE0;#ENAURCS=0" if DT_HAS_TELIT_LE910CX_LE_ENABLED
+	default ""
+
+config MODEM_CELLULAR_USER_PIPE_SETUP_CMD_ENABLED
+	bool
+	default y if MODEM_CELLULAR_USER_PIPE_SETUP_CMD != ""
+
 config MODEM_CELLULAR_NEW_BAUDRATE
 	int "New baudrate to configure modem to, if supported [DEPRECATED]"
 	range 9600 4000000
