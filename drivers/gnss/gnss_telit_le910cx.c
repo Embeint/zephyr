@@ -44,8 +44,13 @@ struct le910cx_gnss_data {
 	uint8_t gnss_receive_buf[256];
 	uint8_t *gnss_argv_buf[16];
 	uint32_t last_fix_info;
+	bool gps_enabled;
+	bool poll_pending;
+	bool boot_setup;
 };
 
+static void le910cx_gnss_on_gpsp(struct modem_chat *chat, char **argv, uint16_t argc,
+				 void *user_data);
 static void le910cx_gnss_on_gpsacp(struct modem_chat *chat, char **argv, uint16_t argc,
 				   void *user_data);
 
@@ -64,22 +69,30 @@ __maybe_unused static uint16_t gnss_lna_cmd(const uint8_t **request, void *user_
 }
 
 MODEM_CHAT_MATCH_DEFINE(ok_match, "OK", "", NULL);
+MODEM_CHAT_MATCH_DEFINE(gpsp_match, "$GPSP:", ",", le910cx_gnss_on_gpsp);
 MODEM_CHAT_MATCH_DEFINE(gpsacp_match, "$GPSACP: ", ",", le910cx_gnss_on_gpsacp);
 MODEM_CHAT_MATCHES_DEFINE(abort_matches, MODEM_CHAT_MATCH("ERROR", "", NULL));
 
+MODEM_CHAT_SCRIPT_CMDS_DEFINE(gnss_query_state_script_cmds,
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT$GPSP?", gpsp_match));
+MODEM_CHAT_SCRIPT_CMDS_DEFINE(gnss_first_setup_script_cmds,
+			      MODEM_CHAT_SCRIPT_CMD_RESP_FN(gnss_lna_cmd, ok_match));
 MODEM_CHAT_SCRIPT_CMDS_DEFINE(gnss_enable_script_cmds,
-			      MODEM_CHAT_SCRIPT_CMD_RESP_FN(gnss_lna_cmd, ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT$GPSP=1", ok_match));
 MODEM_CHAT_SCRIPT_CMDS_DEFINE(gnss_query_script_cmds,
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT$GPSACP", gpsacp_match));
 MODEM_CHAT_SCRIPT_CMDS_DEFINE(gnss_disable_script_cmds,
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT$GPSP=0", ok_match));
 
-MODEM_CHAT_SCRIPT_DEFINE(gnss_enable_chat_script, gnss_enable_script_cmds, abort_matches, NULL, 2);
+MODEM_CHAT_SCRIPT_DEFINE(gnss_query_state_chat_script, gnss_query_state_script_cmds, abort_matches,
+			 NULL, 2);
+MODEM_CHAT_SCRIPT_DEFINE(gnss_first_setup_chat_script, gnss_first_setup_script_cmds, abort_matches,
+			 NULL, 3);
+MODEM_CHAT_SCRIPT_DEFINE(gnss_enable_chat_script, gnss_enable_script_cmds, abort_matches, NULL, 3);
 MODEM_CHAT_SCRIPT_DEFINE(gnss_query_chat_script, gnss_query_script_cmds, abort_matches,
-			 le910cx_gnss_location_poll_result, 1);
+			 le910cx_gnss_location_poll_result, 2);
 MODEM_CHAT_SCRIPT_DEFINE(gnss_disable_chat_script, gnss_disable_script_cmds, abort_matches, NULL,
-			 2);
+			 5);
 
 static void le910cx_gnss_location_poll(struct k_work *work)
 {
@@ -88,10 +101,16 @@ static void le910cx_gnss_location_poll(struct k_work *work)
 		CONTAINER_OF(delayable, struct le910cx_gnss_data, location_poll);
 	int rc;
 
-	LOG_DBG("Polling acquired location");
 	/* Schedule the next poll attempt */
 	data->next_poll += data->fix_interval;
 	k_work_schedule(&data->location_poll, K_TIMEOUT_ABS_MS(data->next_poll));
+
+	if (data->poll_pending) {
+		LOG_WRN("Previous poll still pending");
+		return;
+	}
+
+	LOG_DBG("Polling acquired location");
 
 	rc = modem_at_user_pipe_claim(&data->modem_chat_ctx, K_NO_WAIT);
 	if (rc < 0) {
@@ -99,8 +118,10 @@ static void le910cx_gnss_location_poll(struct k_work *work)
 		return;
 	}
 
+	data->poll_pending = true;
 	rc = modem_chat_run_script_async(&data->modem_chat_ctx, &gnss_query_chat_script);
 	if (rc < 0) {
+		data->poll_pending = false;
 		LOG_WRN("Failed to start query script");
 		modem_at_user_pipe_release();
 	}
@@ -111,6 +132,18 @@ static void le910cx_gnss_pipe_release(struct k_work *work)
 	ARG_UNUSED(work);
 
 	modem_at_user_pipe_release();
+}
+
+static void le910cx_gnss_on_gpsp(struct modem_chat *chat, char **argv, uint16_t argc,
+				 void *user_data)
+{
+	const struct device *dev = user_data;
+	struct le910cx_gnss_data *data = dev->data;
+
+	if (argc != 2) {
+		LOG_WRN("Unexpected $GPSP format");
+	}
+	data->gps_enabled = atoi(argv[1]) == 1;
 }
 
 static void le910cx_gnss_parse_lat_lon(char *val, int64_t *ndeg, bool latitude)
@@ -255,6 +288,7 @@ static void le910cx_gnss_location_poll_result(struct modem_chat *chat,
 	struct le910cx_gnss_data *data = dev->data;
 
 	LOG_DBG("Location poll script complete");
+	data->poll_pending = false;
 	k_work_submit(&data->pipe_release);
 }
 
@@ -281,6 +315,36 @@ void le910cx_pipelink_callback(struct modem_pipelink *link, enum modem_pipelink_
 	default:
 		break;
 	}
+}
+
+static int le910cx_gnss_resume_scripts(const struct device *dev)
+{
+	struct le910cx_gnss_data *data = dev->data;
+	int rc = 0;
+
+	/* Query current GNSS state */
+	rc = modem_chat_run_script(&data->modem_chat_ctx, &gnss_query_state_chat_script);
+	if (rc != 0) {
+		LOG_WRN("Failed to query GNSS state");
+		return rc;
+	}
+	if (data->gps_enabled) {
+		/* Already running (likely due to failed previous shutdown) */
+		return 0;
+	}
+
+	if (!data->boot_setup) {
+		/* First run setup */
+		rc = modem_chat_run_script(&data->modem_chat_ctx, &gnss_first_setup_chat_script);
+		if (rc != 0) {
+			LOG_WRN("Failed to run boot GNSS configuration");
+			return rc;
+		}
+		data->boot_setup = true;
+	}
+
+	/* GNSS functionality not enabled, enable */
+	return modem_chat_run_script(&data->modem_chat_ctx, &gnss_enable_chat_script);
 }
 
 static int le910cx_gnss_pm_control(const struct device *dev, enum pm_device_action action)
@@ -320,16 +384,12 @@ static int le910cx_gnss_pm_control(const struct device *dev, enum pm_device_acti
 			LOG_DBG("Failed to claim AT pipe");
 			return rc;
 		}
-		/* Enable the GNSS functionality */
-		rc = modem_chat_run_script(&data->modem_chat_ctx, &gnss_enable_chat_script);
-		if (rc != 0) {
-			/* Retry once on failure */
-			LOG_DBG("Retrying enable command");
-			rc = modem_chat_run_script(&data->modem_chat_ctx, &gnss_enable_chat_script);
-		}
+		/* Run the resume logic */
+		rc = le910cx_gnss_resume_scripts(dev);
 		modem_at_user_pipe_release();
 		if (rc == 0) {
 			data->next_poll = k_uptime_get() + data->fix_interval;
+			data->poll_pending = false;
 			k_work_schedule(&data->location_poll, K_TIMEOUT_ABS_MS(data->next_poll));
 		}
 		break;
