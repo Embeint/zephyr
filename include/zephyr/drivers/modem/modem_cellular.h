@@ -361,6 +361,10 @@ void modem_cellular_emit_event(struct modem_cellular_data *data, enum cellular_e
 void modem_cellular_emit_network_status(struct modem_cellular_data *data,
 					const struct cellular_evt_network_status *status);
 
+void modem_cellular_chat_callback_handler(struct modem_chat *chat,
+						 enum modem_chat_script_result result,
+						 void *user_data);
+
 void modem_cellular_chat_on_imei(struct modem_chat *chat, char **argv, uint16_t argc,
 				 void *user_data);
 void modem_cellular_chat_on_cgsn_sn(struct modem_chat *chat, char **argv, uint16_t argc,
