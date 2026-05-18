@@ -50,6 +50,17 @@ if(BL2)
             ${partition_includes}
             ${board_includes}
     )
+    if(BL2_QSPI_DRIVERS)
+        target_sources(platform_bl2
+            PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/cmsis_drivers/Driver_QSPI.c
+                ${HAL_NORDIC_PATH}/nrfx/drivers/src/nrfx_qspi.c
+        )
+        target_compile_definitions(platform_bl2
+            PRIVATE
+                "-DNRFX_QSPI_ENABLED=1"
+        )
+    endif()
 endif()
 
 target_sources(tfm_spm
