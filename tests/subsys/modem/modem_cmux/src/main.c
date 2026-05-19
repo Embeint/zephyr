@@ -361,6 +361,7 @@ static void test_modem_cmux_before(void *f)
 	/* Reset mock pipes */
 	modem_backend_mock_reset(&bus_mock);
 	cmux.state = MODEM_CMUX_STATE_CONNECTED;
+	cmux.flow_control_on = true;
 	k_event_set(&cmux.event, BIT(cmux.state));
 }
 
@@ -939,6 +940,25 @@ ZTEST(modem_cmux, test_modem_cmux_split_large_data)
 
 	ret = modem_backend_mock_get(&bus_mock, buffer2, sizeof(buffer2));
 	zassert_true(ret == CONFIG_MODEM_CMUX_MTU + CMUX_BASIC_HRD_SMALL_SIZE,
+		     "Incorrect number of bytes transmitted %d", ret);
+}
+
+ZTEST(modem_cmux, test_modem_cmux_dual_send)
+{
+	int ret;
+	uint32_t events;
+	const char *request = "ATE0";
+	const char *delim = "\r";
+
+	ret = modem_pipe_transmit_double(dlci2_pipe, request, 4, delim, 1);
+	zassert_true(ret == 5, "Failed to transmit both buffers %d", ret);
+
+	events = k_event_wait(&cmux_event, EVENT_CMUX_DLCI2_TRANSMIT_IDLE, false, K_MSEC(200));
+	zassert_equal(events, EVENT_CMUX_DLCI2_TRANSMIT_IDLE,
+		      "Transmit idle event not received for DLCI2 pipe");
+
+	ret = modem_backend_mock_get(&bus_mock, buffer2, sizeof(buffer2));
+	zassert_true(ret == CMUX_BASIC_HRD_SMALL_SIZE + 5,
 		     "Incorrect number of bytes transmitted %d", ret);
 }
 
