@@ -1280,6 +1280,9 @@ int dns_validate_msg(struct dns_resolve_context *ctx,
 	int items;
 	int server_idx;
 	int ret = 0;
+	int qdcount;
+	int ancount;
+	int rcode;
 
 	/* Make sure that we can read DNS id, flags and rcode */
 	if (dns_msg->msg_size < (sizeof(*dns_id) + sizeof(uint16_t))) {
@@ -1294,10 +1297,21 @@ int dns_validate_msg(struct dns_resolve_context *ctx,
 	 * we do not know what the DNS id is yet.
 	 */
 	*dns_id = dns_unpack_header_id(dns_msg->msg);
+	rcode = dns_header_rcode(dns_msg->msg);
+	ancount = dns_header_ancount(dns_msg->msg);
+	qdcount = dns_header_qdcount(dns_msg->msg);
 
-	if (dns_header_rcode(dns_msg->msg) == DNS_HEADER_REFUSED) {
+	if (rcode == DNS_HEADER_REFUSED) {
 		ret = DNS_EAI_FAIL;
 		goto quit;
+	} else if (rcode != DNS_HEADER_NOERROR) {
+		NET_WARN("DNS Query %d: Error %d", *dns_id, rcode);
+	} else {
+		NET_DBG("DNS Query %d: %d answers", *dns_id, ancount);
+	}
+
+	if (dns_header_tc(dns_msg->msg)) {
+		NET_WARN("DNS Query %d: Truncated response", *dns_id);
 	}
 
 	/* We might receive a query while we are waiting for a response, in that
@@ -1315,7 +1329,7 @@ int dns_validate_msg(struct dns_resolve_context *ctx,
 		goto quit;
 	}
 
-	if (dns_header_qdcount(dns_msg->msg) < 1) {
+	if (qdcount < 1) {
 		/* For mDNS (when dns_id == 0) the query count is 0 */
 		if (*dns_id > 0) {
 			ret = DNS_EAI_FAIL;
@@ -1323,7 +1337,7 @@ int dns_validate_msg(struct dns_resolve_context *ctx,
 		}
 	}
 
-	if (dns_header_ancount(dns_msg->msg) < 1) {
+	if (ancount < 1) {
 		/* there are no useful records in this message */
 		if (*dns_id > 0) {
 			ret = DNS_EAI_FAIL;
@@ -1353,7 +1367,7 @@ int dns_validate_msg(struct dns_resolve_context *ctx,
 		}
 	}
 
-	if (dns_header_qdcount(dns_msg->msg) < 1 && *dns_id == 0) {
+	if (qdcount < 1 && *dns_id == 0) {
 		/* mDNS responses to do not have the query part so the
 		 * answer starts immediately after the header.
 		 */
@@ -1378,7 +1392,7 @@ int dns_validate_msg(struct dns_resolve_context *ctx,
 		}
 	}
 
-	for (server_idx = 0; server_idx < dns_header_ancount(dns_msg->msg); server_idx++) {
+	for (server_idx = 0; server_idx < ancount; server_idx++) {
 		ret = dns_validate_record(ctx, dns_msg, &info, &answer_type, &ttl);
 		if (ret < 0) {
 			goto quit;
