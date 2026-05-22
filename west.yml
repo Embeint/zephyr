@@ -23,6 +23,8 @@ manifest:
       url-base: https://github.com/zephyrproject-rtos
     - name: babblesim
       url-base: https://github.com/BabbleSim
+    - name: embeint
+      url-base: https://github.com/embeint
 
   group-filter: [-babblesim, -optional, -testing]
 
@@ -395,7 +397,8 @@ manifest:
         - testing
         - tee
     - name: tf-psa-crypto
-      revision: dc575a2ddcc8cb16275d24c42a52eaf79ebe2231
+      remote: embeint
+      revision: ab848bb085f96ded84fee19e9019e3717cb9b64b
       path: modules/crypto/tf-psa-crypto
       groups:
         - crypto
