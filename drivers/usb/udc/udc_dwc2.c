@@ -748,7 +748,7 @@ static void dwc2_prep_rx(const struct device *dev, struct net_buf *buf,
 
 	k_event_clear(&priv->ep_disabled, BIT(16 + ep_idx));
 
-	LOG_INF("Prepare RX 0x%02x doeptsiz 0x%x", cfg->addr, doeptsiz);
+	LOG_DBG("Prepare RX 0x%02x doeptsiz 0x%x", cfg->addr, doeptsiz);
 }
 
 static void dwc2_handle_xfer_next(const struct device *dev,
