@@ -33,6 +33,9 @@ config ZBUS_MSG_SUBSCRIBER
 	bool "Message subscribers will receive all messages in sequence."
 	select NET_BUF
 
+config ZBUS_RUNTIME_CHANNEL_REGISTRATION
+	bool "ZBus channels that are linked to the subsystem at runtime"
+
 if ZBUS_MSG_SUBSCRIBER
 
 choice ZBUS_MSG_SUBSCRIBER_BUF_ALLOC
