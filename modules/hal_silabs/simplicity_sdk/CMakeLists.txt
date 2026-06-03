@@ -306,6 +306,7 @@ if(CONFIG_SILABS_SISDK_CORE)
 endif()
 zephyr_library_sources_ifdef(CONFIG_SILABS_SISDK_ACMP      ${EMLIB_DIR}/src/em_acmp.c)
 zephyr_library_sources_ifdef(CONFIG_SILABS_SISDK_EMU       ${EMLIB_DIR}/src/em_emu.c)
+zephyr_library_sources_ifdef(CONFIG_SILABS_SISDK_EMU       ${PERIPHERAL_DIR}/src/sl_hal_emu.c)
 if(CONFIG_SILABS_SISDK_GPIO)
   zephyr_library_sources(
     ${EMLIB_DIR}/src/em_gpio.c
