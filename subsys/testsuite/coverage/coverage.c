@@ -398,6 +398,10 @@ void gcov_coverage_semihost(void)
 	}
 #endif
 	while (gcov_list) {
+		if ((strlen(CONFIG_COVERAGE_DUMP_PATH_EXCLUDE) > 0) &&
+		    (fnmatch(CONFIG_COVERAGE_DUMP_PATH_EXCLUDE, gcov_list->filename, 0) == 0)) {
+			goto file_dump_end;
+		}
 
 #if defined(CONFIG_COVERAGE_SEMIHOST) && defined(CONFIG_REBOOT)
 		snprintf(gcov_filename, sizeof(gcov_filename), "%s.%d", gcov_list->filename,
@@ -442,6 +446,7 @@ void gcov_coverage_semihost(void)
 
 		k_heap_free(&gcov_heap, buffer);
 		semihost_close(fd);
+file_dump_end:
 		gcov_list = gcov_list->next;
 		if (gcov_list_first == gcov_list) {
 			goto coverage_dump_end;
