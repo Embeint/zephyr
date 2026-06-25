@@ -20,7 +20,7 @@ static struct gcov_info *gcov_info_head;
 
 #if defined(CONFIG_COVERAGE_SEMIHOST) && defined(CONFIG_REBOOT)
 #define GCOV_FILENAME_KEY 0x23A5B6C4
-static char gcov_filename[256];
+static char gcov_filename[512];
 static __noinit uint32_t gcov_filename_key;
 static __noinit uint32_t gcov_filename_idx;
 #endif
