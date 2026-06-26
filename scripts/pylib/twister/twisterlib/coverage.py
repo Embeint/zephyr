@@ -147,7 +147,11 @@ class CoverageTool:
             # to handle reboots, we must merge the information back into a single file.
             test_folder = pathlib.Path(filename).parent
             # Find reboot aware GCDA files in the test folder (identified by `.X` suffix)
-            for filename in glob.glob(f"{test_folder}/**/*.gcda.*", recursive=True):
+            # Hidden directories need to be included as the generated files can have paths
+            # like /..__module__
+            for filename in glob.glob(f"{test_folder}/**/*.gcda.*",
+                                      recursive=True,
+                                      include_hidden=True):
                 output_file, _= filename.rsplit('.', 1)
                 with open(filename, 'rb') as f:
                     extracted_coverage_info[output_file].append(f.read(-1))
