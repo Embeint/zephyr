@@ -1413,6 +1413,9 @@ static void modem_cellular_await_registered_event_handler(struct modem_cellular_
 		break;
 
 	case MODEM_CELLULAR_EVENT_TIMEOUT:
+		if (config->vendor->scripts.periodic == NULL) {
+			break;
+		}
 		modem_chat_run_script_async(&data->chat, config->vendor->scripts.periodic);
 		break;
 
@@ -1478,6 +1481,9 @@ static void modem_cellular_registered_event_handler(struct modem_cellular_data *
 		break;
 
 	case MODEM_CELLULAR_EVENT_TIMEOUT:
+		if (config->vendor->scripts.periodic == NULL) {
+			break;
+		}
 		modem_chat_run_script_async(&data->chat, config->vendor->scripts.periodic);
 		break;
 
