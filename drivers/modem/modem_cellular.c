@@ -1137,13 +1137,28 @@ static int modem_cellular_on_open_dlci1_state_enter(struct modem_cellular_data *
 static void modem_cellular_open_dlci1_event_handler(struct modem_cellular_data *data,
 						    enum modem_cellular_event evt)
 {
+	const struct modem_cellular_config *config = data->dev->config;
+	const struct modem_chat_script *dlci_script = config->vendor->scripts.dlci_setup;
+
 	switch (evt) {
 	case MODEM_CELLULAR_EVENT_DLCI1_OPENED:
-		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_OPEN_DLCI2);
+		if (dlci_script) {
+			modem_chat_attach(&data->chat, data->dlci1_pipe);
+			modem_chat_run_script_async(&data->chat, dlci_script);
+		} else {
+			modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_OPEN_DLCI2);
+		}
 		break;
 
 	case MODEM_CELLULAR_EVENT_SUSPEND:
 		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_INIT_POWER_OFF);
+		break;
+
+	case MODEM_CELLULAR_EVENT_SCRIPT_SUCCESS:
+	case MODEM_CELLULAR_EVENT_SCRIPT_FAILED:
+		/* Failure is unlikely to be critical, continue on */
+		modem_chat_release(&data->chat);
+		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_OPEN_DLCI2);
 		break;
 
 	default:
@@ -1163,26 +1178,46 @@ static int modem_cellular_on_open_dlci2_state_enter(struct modem_cellular_data *
 	return modem_pipe_open_async(data->dlci2_pipe);
 }
 
+static void modem_cellular_open_dlci2_next(struct modem_cellular_data *data)
+{
+	const struct modem_cellular_config *config = data->dev->config;
+
+	data->cmd_pipe = data->dlci2_pipe;
+
+	if (config->use_default_pdp_context) {
+		modem_cellular_enter_state_network_or_dial(data);
+	} else if (!modem_cellular_needs_apn(data)) {
+		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_RUN_APN_SCRIPT);
+	} else {
+		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_WAIT_FOR_APN);
+	}
+}
+
 static void modem_cellular_open_dlci2_event_handler(struct modem_cellular_data *data,
 						    enum modem_cellular_event evt)
 {
 	const struct modem_cellular_config *config = data->dev->config;
+	const struct modem_chat_script *dlci_script = config->vendor->scripts.dlci_setup;
 
 	switch (evt) {
 	case MODEM_CELLULAR_EVENT_DLCI2_OPENED:
-		data->cmd_pipe = data->dlci2_pipe;
-
-		if (config->use_default_pdp_context) {
-			modem_cellular_enter_state_network_or_dial(data);
-		} else if (!modem_cellular_needs_apn(data)) {
-			modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_RUN_APN_SCRIPT);
+		if (dlci_script) {
+			modem_chat_attach(&data->chat, data->dlci2_pipe);
+			modem_chat_run_script_async(&data->chat, dlci_script);
 		} else {
-			modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_WAIT_FOR_APN);
+			modem_cellular_open_dlci2_next(data);
 		}
 		break;
 
 	case MODEM_CELLULAR_EVENT_SUSPEND:
 		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_INIT_POWER_OFF);
+		break;
+
+	case MODEM_CELLULAR_EVENT_SCRIPT_SUCCESS:
+	case MODEM_CELLULAR_EVENT_SCRIPT_FAILED:
+		/* Failure is unlikely to be critical, continue on */
+		modem_chat_release(&data->chat);
+		modem_cellular_open_dlci2_next(data);
 		break;
 
 	default:
