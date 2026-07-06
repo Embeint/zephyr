@@ -151,6 +151,13 @@ config MODEM_CELLULAR_MAX_SCRIPT_FAILURES
 	  gives up on the current attempt and suspends to idle. A value of 0 gives
 	  up on the first failure.
 
+config MODEM_CELLULAR_CUSTOM_FAILURE_HANDLING
+	bool "External code handles periodic script failures"
+	help
+	  Disable the builtin handling of periodic script failures and allow
+	  external code to handle recovery based on
+	  `CELLULAR_EVENT_MODEM_COMMS_CHECK_RESULT` events.
+
 config MODEM_CELLULAR_MAX_RECOVERIES
 	int "Maximum consecutive recovery attempts before suspending"
 	range 0 255
