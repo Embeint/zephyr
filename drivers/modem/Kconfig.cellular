@@ -94,6 +94,13 @@ config MODEM_CELLULAR_RESET_POWER_ON_DELAY_MS
 	int "Delay between de-asserting the reset pin and pulsing the power pin"
 	default 500
 
+config MODEM_CELLULAR_CUSTOM_FAILURE_HANDLING
+	bool "External code handles periodic script failures"
+	help
+	  Disable the builtin handling of periodic script failures and allow
+	  external code to handle recovery based on
+	  `CELLULAR_EVENT_MODEM_COMMS_CHECK_RESULT` events.
+
 config MODEM_CELLULAR_SUSPEND_ASYNC
 	bool "Suspend the modem asynchronously instead of blocking"
 	help

@@ -1503,7 +1503,8 @@ static void modem_cellular_registered_event_handler(struct modem_cellular_data *
 
 	case MODEM_CELLULAR_EVENT_SCRIPT_FAILED:
 		modem_cellular_script_failed(data);
-		if (modem_cellular_is_script_retry_exceeded(data)) {
+		if (!IS_ENABLED(CONFIG_MODEM_CELLULAR_CUSTOM_FAILURE_HANDLING) &&
+		    modem_cellular_is_script_retry_exceeded(data)) {
 			net_if_carrier_off(modem_ppp_get_iface(data->ppp));
 			modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_IDLE);
 			modem_cellular_delegate_event(data, MODEM_CELLULAR_EVENT_RESUME);
