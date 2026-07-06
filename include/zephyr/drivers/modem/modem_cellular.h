@@ -215,6 +215,7 @@ struct modem_cellular_config_scripts {
 	const struct modem_chat_script *dial;         /**< script for starting the PPP data mode */
 	const struct modem_chat_script *periodic;     /**< script for periodic state polling */
 	const struct modem_chat_script *shutdown;     /**< script for shutting down the modem */
+	const struct modem_chat_script *dlci_setup;   /**< script for configuring DLCI channels */
 };
 
 /**
