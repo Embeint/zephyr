@@ -229,6 +229,8 @@ struct modem_cellular_vendor_config {
 	} unsol_matches;
 	uint16_t power_pulse_duration_ms;
 	uint16_t reset_pulse_duration_ms;
+	/* Defaults to `reset_pulse_duration_ms` if not specified for legacy compatibility */
+	uint16_t cmux_disconnect_timeout_ms;
 	uint16_t startup_time_ms;
 	uint16_t shutdown_time_ms;
 	/* Force the `autostart` property regardless of devicetree */
