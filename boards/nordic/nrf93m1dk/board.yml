@@ -4,11 +4,12 @@ board:
   vendor: nordic
   revision:
     format: major.minor.patch
-    default: "0.3.0"
+    default: "0.4.0"
     revisions:
     - name: "0.1.0"
     - name: "0.2.0"
     - name: "0.3.0"
+    - name: "0.4.0"
   socs:
   - name: nrf54l15
     variants:
