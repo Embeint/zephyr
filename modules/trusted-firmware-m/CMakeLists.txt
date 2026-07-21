@@ -330,7 +330,7 @@ if(CONFIG_BUILD_WITH_TFM)
       set(CC3XX_ARCH cc310)
     endif()
     set(NRF_CC3XX_PLATFORM_BASE ${ZEPHYR_NRFXLIB_MODULE_DIR}/crypto/nrf_${CC3XX_ARCH}_platform)
-    set(NRF_CC3XX_PLATFORM_VER 0.9.19)
+    set(NRF_CC3XX_PLATFORM_VER 0.9.22)
     set(CC3XX_PLATFORM_FLAVOR no-interrupts)
 
     include(${ZEPHYR_NRFXLIB_MODULE_DIR}/common.cmake)
