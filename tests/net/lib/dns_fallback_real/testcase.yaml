@@ -1,0 +1,12 @@
+common:
+  tags:
+    - dns
+    - net
+  timeout: 60
+  platform_allow:
+    - native_sim
+  integration_platforms:
+    - native_sim
+tests:
+  net.dns.fallback.real:
+    harness: ztest
