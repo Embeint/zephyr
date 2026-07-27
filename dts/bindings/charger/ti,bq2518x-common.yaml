@@ -88,3 +88,15 @@ properties:
       BAT pin falls below this value, the BAT to SYS path will be disengaged.
       There is a 150 mV hysterisis before the path will be re-enabled. Default
       matches the register reset value.
+
+  termination-current-percent:
+    type: string
+    enum:
+      - "Disable"
+      - "5%"
+      - "10%"
+      - "20%"
+    default: "10%"
+    description:
+      Current at which charging terminates, as a percentage of maximum charge
+      current. Default matches the register reset value.
