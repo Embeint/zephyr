@@ -78,6 +78,7 @@ class Platform:
         self.binaries = []
 
         self.arch = None
+        self.soc = ""
         self.vendor = ""
         self.tier = -1
         self.type = "na"
@@ -90,15 +91,17 @@ class Platform:
         self.uart = ""
         self.resc = ""
 
-    def load(self, board, target, aliases, data, variant_data):
+    def load(self, board, target, soc, aliases, data, variant_data):
         """Load the platform data from the board data and target data
         board: the board object as per the zephyr build system
         target: the target name of the board as per the zephyr build system
+        soc: the soc name for the target as per the board data
         aliases: list of aliases for the target
         data: the default data from the twister.yaml file for the board
         variant_data: the target-specific data to replace the default data
         """
         self.name = target
+        self.soc = soc
         self.aliases = aliases
 
         self.normalized_name = self.name.replace("/", "_")
@@ -205,6 +208,7 @@ def generate_platforms(board_roots, soc_roots, arch_roots):
     alias2target = {}
     target2board = {}
     target2data = {}
+    target2soc = {}
     dir2data = {}
     legacy_files = []
 
@@ -232,6 +236,7 @@ def generate_platforms(board_roots, soc_roots, arch_roots):
         for board_target in list_boards.board_v2_targets(board):
             qual = board_target.qualifiers
             target = board_target.name()
+            target2soc[target] = board_target.soc
             if board.revisions:
                 # Board with revisions
                 if board_target.revision:
@@ -285,9 +290,10 @@ def generate_platforms(board_roots, soc_roots, arch_roots):
         data = dir2data[board.dir]
         if data is not None:
             variant_data = target2data.get(target, {})
+            soc = target2soc.get(target, "")
 
             platform = Platform()
-            platform.load(board, target, aliases, data, variant_data)
+            platform.load(board, target, soc, aliases, data, variant_data)
             yield platform
 
         target2aliases[target] = aliases
@@ -299,11 +305,12 @@ def generate_platforms(board_roots, soc_roots, arch_roots):
             continue
 
         board = target2board[target]
+        soc = target2soc.get(target, "")
         if dir2data[board.dir] is not None:
             # all targets are already loaded for this board
             logger.error(f"Duplicate platform {target} in {os.path.dirname(file)}")
             raise Exception(f"Duplicate platform identifier {target} found")
 
         platform = Platform()
-        platform.load(board, target, target2aliases[target], data, variant_data={})
+        platform.load(board, target, soc, target2aliases[target], data, variant_data={})
         yield platform
