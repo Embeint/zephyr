@@ -381,6 +381,7 @@ board:
             'aliases': ['p1e1/s1', 'p1e1'],
             # m0/boards/zephyr/p1/board.yml
             'vendor': 'zephyr',
+            'soc': 's1',
             # m0/boards/zephyr/p1/twister.yaml (base + variant)
             'twister': False,
             'arch': 'x86',
@@ -390,6 +391,7 @@ board:
             'aliases': ['p1e2/s1', 'p1e2'],
             # m0/boards/zephyr/p1/board.yml
             'vendor': 'zephyr',
+            'soc': 's1',
             # m0/boards/zephyr/p1/twister.yaml (base + variant)
             'sysbuild': True,
             'arch': 'x86',
@@ -399,6 +401,7 @@ board:
             'aliases': ['p1e1/s1/v1'],
             # m0/boards/zephyr/p1/board.yml
             'vendor': 'zephyr',
+            'soc': 's1',
             # m0/boards/zephyr/p1/twister.yaml (base)
             # m1/boards/zephyr/p1e1/twister.yaml (variant)
             'default': True,
@@ -409,6 +412,7 @@ board:
             'aliases': ['p1e1/s1/v2'],
             # m0/boards/zephyr/p1/board.yml
             'vendor': 'zephyr',
+            'soc': 's1',
             # m0/boards/zephyr/p1/twister.yaml (base)
             'arch': 'x86',
             'type': 'native',
@@ -417,6 +421,7 @@ board:
             'aliases': ['p1e2/s1/v1'],
             # m0/boards/zephyr/p1/board.yml
             'vendor': 'zephyr',
+            'soc': 's1',
             # m0/boards/zephyr/p1/twister.yaml (base)
             'arch': 'x86',
             'type': 'native',
@@ -425,6 +430,7 @@ board:
             'aliases': ['p2/s1', 'p2'],
             # m0/boards/zephyr/p2/board.yml
             'vendor': 'zephyr',
+            'soc': 's1',
             # m0/boards/zephyr/p2/p2.yaml
             'default': True,
             'arch': 'x86',
@@ -434,12 +440,14 @@ board:
             'aliases': ['p2/s1/v1'],
             # m0/boards/zephyr/p2/board.yml
             'vendor': 'zephyr',
+            'soc': 's1',
             # m1/boards/zephyr/p2/p2_s1_v1.yaml
         },
         'p3@A/s2/c1': {
             'aliases': ['p3@A/s2/c1', 'p3/s2/c1'],
             # m0/boards/arm/p3/board.yml
             'vendor': 'arm',
+            'soc': 's2',
             # m0/boards/arm/p3/twister.yaml (base + variant)
             'sysbuild': True,
             'timeout_multiplier': 2.71828,
@@ -450,6 +458,7 @@ board:
             'aliases': ['p3@B/s2/c1'],
             # m0/boards/arm/p3/board.yml
             'vendor': 'arm',
+            'soc': 's2',
             # m0/boards/arm/p3/twister.yaml (base + variant)
             'sysbuild': True,
             'timeout_multiplier': 3.14159,
@@ -460,6 +469,7 @@ board:
             'aliases': ['p3@A/s2/c2', 'p3/s2/c2'],
             # m0/boards/arm/p3/board.yml
             'vendor': 'arm',
+            'soc': 's2',
             # m0/boards/arm/p3/twister.yaml (base)
             # m2/boards/misc/twister.yaml (variant)
             'sysbuild': False,
@@ -470,6 +480,7 @@ board:
             'aliases': ['p3@B/s2/c2'],
             # m0/boards/arm/p3/board.yml
             'vendor': 'arm',
+            'soc': 's2',
             # m0/boards/arm/p3/twister.yaml (base)
             'sysbuild': True,
             'arch': 'arm',
@@ -479,6 +490,7 @@ board:
             'aliases': ['p4/s1', 'p4'],
             # m2/boards/misc/board.yml
             'vendor': 'misc',
+            'soc': 's1',
             # m2/boards/misc/twister.yaml (base)
             'arch': 'riscv',
             'type': 'qemu',
