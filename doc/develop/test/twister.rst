@@ -477,6 +477,15 @@ vendor_exclude: <list of vendors>
     The vendor is defined as part of the board. Boards associated with this
     vendors will be excluded.
 
+socs_allow: <list of SoCs>
+    Set of SoCs that this test scenario should only be run for. The SoC name
+    comes from the board metadata, such as ``soc`` for
+    ``board/soc``.
+
+socs_exclude: <list of SoCs>
+    Set of SoCs that this test scenario should not run on. The SoC name comes
+    from the board metadata.
+
 platform_allow: <list of platforms>
     Set of platforms that this test scenario should only be run for. Do not use
     this option to limit testing or building in CI due to time or resource

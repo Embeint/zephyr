@@ -116,6 +116,8 @@ def test_default_values(zephyr_base):
         'min_flash': 32,
         'arch_allow': set(),
         'arch_exclude': set(),
+        'socs_allow': set(),
+        'socs_exclude': set(),
         'extra_sections': [],
         'integration_platforms': [],
         'ignore_faults': False,

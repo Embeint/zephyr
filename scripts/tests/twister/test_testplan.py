@@ -116,6 +116,8 @@ TESTDATA_PART1 = [
     ("platform_exclude", ['demo_board_2'], None, None, "In test case platform exclude"),
     ("arch_exclude", ['x86'], None, None, "In test case arch exclude"),
     ("arch_allow", ['arm'], None, None, "Not in test case arch allow list"),
+    ("socs_allow", ['unknown_soc'], None, None, "Not in testsuite socs allow list"),
+    ("socs_exclude", ['unit_testing'], None, None, "In testsuite socs exclude"),
     ("skip", True, None, None, "Skip filter"),
     ("tags", set(['sensor', 'bluetooth']), "ignore_tags", ['bluetooth'], "Excluded tags per platform (exclude_tags)"),
     ("min_flash", "2024", "flash", "1024", "Not enough FLASH"),
@@ -167,6 +169,10 @@ def test_apply_filters_part1(class_testplan, all_testsuites_dict, platforms_list
             testcase.arch_exclude = tc_value
         if tc_attribute == "arch_allow":
             testcase.arch_allow = tc_value
+        if tc_attribute == "socs_allow":
+            testcase.socs_allow = tc_value
+        if tc_attribute == "socs_exclude":
+            testcase.socs_exclude = tc_value
         if tc_attribute == "skip":
             testcase.skip = tc_value
         if tc_attribute == "tags":
@@ -260,6 +266,64 @@ def test_apply_filters_part3(class_testplan, all_testsuites_dict, platforms_list
 
     filtered_instances = list(filter(lambda item:  item.status == TwisterStatus.FILTER, class_testplan.instances.values()))
     assert not filtered_instances
+
+
+@pytest.mark.parametrize(
+    "filter_name, filter_value, expected_reason, expected_filtered_platforms",
+    [
+        (
+            "socs_allow",
+            {"soc_a"},
+            "Not in testsuite socs allow list",
+            {"demo_board_2/unit_testing"},
+        ),
+        (
+            "socs_exclude",
+            {"soc_a"},
+            "In testsuite socs exclude",
+            {"demo_board_1/unit_testing", "demo_board_3/unit_testing"},
+        ),
+    ],
+)
+def test_apply_filters_socs_allow_exclude(
+    class_testplan,
+    all_testsuites_dict,
+    platforms_list,
+    filter_name,
+    filter_value,
+    expected_reason,
+    expected_filtered_platforms,
+):
+    """Testing apply_filters handles SOC allow/exclude lists."""
+    class_testplan.platforms = platforms_list
+    class_testplan.platform_names = [p.name for p in platforms_list]
+    class_testplan.testsuites = {
+        name: testsuite
+        for name, testsuite in all_testsuites_dict.items()
+        if testsuite.id == "sample_test.app"
+    }
+    class_testplan.options.all = True
+
+    platform_socs = {
+        "demo_board_1/unit_testing": "soc_a",
+        "demo_board_2/unit_testing": "soc_b",
+        "demo_board_3/unit_testing": "soc_a",
+    }
+    for platform in class_testplan.platforms:
+        platform.soc = platform_socs[platform.name]
+
+    testsuite = next(iter(class_testplan.testsuites.values()))
+    setattr(testsuite, filter_name, filter_value)
+
+    class_testplan.apply_filters()
+
+    filtered_instances = [
+        instance
+        for instance in class_testplan.instances.values()
+        if instance.status == TwisterStatus.FILTER and instance.reason == expected_reason
+    ]
+
+    assert {instance.platform.name for instance in filtered_instances} == expected_filtered_platforms
 
 
 def get_testsuite_for_given_test(plan: TestPlan, testname: str) -> TestSuite | None:

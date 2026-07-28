@@ -71,6 +71,8 @@ class TwisterConfigParser:
         "arch_exclude": {"type": "set"},
         "vendor_allow": {"type": "set"},
         "vendor_exclude": {"type": "set"},
+        "socs_allow": {"type": "set"},
+        "socs_exclude": {"type": "set"},
         "extra_sections": {"type": "list", "default": []},
         "integration_platforms": {"type": "list", "default": []},
         "integration_toolchains": {"type": "list", "default": []},
