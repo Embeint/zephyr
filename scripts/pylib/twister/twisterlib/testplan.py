@@ -974,6 +974,12 @@ class TestPlan:
                     if ts.vendor_exclude and plat.vendor in ts.vendor_exclude:
                         instance.add_filter("In testsuite vendor exclude", Filters.TESTSUITE)
 
+                    if ts.socs_allow and plat.soc not in ts.socs_allow:
+                        instance.add_filter("Not in testsuite socs allow list", Filters.TESTSUITE)
+
+                    if ts.socs_exclude and plat.soc in ts.socs_exclude:
+                        instance.add_filter("In testsuite socs exclude", Filters.TESTSUITE)
+
                     if ts.platform_exclude and plat.name in ts.platform_exclude:
                         instance.add_filter("In testsuite platform exclude", Filters.TESTSUITE)
 
