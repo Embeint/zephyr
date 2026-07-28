@@ -229,28 +229,29 @@ def generate_platforms(board_roots, soc_roots, arch_roots):
 
             dir2data[board_dir] = data
 
-        for qual in list_boards.board_v2_qualifiers(board):
+        for board_target in list_boards.board_v2_targets(board):
+            qual = board_target.qualifiers
+            target = board_target.name()
             if board.revisions:
-                for rev in board.revisions:
-                    if rev.name:
-                        target = f"{board.name}@{rev.name}/{qual}"
-                        alias2target[target] = target
-                        if rev.name == board.revision_default:
-                            alias2target[f"{board.name}/{qual}"] = target
-                        if '/' not in qual and len(board.socs) == 1:
-                            if rev.name == board.revision_default:
-                                alias2target[f"{board.name}"] = target
-                            alias2target[f"{board.name}@{rev.name}"] = target
-                    else:
-                        target = f"{board.name}/{qual}"
-                        alias2target[target] = target
-                        if '/' not in qual and len(board.socs) == 1 \
-                                and rev.name == board.revision_default:
+                # Board with revisions
+                if board_target.revision:
+                    # Explicitly specified revision in target string
+                    alias2target[target] = target
+                    if board_target.revision == board.revision_default:
+                        alias2target[f"{board.name}/{qual}"] = target
+                    if '/' not in qual and len(board.socs) == 1:
+                        if board_target.revision == board.revision_default:
                             alias2target[f"{board.name}"] = target
-
+                        alias2target[f"{board.name}@{board_target.revision}"] = target
+                    target2board[target] = board
+                elif any(not rev.name for rev in board.revisions):
+                    # This board has a revision entry with name: ""
+                    alias2target[target] = target
+                    if board.revision_default == "" and '/' not in qual and len(board.socs) == 1:
+                        alias2target[f"{board.name}"] = target
                     target2board[target] = board
             else:
-                target = f"{board.name}/{qual}"
+                # Board without revisions
                 alias2target[target] = target
                 if '/' not in qual and len(board.socs) == 1:
                     alias2target[board.name] = target
