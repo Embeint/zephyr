@@ -1556,3 +1556,10 @@ test_i2c_adxl355: adxl55@cd {
 	reg = <0xcd>;
 	int1-gpios = <&test_gpio 0 0>;
 };
+
+test_i2c_lps22hx: lps22hx@ce {
+	compatible = "st,lps22hx";
+	reg = <0xce>;
+	drdy-gpios = <&test_gpio 0 0>;
+	odr = <LPS22HH_DT_ODR_75HZ>;
+};
