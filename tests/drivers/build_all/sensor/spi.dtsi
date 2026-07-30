@@ -515,3 +515,9 @@ test_spi_adxl355: adxl355@3e {
 	spi-max-frequency = <0>;
 	int1-gpios = <&test_gpio 0 0>;
 };
+
+test_spi_lps22hx: lps22hx@3f {
+	compatible = "st,lps22hx";
+	reg = <0x3f>;
+	spi-max-frequency = <0>;
+};
