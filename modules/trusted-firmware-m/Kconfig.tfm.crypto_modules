@@ -7,9 +7,15 @@ if BUILD_WITH_TFM
 
 if TFM_PARTITION_CRYPTO
 
+config TFM_CRYPTO_CC3XX_PLATFORM_LIB
+	bool
+	help
+	 Common helper to control build system for CC3XX cryptocell
+
 config TFM_CRYPTO_CC3XX_EXTERNAL_RNG_ENABLED
 	bool "Cryptocell CC3XX based RNG"
 	depends on SOC_SERIES_NRF53 || SOC_SERIES_NRF91
+	select TFM_CRYPTO_CC3XX_PLATFORM_LIB
 	default y
 
 config TFM_CRYPTO_NV_SEED_DEFAULT_DISABLE
