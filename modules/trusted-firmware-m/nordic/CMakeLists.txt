@@ -76,13 +76,21 @@ if(NRF_CC3XX_PLATFORM_LIB)
     )
     target_compile_definitions(platform_s
     PRIVATE
-        "-DMBEDTLS_PSA_CRYPTO_EXTERNAL_RNG=1"
         "-DNRF_CC3XX_PLATFORM_LIB=1"
     )
     target_compile_definitions(tfm_spm
     PRIVATE
-        "-DMBEDTLS_PSA_CRYPTO_EXTERNAL_RNG=1"
         "-DNRF_CC3XX_PLATFORM_LIB=1"
+    )
+endif()
+if(NRF_CC3XX_EXTERNAL_RNG_ENABLED)
+    target_compile_definitions(platform_s
+    PRIVATE
+        "-DMBEDTLS_PSA_CRYPTO_EXTERNAL_RNG=1"
+    )
+    target_compile_definitions(tfm_spm
+    PRIVATE
+        "-DMBEDTLS_PSA_CRYPTO_EXTERNAL_RNG=1"
     )
 endif()
 if(TFM_LCS_SECURED_DISABLE_DEBUG_PORT)
