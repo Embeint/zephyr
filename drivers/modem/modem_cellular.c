@@ -1482,6 +1482,7 @@ static void modem_cellular_registered_event_handler(struct modem_cellular_data *
 {
 	const struct modem_cellular_config *config = data->dev->config;
 	struct cellular_evt_modem_comms_check_result result;
+	int ret;
 
 	switch (evt) {
 	case MODEM_CELLULAR_EVENT_SCRIPT_SUCCESS:
@@ -1510,7 +1511,11 @@ static void modem_cellular_registered_event_handler(struct modem_cellular_data *
 		if (config->vendor->scripts.periodic == NULL) {
 			break;
 		}
-		modem_chat_run_script_async(&data->chat, config->vendor->scripts.periodic);
+		ret = modem_chat_run_script_async(&data->chat, config->vendor->scripts.periodic);
+		if (ret < 0) {
+			LOG_WRN("periodic %s busy, rearming timer", "timer");
+			modem_cellular_start_timer(data, MODEM_CELLULAR_PERIODIC_SCRIPT_TIMEOUT);
+		}
 		break;
 
 	case MODEM_CELLULAR_EVENT_DEREGISTERED:
