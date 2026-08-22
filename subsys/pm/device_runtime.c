@@ -129,6 +129,7 @@ static void runtime_suspend_work(struct k_work *work)
 	bool is_isr_safe = atomic_test_bit(&pm_base->flags, PM_DEVICE_FLAG_ISR_SAFE);
 	struct pm_device_isr *pm_isr;
 	struct pm_device *pm_sync = NULL;
+	bool release_domain = false;
 	k_spinlock_key_t k;
 
 	if (is_isr_safe) {
@@ -147,22 +148,25 @@ static void runtime_suspend_work(struct k_work *work)
 		pm_base->state = PM_DEVICE_STATE_ACTIVE;
 	} else {
 		pm_base->state = PM_DEVICE_STATE_SUSPENDED;
+		release_domain = (pm_base->usage == 0U) &&
+				 atomic_test_bit(&pm_base->flags, PM_DEVICE_FLAG_PD_CLAIMED);
 	}
 	k_event_set(&pm_base->event, BIT(pm_base->state));
+
+	/*
+	 * On async put, we have to suspend the domain when the device
+	 * finishes its operation, unless a get arrived while the suspend was
+	 * running and restored the device usage.
+	 */
+	if (release_domain) {
+		(void)pm_device_runtime_put(PM_DOMAIN(pm_base));
+		atomic_clear_bit(&pm_base->flags, PM_DEVICE_FLAG_PD_CLAIMED);
+	}
+
 	if (is_isr_safe) {
 		k_spin_unlock(&pm_isr->lock, k);
 	} else {
 		k_sem_give(&pm_sync->lock);
-	}
-
-	/*
-	 * On async put, we have to suspend the domain when the device
-	 * finishes its operation
-	 */
-	if ((ret == 0) &&
-	    atomic_test_bit(&pm_base->flags, PM_DEVICE_FLAG_PD_CLAIMED)) {
-		(void)pm_device_runtime_put(PM_DOMAIN(pm_base));
-		atomic_clear_bit(&pm_base->flags, PM_DEVICE_FLAG_PD_CLAIMED);
 	}
 
 	__ASSERT(ret == 0, "Could not suspend device (%d)", ret);
