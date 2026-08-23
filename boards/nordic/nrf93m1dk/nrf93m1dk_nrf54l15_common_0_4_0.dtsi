@@ -12,7 +12,7 @@
 /delete-node/ &mx25r64;
 
 &spi00 {
-	p25q64: p25q64sl@0 {
+	p25q64: external_flash: p25q64sl@0 {
 		compatible = "jedec,spi-nor";
 		status = "okay";
 		reg = <0>;
