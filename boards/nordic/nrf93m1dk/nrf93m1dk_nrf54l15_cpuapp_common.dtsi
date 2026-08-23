@@ -120,7 +120,7 @@
 	pinctrl-1 = <&spi00_sleep>;
 	pinctrl-names = "default", "sleep";
 
-	mx25r64: mx25r6435f@0 {
+	mx25r64: external_flash: mx25r6435f@0 {
 		compatible = "jedec,spi-nor";
 		status = "okay";
 		reg = <0>;
