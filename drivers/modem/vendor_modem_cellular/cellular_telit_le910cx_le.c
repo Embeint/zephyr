@@ -66,7 +66,7 @@ MODEM_CHAT_SCRIPT_CMDS_DEFINE(
 	MODEM_CHAT_SCRIPT_CMD_RESP("AT+CFUN=1", ok_match),
 	MODEM_CHAT_SCRIPT_CMD_RESP("AT#CMUXMODE=1", ok_match),
 	MODEM_CHAT_SCRIPT_CMD_RESP("AT#CFLO=1", ok_match),
-	MODEM_CHAT_SCRIPT_CMD_RESP("AT+CMUX=0,0,4,1500", ok_match));
+	MODEM_CHAT_SCRIPT_CMD_RESP("AT+CMUX=0,0,4," STRINGIFY(CONFIG_MODEM_CMUX_MTU), ok_match));
 
 MODEM_CHAT_SCRIPT_DEFINE(telit_le910cx_le_init_chat_script, telit_le910cx_le_init_chat_script_cmds,
 			 abort_matches, modem_cellular_chat_callback_handler, 10);
