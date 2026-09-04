@@ -10,6 +10,15 @@
 
 #define DT_DRV_COMPAT nordic_nrf93m1
 
+#define BUS_HAS_HWFC(inst) DT_PROP(DT_INST_BUS(inst), hw_flow_control) &&
+#define ALL_HWFC_SUPPORTED (DT_INST_FOREACH_STATUS_OKAY(BUS_HAS_HWFC) 0)
+
+#if ALL_HWFC_SUPPORTED
+#define IFC_CMD "AT+IFC=2,2"
+#else
+#define IFC_CMD "AT+IFC=0,0"
+#endif
+
 static void nrf93m1_on_bcinfosc(struct modem_chat *chat, char **argv, uint16_t argc,
 				void *user_data);
 
@@ -22,7 +31,7 @@ MODEM_CHAT_MATCHES_DEFINE(nordic_nrf93m1_unsol, MODEM_CELLULAR_COMMON_UNSOL_MATC
 
 MODEM_CHAT_SCRIPT_CMDS_DEFINE(
 	nordic_nrf93m1_init_chat_script_cmds, MODEM_CHAT_SCRIPT_CMD_RESP("ATE0", ok_match),
-	MODEM_CHAT_SCRIPT_CMD_RESP("AT+IFC=2,2", ok_match),
+	MODEM_CHAT_SCRIPT_CMD_RESP(IFC_CMD, ok_match),
 	MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGSN", imei_match), MODEM_CHAT_SCRIPT_CMD_RESP("", ok_match),
 	MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGMM", cgmm_match), MODEM_CHAT_SCRIPT_CMD_RESP("", ok_match),
 	MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGMI", cgmi_match), MODEM_CHAT_SCRIPT_CMD_RESP("", ok_match),
