@@ -70,6 +70,14 @@ config MODEM_CELLULAR_USER_PIPE_BUFFER_SIZES
 	int "The size of the buffers used for each user pipe in bytes."
 	default 128
 
+config MODEM_CELLULAR_SERIAL_NUMBER_MAX_SIZE
+	int "The maximum size of the modem serial number string (excluding NUL)"
+	range 16 2048
+	default 64
+	help
+	  3GPP TS 27.007 documentation for +CGSN states that the serial
+	  number text shall not exceed 2048 characters.
+
 config MODEM_CELLULAR_USER_PIPE_SETUP_CMD
 	string "Command to run when user pipe DLCI opened"
 	default "ATE0;#ENAURCS=0" if DT_HAS_TELIT_LE910CX_LE_ENABLED
