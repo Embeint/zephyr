@@ -51,11 +51,10 @@ target_include_directories(platform_region_defs
         ${partition_includes}
 )
 
-
 target_sources(platform_s
     PRIVATE
         $<$<BOOL:${TFM_PARTITION_PLATFORM}>:${CMAKE_CURRENT_SOURCE_DIR}/src/tfm_platform_system.c>
-        $<$<BOOL:NOT ${PLATFORM_DEFAULT_NV_SEED}>:src/nv_seed_nrf.c>
+        $<$<NOT:$<BOOL:${PLATFORM_DEFAULT_NV_SEED}>>:${CMAKE_CURRENT_SOURCE_DIR}/src/nv_seed_nrf.c>
 )
 if(TFM_PLATFORM_FAULT_INFO_QUERY)
     target_compile_definitions(platform_s
