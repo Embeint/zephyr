@@ -67,6 +67,7 @@ enum modem_cellular_state {
 	MODEM_CELLULAR_STATE_SET_BAUDRATE,
 	MODEM_CELLULAR_STATE_RUN_INIT_SCRIPT,
 	MODEM_CELLULAR_STATE_CONNECT_CMUX,
+	MODEM_CELLULAR_STATE_OPEN_USER_PIPE,
 	MODEM_CELLULAR_STATE_OPEN_DLCI1,
 	MODEM_CELLULAR_STATE_OPEN_DLCI2,
 	MODEM_CELLULAR_STATE_WAIT_FOR_APN,
@@ -89,6 +90,8 @@ enum modem_cellular_event {
 	MODEM_CELLULAR_EVENT_SCRIPT_FAILED,
 	MODEM_CELLULAR_EVENT_CMUX_CONNECTED,
 	MODEM_CELLULAR_EVENT_CMUX_DISCONNECTED,
+	MODEM_CELLULAR_EVENT_USER_PIPE_OPENED,
+	MODEM_CELLULAR_EVENT_USER_PIPE_CLOSED,
 	MODEM_CELLULAR_EVENT_DLCI1_OPENED,
 	MODEM_CELLULAR_EVENT_DLCI2_OPENED,
 	MODEM_CELLULAR_EVENT_TIMEOUT,
@@ -128,6 +131,8 @@ struct modem_cellular_data {
 	struct modem_cmux_dlci dlci2;
 	struct modem_pipe *dlci1_pipe;
 	struct modem_pipe *dlci2_pipe;
+	uint8_t user_pipe_setup_index;
+	bool user_pipe_setup_closing;
 	/* Points to dlci1_pipe or NULL. Used for shutdown script if not NULL */
 	struct modem_pipe *cmd_pipe;
 	uint8_t dlci1_receive_buf[MODEM_CMUX_WORK_BUFFER_SIZE];

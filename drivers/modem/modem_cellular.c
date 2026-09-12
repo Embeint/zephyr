@@ -85,6 +85,8 @@ static const char *modem_cellular_state_str(enum modem_cellular_state state)
 		return "run init script";
 	case MODEM_CELLULAR_STATE_CONNECT_CMUX:
 		return "connect cmux";
+	case MODEM_CELLULAR_STATE_OPEN_USER_PIPE:
+		return "open user pipe";
 	case MODEM_CELLULAR_STATE_OPEN_DLCI1:
 		return "open dlci1";
 	case MODEM_CELLULAR_STATE_OPEN_DLCI2:
@@ -131,6 +133,10 @@ static const char *modem_cellular_event_str(enum modem_cellular_event event)
 		return "cmux connected";
 	case MODEM_CELLULAR_EVENT_CMUX_DISCONNECTED:
 		return "cmux disconnected";
+	case MODEM_CELLULAR_EVENT_USER_PIPE_OPENED:
+		return "user pipe opened";
+	case MODEM_CELLULAR_EVENT_USER_PIPE_CLOSED:
+		return "user pipe closed";
 	case MODEM_CELLULAR_EVENT_DLCI1_OPENED:
 		return "dlci1 opened";
 	case MODEM_CELLULAR_EVENT_DLCI2_OPENED:
@@ -311,6 +317,25 @@ static void modem_cellular_dlci2_pipe_handler(struct modem_pipe *pipe,
 	switch (event) {
 	case MODEM_PIPE_EVENT_OPENED:
 		modem_cellular_delegate_event(data, MODEM_CELLULAR_EVENT_DLCI2_OPENED);
+		break;
+
+	default:
+		break;
+	}
+}
+
+static void modem_cellular_user_pipe_handler(struct modem_pipe *pipe, enum modem_pipe_event event,
+					     void *user_data)
+{
+	struct modem_cellular_data *data = (struct modem_cellular_data *)user_data;
+
+	switch (event) {
+	case MODEM_PIPE_EVENT_OPENED:
+		modem_cellular_delegate_event(data, MODEM_CELLULAR_EVENT_USER_PIPE_OPENED);
+		break;
+
+	case MODEM_PIPE_EVENT_CLOSED:
+		modem_cellular_delegate_event(data, MODEM_CELLULAR_EVENT_USER_PIPE_CLOSED);
 		break;
 
 	default:
@@ -1204,8 +1229,7 @@ static void modem_cellular_connect_cmux_event_handler(struct modem_cellular_data
 		break;
 
 	case MODEM_CELLULAR_EVENT_CMUX_CONNECTED:
-		modem_cellular_notify_user_pipes_connected(data);
-		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_OPEN_DLCI1);
+		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_OPEN_USER_PIPE);
 		break;
 
 	case MODEM_CELLULAR_EVENT_SUSPEND:
@@ -1215,6 +1239,159 @@ static void modem_cellular_connect_cmux_event_handler(struct modem_cellular_data
 	default:
 		break;
 	}
+}
+
+static void modem_cellular_open_user_pipe_next(struct modem_cellular_data *data)
+{
+	const struct modem_cellular_config *config = data->dev->config;
+	struct modem_cellular_user_pipe *user_pipe;
+	int ret;
+
+	if (data->user_pipe_setup_index >= config->user_pipes_size) {
+		modem_cellular_notify_user_pipes_connected(data);
+		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_OPEN_DLCI1);
+		return;
+	}
+
+	user_pipe = &config->user_pipes[data->user_pipe_setup_index];
+	LOG_DBG("Opening user pipe DLCI %u", user_pipe->dlci_address);
+	data->user_pipe_setup_closing = false;
+	modem_pipe_attach(user_pipe->pipe, modem_cellular_user_pipe_handler, data);
+	ret = modem_pipe_open_async(user_pipe->pipe);
+	if (ret < 0) {
+		LOG_WRN("failed to open user pipe DLCI %u, error: %i", user_pipe->dlci_address,
+			ret);
+		modem_pipe_release(user_pipe->pipe);
+		data->user_pipe_setup_index++;
+		modem_cellular_open_user_pipe_next(data);
+	}
+}
+
+static int modem_cellular_on_open_user_pipe_state_enter(struct modem_cellular_data *data)
+{
+	const struct modem_cellular_config *config = data->dev->config;
+
+	data->user_pipe_setup_index = 0;
+	data->user_pipe_setup_closing = false;
+
+	if ((config->vendor->scripts.dlci_setup == NULL) || (config->user_pipes_size == 0)) {
+		modem_cellular_notify_user_pipes_connected(data);
+		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_OPEN_DLCI1);
+		return 0;
+	}
+
+	modem_cellular_open_user_pipe_next(data);
+	return 0;
+}
+
+static void modem_cellular_finish_user_pipe_setup(struct modem_cellular_data *data)
+{
+	const struct modem_cellular_config *config = data->dev->config;
+	struct modem_cellular_user_pipe *user_pipe =
+		&config->user_pipes[data->user_pipe_setup_index];
+	int ret;
+
+	if (modem_chat_is_running(&data->chat)) {
+		modem_cellular_start_timer(data, K_MSEC(1));
+		return;
+	}
+
+	modem_chat_release(&data->chat);
+	data->user_pipe_setup_closing = true;
+	modem_pipe_attach(user_pipe->pipe, modem_cellular_user_pipe_handler, data);
+	ret = modem_pipe_close_async(user_pipe->pipe);
+	if (ret < 0) {
+		LOG_WRN("failed to close user pipe DLCI %u, error: %i", user_pipe->dlci_address,
+			ret);
+		modem_pipe_release(user_pipe->pipe);
+		data->user_pipe_setup_index++;
+		modem_cellular_open_user_pipe_next(data);
+	}
+}
+
+static void modem_cellular_run_user_pipe_setup(struct modem_cellular_data *data)
+{
+	const struct modem_cellular_config *config = data->dev->config;
+	const struct modem_chat_script *dlci_script = config->vendor->scripts.dlci_setup;
+	struct modem_cellular_user_pipe *user_pipe =
+		&config->user_pipes[data->user_pipe_setup_index];
+	int ret;
+
+	if (modem_chat_is_running(&data->chat)) {
+		modem_cellular_start_timer(data, K_MSEC(1));
+		return;
+	}
+
+	modem_chat_attach(&data->chat, user_pipe->pipe);
+	ret = modem_chat_run_script_async(&data->chat, dlci_script);
+	if (ret < 0) {
+		LOG_WRN("failed to run user pipe DLCI %u setup, error: %i", user_pipe->dlci_address,
+			ret);
+		modem_cellular_finish_user_pipe_setup(data);
+	}
+}
+
+static void modem_cellular_open_user_pipe_event_handler(struct modem_cellular_data *data,
+							enum modem_cellular_event evt)
+{
+	const struct modem_cellular_config *config = data->dev->config;
+
+	switch (evt) {
+	case MODEM_CELLULAR_EVENT_USER_PIPE_OPENED:
+		modem_cellular_run_user_pipe_setup(data);
+		break;
+
+	case MODEM_CELLULAR_EVENT_SUSPEND:
+		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_INIT_POWER_OFF);
+		break;
+
+	case MODEM_CELLULAR_EVENT_TIMEOUT:
+		if (data->chat.pipe == NULL) {
+			modem_cellular_run_user_pipe_setup(data);
+		} else {
+			modem_cellular_finish_user_pipe_setup(data);
+		}
+		break;
+
+	case MODEM_CELLULAR_EVENT_USER_PIPE_CLOSED:
+		if (!data->user_pipe_setup_closing) {
+			LOG_WRN("user pipe setup DLCI %u closed before setup completed",
+				config->user_pipes[data->user_pipe_setup_index].dlci_address);
+		}
+		modem_pipe_release(config->user_pipes[data->user_pipe_setup_index].pipe);
+		data->user_pipe_setup_index++;
+		modem_cellular_open_user_pipe_next(data);
+		break;
+
+	case MODEM_CELLULAR_EVENT_SCRIPT_SUCCESS:
+	case MODEM_CELLULAR_EVENT_SCRIPT_FAILED:
+		/* Failure is unlikely to be critical, continue on */
+		modem_cellular_finish_user_pipe_setup(data);
+		break;
+
+	default:
+		break;
+	}
+}
+
+static int modem_cellular_on_open_user_pipe_state_leave(struct modem_cellular_data *data)
+{
+	const struct modem_cellular_config *config = data->dev->config;
+	struct modem_cellular_user_pipe *user_pipe;
+
+	modem_cellular_stop_timer(data);
+
+	if (data->user_pipe_setup_index >= config->user_pipes_size) {
+		return 0;
+	}
+
+	user_pipe = &config->user_pipes[data->user_pipe_setup_index];
+	if (data->chat.pipe == user_pipe->pipe) {
+		modem_chat_release(&data->chat);
+	}
+	modem_pipe_release(user_pipe->pipe);
+
+	return 0;
 }
 
 static int modem_cellular_on_open_dlci1_state_enter(struct modem_cellular_data *data)
@@ -1913,6 +2090,10 @@ static int modem_cellular_on_state_enter(struct modem_cellular_data *data)
 		ret = modem_cellular_on_connect_cmux_state_enter(data);
 		break;
 
+	case MODEM_CELLULAR_STATE_OPEN_USER_PIPE:
+		ret = modem_cellular_on_open_user_pipe_state_enter(data);
+		break;
+
 	case MODEM_CELLULAR_STATE_OPEN_DLCI1:
 		ret = modem_cellular_on_open_dlci1_state_enter(data);
 		break;
@@ -1988,6 +2169,10 @@ static int modem_cellular_on_state_leave(struct modem_cellular_data *data)
 
 	case MODEM_CELLULAR_STATE_POWER_ON_PULSE:
 		ret = modem_cellular_on_power_on_pulse_state_leave(data);
+		break;
+
+	case MODEM_CELLULAR_STATE_OPEN_USER_PIPE:
+		ret = modem_cellular_on_open_user_pipe_state_leave(data);
 		break;
 
 	case MODEM_CELLULAR_STATE_OPEN_DLCI1:
@@ -2095,6 +2280,10 @@ static void modem_cellular_event_handler(struct modem_cellular_data *data,
 
 	case MODEM_CELLULAR_STATE_CONNECT_CMUX:
 		modem_cellular_connect_cmux_event_handler(data, evt);
+		break;
+
+	case MODEM_CELLULAR_STATE_OPEN_USER_PIPE:
+		modem_cellular_open_user_pipe_event_handler(data, evt);
 		break;
 
 	case MODEM_CELLULAR_STATE_OPEN_DLCI1:
