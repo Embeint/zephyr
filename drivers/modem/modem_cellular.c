@@ -66,6 +66,10 @@ static void modem_cellular_delegate_event_ptr(struct modem_cellular_data *data,
 static void modem_cellular_event_handler(struct modem_cellular_data *data,
 					 enum modem_cellular_event evt);
 
+static int modem_cellular_on_state_enter(struct modem_cellular_data *data);
+
+static int modem_cellular_on_state_leave(struct modem_cellular_data *data);
+
 static const char *modem_cellular_state_str(enum modem_cellular_state state)
 {
 	switch (state) {
@@ -159,6 +163,8 @@ static const char *modem_cellular_event_str(enum modem_cellular_event event)
 		return "apn set";
 	case MODEM_CELLULAR_EVENT_RING:
 		return "RING";
+	case MODEM_CELLULAR_EVENT_MODEM_REBOOTING:
+		return "modem rebooting";
 	case _MODEM_CELLULAR_EVENT_HAS_PTR:
 		__ASSERT_NO_MSG(false);
 		break;
@@ -808,6 +814,27 @@ static void modem_cellular_delegate_event_ptr(struct modem_cellular_data *data,
 		LOG_ERR("Event %d partial write", evt);
 	}
 	k_work_submit(&data->event_dispatch_work);
+}
+
+static void modem_cellular_handle_modem_rebooting(struct modem_cellular_data *data)
+{
+	if (data->state == MODEM_CELLULAR_STATE_IDLE) {
+		modem_cellular_delegate_event(data, MODEM_CELLULAR_EVENT_RESUME);
+		return;
+	}
+
+	(void)modem_cellular_on_state_leave(data);
+	net_if_carrier_off(modem_ppp_get_iface(data->ppp));
+	net_if_dormant_on(modem_ppp_get_iface(data->ppp));
+	modem_cellular_clear_registration_status(data);
+	modem_cellular_notify_user_pipes_disconnected(data);
+	modem_chat_release(&data->chat);
+	modem_ppp_release(data->ppp);
+	modem_cmux_release(&data->cmux);
+	modem_pipe_close_async(data->uart_pipe);
+	data->cmd_pipe = NULL;
+	data->state = MODEM_CELLULAR_STATE_AWAIT_POWER_ON;
+	(void)modem_cellular_on_state_enter(data);
 }
 
 static void modem_cellular_begin_power_off_pulse(struct modem_cellular_data *data)
@@ -2249,6 +2276,11 @@ static void modem_cellular_event_handler(struct modem_cellular_data *data,
 
 	modem_cellular_log_event(evt);
 
+	if (evt == MODEM_CELLULAR_EVENT_MODEM_REBOOTING) {
+		modem_cellular_handle_modem_rebooting(data);
+		goto out;
+	}
+
 	switch (data->state) {
 	case MODEM_CELLULAR_STATE_IDLE:
 		modem_cellular_idle_event_handler(data, evt);
@@ -2339,6 +2371,7 @@ static void modem_cellular_event_handler(struct modem_cellular_data *data,
 		break;
 	}
 
+out:
 	if (state != data->state) {
 		modem_cellular_log_state_changed(state, data->state);
 	}
@@ -2613,6 +2646,13 @@ DEVICE_API(cellular, modem_cellular_api) = {
 	.set_apn = modem_cellular_set_apn,
 	.set_callback = modem_cellular_set_callback,
 };
+
+void modem_cellular_notify_modem_rebooting(const struct device *dev)
+{
+	struct modem_cellular_data *data = dev->data;
+
+	modem_cellular_delegate_event(data, MODEM_CELLULAR_EVENT_MODEM_REBOOTING);
+}
 
 int modem_cellular_pm_action(const struct device *dev, enum pm_device_action action)
 {

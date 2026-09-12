@@ -103,6 +103,7 @@ enum modem_cellular_event {
 	MODEM_CELLULAR_EVENT_MODEM_READY,
 	MODEM_CELLULAR_EVENT_APN_SET,
 	MODEM_CELLULAR_EVENT_RING,
+	MODEM_CELLULAR_EVENT_MODEM_REBOOTING,
 	_MODEM_CELLULAR_EVENT_HAS_PTR = 0x80
 } __packed;
 
@@ -275,6 +276,8 @@ extern const struct cellular_driver_api modem_cellular_api;
 
 void modem_cellular_emit_event(struct modem_cellular_data *data, enum cellular_event evt,
 			       const void *payload);
+
+void modem_cellular_notify_modem_rebooting(const struct device *dev);
 
 void modem_cellular_chat_callback_handler(struct modem_chat *chat,
 						 enum modem_chat_script_result result,
