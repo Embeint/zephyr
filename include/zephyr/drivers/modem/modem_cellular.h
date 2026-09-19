@@ -105,6 +105,7 @@ enum modem_cellular_event {
 	MODEM_CELLULAR_EVENT_DIAL,
 	MODEM_CELLULAR_EVENT_HANGUP,
 	MODEM_CELLULAR_EVENT_MODEM_REBOOTING,
+	MODEM_CELLULAR_EVENT_DELAY_STARTUP,
 } __packed;
 
 struct modem_cellular_event_cb {
@@ -364,6 +365,8 @@ void modem_cellular_emit_network_status(struct modem_cellular_data *data,
 					const struct cellular_evt_network_status *status);
 
 void modem_cellular_notify_modem_rebooting(const struct device *dev);
+
+void modem_cellular_delay_startup(const struct device *dev);
 
 void modem_cellular_chat_callback_handler(struct modem_chat *chat,
 						 enum modem_chat_script_result result,
