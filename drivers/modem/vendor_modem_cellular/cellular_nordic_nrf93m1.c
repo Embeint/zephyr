@@ -30,13 +30,16 @@ static void nrf93m1_on_bcinfosc(struct modem_chat *chat, char **argv, uint16_t a
 				void *user_data);
 static void nrf93m1_on_ifc(struct modem_chat *chat, char **argv, uint16_t argc, void *user_data);
 static bool nrf93m1_ifc_required(void *user_data);
+static void nrf93m1_on_fota_updating(struct modem_chat *chat, char **argv, uint16_t argc,
+				     void *user_data);
 
 MODEM_CELLULAR_COMMON_CHAT_MATCHES();
 MODEM_CHAT_MATCH_DEFINE(pwd_match, "POWERED DOWN", "", NULL);
 
 MODEM_CHAT_MATCHES_DEFINE(nordic_nrf93m1_unsol, MODEM_CELLULAR_COMMON_UNSOL_MATCHES,
 			  MODEM_CHAT_MATCH("RDY", "", modem_cellular_chat_on_modem_ready),
-			  MODEM_CHAT_MATCH("%BCINFOSC:", ",", nrf93m1_on_bcinfosc));
+			  MODEM_CHAT_MATCH("%BCINFOSC:", ",", nrf93m1_on_bcinfosc),
+			  MODEM_CHAT_MATCH("%FOTA: \"UPDATING\",", ",", nrf93m1_on_fota_updating));
 
 /* Multi-line response matches - use partial=true for intermediate lines
  * so the script doesn't advance until the final OK is received.
@@ -161,6 +164,15 @@ static bool nrf93m1_ifc_required(void *user_data)
 	 * enabled.
 	 */
 	return vendor_config->bus_has_hwfc && !vendor_data->hwfc_enabled;
+}
+
+static void nrf93m1_on_fota_updating(struct modem_chat *chat, char **argv, uint16_t argc,
+				     void *user_data)
+{
+	/* Modem firmware upgrade in process */
+	struct modem_cellular_data *data = (struct modem_cellular_data *)user_data;
+
+	modem_cellular_delay_startup(data->dev);
 }
 
 static const struct modem_cellular_vendor_config nrf93m1_vendor = {
