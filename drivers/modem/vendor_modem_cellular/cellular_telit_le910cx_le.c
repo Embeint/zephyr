@@ -16,7 +16,7 @@ static void le910cx_le_on_rfsts(struct modem_chat *chat, char **argv, uint16_t a
 MODEM_CELLULAR_COMMON_CHAT_MATCHES();
 
 MODEM_CHAT_MATCHES_DEFINE(telit_le910cx_le_unsol, MODEM_CELLULAR_COMMON_UNSOL_MATCHES,
-			  MODEM_CHAT_MATCH("#RFSTS", "", le910cx_le_on_rfsts));
+			  MODEM_CHAT_MATCH("#RFSTS: ", ",", le910cx_le_on_rfsts));
 
 static uint16_t modem_baudrate_cmd(const uint8_t **request, void *user_data)
 {
@@ -127,6 +127,11 @@ static void le910cx_le_on_rfsts(struct modem_chat *chat, char **argv, uint16_t a
 		.access_tech = data->access_tech,
 	};
 	char *plmn = argv[1];
+
+	if (argc < 17) {
+		/* Unexpected output format */
+		return;
+	}
 
 	if (plmn[1] != '"') {
 		/* MCC and MNC are space separated */
