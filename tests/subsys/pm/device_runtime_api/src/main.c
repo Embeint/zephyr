@@ -8,15 +8,17 @@
 #include <zephyr/pm/device.h>
 #include <zephyr/pm/device_runtime.h>
 
-#include "test_driver.h"
-#include "zephyr/sys/util_macro.h"
+#include <zephyr/sys/util.h>
 
+#include "test_driver.h"
 
 static const struct device *test_dev;
 
 #ifdef CONFIG_PM_DEVICE_RUNTIME_ASYNC
-static struct k_thread get_runner_td;
-K_THREAD_STACK_DEFINE(get_runner_stack, 1024);
+#define GET_RUNNER_COUNT 2
+
+static struct k_thread get_runner_td[GET_RUNNER_COUNT];
+K_THREAD_STACK_ARRAY_DEFINE(get_runner_stack, GET_RUNNER_COUNT, 1024);
 
 static void get_runner(void *arg1, void *arg2, void *arg3)
 {
@@ -31,7 +33,7 @@ static void get_runner(void *arg1, void *arg2, void *arg3)
 	ongoing = test_driver_pm_ongoing(test_dev);
 	zassert_equal(ongoing, true);
 
-	/* usage: 0, +1, resume: yes */
+	/* usage: +1, resume: yes */
 	ret = pm_device_runtime_get(test_dev);
 	zassert_equal(ret, 0);
 }
@@ -95,7 +97,7 @@ static void test_api_teardown(void *data)
  *
  * - get + put
  * - get + asynchronous put until suspended
- * - get + asynchronous put + get (while suspend still ongoing)
+ * - get + asynchronous put + concurrent gets (while suspend still ongoing)
  */
 ZTEST(device_runtime_api, test_api)
 {
@@ -220,24 +222,39 @@ ZTEST(device_runtime_api, test_api)
 		ret = pm_device_runtime_get(test_dev);
 		zassert_equal(ret, 0);
 	} else {
-		/* create and start get_runner thread
-		 * get_runner thread is used to test synchronous path while asynchronous
+		size_t count = test_driver_pm_count(test_dev);
+
+		/* create and start get_runner threads
+		 * get_runner threads are used to test synchronous path while asynchronous
 		 * is ongoing. It is important to set its priority >= to the system work
 		 * queue to make sure sync path run by the thread is forced to wait.
 		 */
-		k_thread_create(&get_runner_td, get_runner_stack,
-				K_THREAD_STACK_SIZEOF(get_runner_stack), get_runner,
-				NULL, NULL, NULL,
-				COND_CODE_1(CONFIG_PM_DEVICE_RUNTIME_USE_DEDICATED_WQ,
-				(CONFIG_PM_DEVICE_RUNTIME_DEDICATED_WQ_PRIO),
-				(CONFIG_SYSTEM_WORKQUEUE_PRIORITY)), 0, K_NO_WAIT);
-		k_yield();
+		for (int i = 0; i < GET_RUNNER_COUNT; i++) {
+			k_thread_create(&get_runner_td[i], get_runner_stack[i],
+					K_THREAD_STACK_SIZEOF(get_runner_stack[i]), get_runner,
+					NULL, NULL, NULL,
+					COND_CODE_1(CONFIG_PM_DEVICE_RUNTIME_USE_DEDICATED_WQ,
+					(CONFIG_PM_DEVICE_RUNTIME_DEDICATED_WQ_PRIO),
+					(CONFIG_SYSTEM_WORKQUEUE_PRIORITY)), 0, K_NO_WAIT);
+		}
+		zassert_true(WAIT_FOR(pm_device_runtime_usage(test_dev) == GET_RUNNER_COUNT,
+				      USEC_PER_SEC, k_yield()));
 
-		/* let driver suspend to finish and wait until get_runner finishes
+		/* let driver suspend to finish and wait until get_runner threads finish
 		 * resuming the driver
 		 */
 		test_driver_pm_done(test_dev);
-		k_thread_join(&get_runner_td, K_FOREVER);
+		for (int i = 0; i < GET_RUNNER_COUNT; i++) {
+			k_thread_join(&get_runner_td[i], K_FOREVER);
+		}
+
+		(void)pm_device_state_get(test_dev, &state);
+		zassert_equal(state, PM_DEVICE_STATE_ACTIVE);
+		zassert_equal(pm_device_runtime_usage(test_dev), GET_RUNNER_COUNT);
+		zassert_equal(test_driver_pm_count(test_dev), count + 2);
+
+		/* Restore the usage count expected by the remaining test. */
+		zassert_ok(pm_device_runtime_put(test_dev));
 	}
 
 	(void)pm_device_state_get(test_dev, &state);
