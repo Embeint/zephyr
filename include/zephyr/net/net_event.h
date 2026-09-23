@@ -196,6 +196,8 @@ enum {
 	NET_EVENT_L4_CMD_VPN_DISCONNECTED_VAL,
 	NET_EVENT_L4_CMD_VPN_PEER_ADD_VAL,
 	NET_EVENT_L4_CMD_VPN_PEER_DEL_VAL,
+	NET_EVENT_L4_CMD_IF_CONNECTED_VAL,
+	NET_EVENT_L4_CMD_IF_DISCONNECTED_VAL,
 
 	NET_EVENT_L4_CMD_MAX
 };
@@ -219,6 +221,8 @@ enum net_event_l4_cmd {
 	NET_MGMT_CMD(NET_EVENT_L4_CMD_VPN_DISCONNECTED),
 	NET_MGMT_CMD(NET_EVENT_L4_CMD_VPN_PEER_ADD),
 	NET_MGMT_CMD(NET_EVENT_L4_CMD_VPN_PEER_DEL),
+	NET_MGMT_CMD(NET_EVENT_L4_CMD_IF_CONNECTED),
+	NET_MGMT_CMD(NET_EVENT_L4_CMD_IF_DISCONNECTED),
 };
 
 /** @endcond */
@@ -469,6 +473,14 @@ enum net_event_l4_cmd {
 /** Event emitted when a VPN peer is removed from the system. */
 #define NET_EVENT_VPN_PEER_DEL				\
 	(NET_EVENT_L4_BASE | NET_EVENT_L4_CMD_VPN_PEER_DEL)
+
+/** Event emitted when an interface is considered connected. */
+#define NET_EVENT_L4_IF_CONNECTED			\
+	(NET_EVENT_L4_BASE | NET_EVENT_L4_CMD_IF_CONNECTED)
+
+/** Event emitted when an interface is not considered connected. */
+#define NET_EVENT_L4_IF_DISCONNECTED			\
+	(NET_EVENT_L4_BASE | NET_EVENT_L4_CMD_IF_DISCONNECTED)
 
 /**
  * @brief Network Management event information structure
