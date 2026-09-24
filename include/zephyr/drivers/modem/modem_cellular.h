@@ -306,6 +306,8 @@ void modem_cellular_chat_on_cxreg(struct modem_chat *chat, char **argv, uint16_t
 				  void *user_data);
 void modem_cellular_chat_on_cgev(struct modem_chat *chat, char **argv, uint16_t argc,
 				 void *user_data);
+void modem_cellular_chat_on_cedrxp(struct modem_chat *chat, char **argv, uint16_t argc,
+				   void *user_data);
 void modem_cellular_chat_on_modem_ready(struct modem_chat *chat, char **argv, uint16_t argc,
 					void *user_data);
 
@@ -424,6 +426,7 @@ void modem_cellular_chat_on_modem_ready(struct modem_chat *chat, char **argv, ui
 	MODEM_CHAT_MATCH("+CEREG: ", ",", modem_cellular_chat_on_cxreg),			   \
 	MODEM_CHAT_MATCH("+CGREG: ", ",", modem_cellular_chat_on_cxreg),			   \
 	MODEM_CHAT_MATCH("+CGEV: ", ",", modem_cellular_chat_on_cgev),				   \
+	MODEM_CHAT_MATCH("+CEDRXP: ", ",", modem_cellular_chat_on_cedrxp),			   \
 	MODEM_CHAT_MATCH("APP RDY", "", modem_cellular_chat_on_modem_ready),			   \
 	MODEM_CHAT_MATCH("Ready", "", modem_cellular_chat_on_modem_ready)
 

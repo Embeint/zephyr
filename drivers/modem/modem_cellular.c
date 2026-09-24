@@ -8,6 +8,7 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/cellular.h>
+#include <zephyr/drivers/modem/3gpp.h>
 #include <zephyr/drivers/modem/modem_cellular.h>
 #include <zephyr/drivers/uart.h>
 #include <zephyr/modem/chat.h>
@@ -625,6 +626,55 @@ void modem_cellular_chat_on_cgev(struct modem_chat *chat, char **argv, uint16_t 
 			modem_cellular_delegate_event(data, MODEM_CELLULAR_EVENT_REGISTERED);
 		}
 	}
+}
+
+void modem_cellular_chat_on_cedrxp(struct modem_chat *chat, char **argv, uint16_t argc,
+				   void *user_data)
+{
+	struct modem_cellular_data *data = (struct modem_cellular_data *)user_data;
+	struct cellular_evt_edrx_parameters evt = {
+		.edrx = -1.0f,
+		.ptw = -1.0f,
+	};
+	enum modem_3gpp_edrx_act_type act;
+	uint32_t edrx_hundredths;
+	uint32_t ptw_hundredths;
+	int ret;
+
+	if (strcmp(argv[0], "+CEDRXP: ") != 0) {
+		return;
+	}
+
+	if (argc < 2) {
+		/* Invalid encoding */
+		return;
+	}
+	act = atoi(argv[1]);
+	evt.access_tech = modem_3gpp_edrx_act_decode(act);
+
+	if (act == MODEM_3GPP_EDRX_ACT_DISABLED) {
+		LOG_DBG("Network eDRX: Disabled");
+	} else if (argc == 3) {
+		LOG_DBG("No network info");
+		return;
+	} else if (argc == 5) {
+		/* Decode parameters */
+		ret = modem_3gpp_edrx_decode(act, argv[3], argv[4], &evt.edrx, &evt.ptw);
+		if (ret < 0) {
+			LOG_WRN("Failed to decode network-provided eDRX parameters: %d", ret);
+			return;
+		}
+		edrx_hundredths = (uint32_t)(evt.edrx * 100.0f + 0.5f);
+		ptw_hundredths = (uint32_t)(evt.ptw * 100.0f + 0.5f);
+
+		LOG_DBG("Network eDRX: %u.%02u s, PTW: %u.%02u s", edrx_hundredths / 100,
+			edrx_hundredths % 100, ptw_hundredths / 100, ptw_hundredths % 100);
+	} else {
+		LOG_DBG("Unexpected AcT (%d) or argc (%d)", act, argc);
+	}
+
+	/* Emit the event */
+	modem_cellular_emit_event(data, CELLULAR_EVENT_EDRX_PARAMETERS_CHANGED, &evt);
 }
 
 MODEM_CHAT_MATCH_DEFINE(ok_match, "OK", "", NULL);
