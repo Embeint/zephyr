@@ -153,6 +153,8 @@ enum cellular_event {
 	CELLULAR_EVENT_NETWORK_STATUS_CHANGED = BIT(3),
 	/** Cellular modem suspension callback */
 	CELLULAR_EVENT_MODEM_SUSPENDED = BIT(4),
+	/** eDRX configuration from the network has changed */
+	CELLULAR_EVENT_EDRX_PARAMETERS_CHANGED = BIT(5),
 };
 
 /* Opaque bit-mask large enough for all current & future events */
@@ -217,6 +219,16 @@ struct cellular_stats {
 	uint32_t recoveries;
 	/** CMUX desync/disconnect events. */
 	uint32_t cmux_disconnects;
+};
+
+/** Payload for @ref CELLULAR_EVENT_EDRX_PARAMETERS_CHANGED */
+struct cellular_evt_edrx_parameters {
+	/* Access technology associated with event */
+	enum cellular_access_technology access_tech;
+	/* eDRX cycle duration in seconds, -1.0 if disabled */
+	float edrx;
+	/* Paging Time Window in seconds, -1.0 if disabled */
+	float ptw;
 };
 
 /**
