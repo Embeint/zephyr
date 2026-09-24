@@ -9,6 +9,7 @@ config MODEM_CELLULAR
 	select MODEM_CHAT
 	select MODEM_PIPE
 	select MODEM_PIPELINK
+	select MODEM_CELLULAR_3GPP
 	select MODEM_BACKEND_UART
 	select UART_USE_RUNTIME_CONFIGURE
 	select PM_DEVICE_DRIVER_NEEDS_DEDICATED_WQ if PM_DEVICE_RUNTIME
@@ -34,6 +35,11 @@ config MODEM_CELLULAR
 	  drivers for the ublox, quectel and other modems, which
 	  include power management and more complex device specific
 	  features.
+
+config MODEM_CELLULAR_3GPP
+	bool "3GPP cellular modem helpers"
+	help
+	  Common helper functions for parsing 3GPP encodings
 
 if MODEM_CELLULAR
 
