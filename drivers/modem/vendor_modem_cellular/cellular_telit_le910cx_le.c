@@ -34,6 +34,12 @@ MODEM_CHAT_SCRIPT_DEFINE(telit_le910cx_le_baudrate_chat_script,
 			 telit_le910cx_le_baudrate_chat_script_cmds, abort_matches,
 			 modem_cellular_chat_callback_handler, 1);
 
+#ifdef CONFIG_MODEM_CELLULAR_REQUEST_EDRX
+#define CEDRXS_MSG "AT+CEDRXS=2,4,\"" CONFIG_MODEM_CELLULAR_REQUEST_EDRX_VALUE_LTE "\""
+#else
+#define CEDRXS_MSG "AT+CEDRXS=0"
+#endif /* CONFIG_MODEM_CELLULAR_REQUEST_EDRX */
+
 MODEM_CHAT_SCRIPT_CMDS_DEFINE(
 	telit_le910cx_le_init_chat_script_cmds, MODEM_CHAT_SCRIPT_CMD_RESP_MULT("AT", allow_match),
 	MODEM_CHAT_SCRIPT_CMD_RESP("ATE0", ok_match),
@@ -75,7 +81,8 @@ MODEM_CHAT_SCRIPT_CMDS_DEFINE(telit_le910cx_le_network_chat_script_cmds,
 			      MODEM_CHAT_SCRIPT_CMD_RESP("ATE0", ok_match),
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CEREG=2", ok_match),
 			      /* V.24 RTS/DTR control can reset the CFUN state back to 4 */
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CFUN=1", ok_match));
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CFUN=1", ok_match),
+			      MODEM_CHAT_SCRIPT_CMD_RESP(CEDRXS_MSG, ok_match));
 
 MODEM_CHAT_SCRIPT_DEFINE(telit_le910cx_le_network_chat_script,
 			 telit_le910cx_le_network_chat_script_cmds, dial_abort_matches,

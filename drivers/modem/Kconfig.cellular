@@ -64,6 +64,30 @@ config MODEM_CELLULAR_PERIODIC_SCRIPT_MS
 	default 30000 if DT_HAS_NORDIC_NRF93M1_ENABLED
 	default 2000
 
+config MODEM_CELLULAR_REQUEST_EDRX
+	bool "Request eDRX functionality from the network"
+	help
+	  Enable request for use of eDRX using AT+CEDRXS.
+	  For reference, see 3GPP 27.007 Ch. 7.40.
+
+config MODEM_CELLULAR_REQUEST_EDRX_VALUE_LTE
+	string "Requested eDRX timer for E-UTRAN WB-S1 mode"
+	depends on MODEM_CELLULAR_REQUEST_EDRX
+	default "1001"
+	help
+	  Sets the eDRX value to be requested when E-UTRAN WB-S1 (LTE) is used.
+	  For reference, see 3GPP 24.008 Ch 10.5.5.32.
+	  Default value is 163.84 seconds.
+
+config MODEM_CELLULAR_REQUEST_EDRX_VALUE_NBIOT
+	string "Requested eDRX timer for E-UTRAN NB-S1 mode"
+	depends on MODEM_CELLULAR_REQUEST_EDRX
+	default "1001"
+	help
+	  Sets the eDRX value to be requested when E-UTRAN NB-S1 (NB-IoT) is used.
+	  For reference, see 3GPP 24.008 Ch 10.5.5.32.
+	  Default value is 163.84 seconds.
+
 config MODEM_CELLULAR_UART_BUFFER_SIZES
 	int "The UART receive and transmit buffer sizes in bytes."
 	default 512
