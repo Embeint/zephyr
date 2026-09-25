@@ -89,7 +89,7 @@ MODEM_CHAT_SCRIPT_DEFINE(telit_le910cx_le_network_chat_script,
 			 modem_cellular_chat_callback_handler, 10);
 
 MODEM_CHAT_SCRIPT_CMDS_DEFINE(telit_le910cx_le_dial_chat_script_cmds,
-			      MODEM_CHAT_SCRIPT_CMD_RESP("ATD*99***1#\r", connect_match));
+			      MODEM_CHAT_SCRIPT_CMD_RESP("ATD*99***1#", connect_match));
 
 MODEM_CHAT_SCRIPT_DEFINE(telit_le910cx_le_dial_chat_script, telit_le910cx_le_dial_chat_script_cmds,
 			 dial_abort_matches, modem_cellular_chat_callback_handler, 10);
