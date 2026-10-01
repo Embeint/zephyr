@@ -1,0 +1,11 @@
+/ {
+	test_clocks: clocks@40008000 {
+		reg = <0x40008000 0x100>;
+		reg-names = "clocks";
+	};
+	test_rng: rng@40060000 {
+		compatible = "raspberrypi,rp2040-rosc-rng";
+		reg = <0x40060000 0x24>;
+		raspberrypi,clock-controller = <&test_clocks>;
+	};
+};
