@@ -15,6 +15,10 @@ config USB_SELF_POWERED
 
 if BOARD_RPI_PICO_RP2040_W && WIFI_AIROC
 
+choice AIROC_PART
+	default CYW43439
+endchoice
+
 config MAIN_STACK_SIZE
 	default 4096
 
