@@ -40,7 +40,9 @@ ssize_t z_impl_hwinfo_get_device_id(uint8_t *buffer, size_t length)
 
 	int n = get_sys_info(words, ARRAY_SIZE(words), SYS_INFO_CHIP_INFO);
 	/* CHIP_INFO returns 4 words */
-	__ASSERT(n == ARRAY_SIZE(words), "Failed to get chip info");
+	if (n != ARRAY_SIZE(words)) {
+		return -EIO;
+	}
 
 	/* Use DEVICE_ID + WAFER_ID, like BootROM uses for its USB ID */
 	sys_put_be(id, &words[2], 2 * sizeof(uint32_t));
