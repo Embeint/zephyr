@@ -33,6 +33,14 @@
 #include <hal/ledc_periph.h>
 #include <esp_private/sleep_retention.h>
 #endif
+#if defined(CONFIG_SOC_SERIES_ESP32C6) && defined(CONFIG_PM)
+#include <driver/gpio.h>
+#include <esp_private/esp_sleep_internal.h>
+#define LEDC_SLEEP_KEEP_ALIVE_SUPPORTED
+#endif
+
+BUILD_ASSERT(!DT_INST_PROP(0, sleep_keep_alive) || IS_ENABLED(CONFIG_SOC_SERIES_ESP32C6),
+	     "LEDC sleep-keep-alive is supported only on ESP32-C6");
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(pwm_ledc_esp32, CONFIG_PWM_LOG_LEVEL);
@@ -49,6 +57,7 @@ static const int highspd_clks[] = {LEDC_APB_CLK, LEDC_REF_TICK};
 struct pwm_ledc_esp32_data {
 	ledc_hal_context_t hal;
 	struct k_sem cmd_sem;
+	bool sleep_clocks_acquired;
 };
 
 struct pwm_ledc_esp32_channel_config {
@@ -62,6 +71,7 @@ struct pwm_ledc_esp32_channel_config {
 	uint32_t clock_src_hz;
 	uint32_t duty_val;
 	bool inverted;
+	bool running;
 };
 
 struct pwm_ledc_esp32_config {
@@ -70,7 +80,51 @@ struct pwm_ledc_esp32_config {
 	const clock_control_subsys_t clock_subsys;
 	struct pwm_ledc_esp32_channel_config *channel_config;
 	const int channel_len;
+	bool sleep_keep_alive;
 };
+
+/* A single global source clocks every C6 LEDC timer. Keep it at XTAL for the
+ * controller lifetime, rather than changing clocks underneath another channel.
+ * The sleep references are held only while at least one PWM waveform runs.
+ */
+static void pwm_led_esp32_sleep_clocks_update(const struct device *dev)
+{
+#ifdef LEDC_SLEEP_KEEP_ALIVE_SUPPORTED
+	const struct pwm_ledc_esp32_config *config = dev->config;
+	struct pwm_ledc_esp32_data *data = dev->data;
+	bool running = false;
+
+	if (!config->sleep_keep_alive) {
+		return;
+	}
+	for (int i = 0; i < config->channel_len; ++i) {
+		running |= config->channel_config[i].running;
+	}
+	if (running == data->sleep_clocks_acquired) {
+		return;
+	}
+
+	/* Match ESP-IDF's LEDC KEEP_ALIVE: retain the source and ungate LEDC and
+	 * IOMUX clocks. These HAL calls cannot fail for the constant valid IDs.
+	 */
+	(void)esp_sleep_sub_mode_config(ESP_SLEEP_DIG_USE_XTAL_MODE, running);
+	(void)esp_sleep_clock_config(ESP_SLEEP_CLOCK_LEDC, running ? ESP_SLEEP_CLOCK_OPTION_UNGATE
+								   : ESP_SLEEP_CLOCK_OPTION_GATE);
+	(void)esp_sleep_clock_config(ESP_SLEEP_CLOCK_IOMUX, running ? ESP_SLEEP_CLOCK_OPTION_UNGATE
+								    : ESP_SLEEP_CLOCK_OPTION_GATE);
+	data->sleep_clocks_acquired = running;
+	/* System-managed PM must leave an actively requested waveform running.
+	 * Explicit device/runtime suspend still runs the PM callback below.
+	 */
+	if (running) {
+		pm_device_busy_set(dev);
+	} else {
+		pm_device_busy_clear(dev);
+	}
+#else
+	ARG_UNUSED(dev);
+#endif
+}
 
 static struct pwm_ledc_esp32_channel_config *get_channel_config(const struct device *dev,
 								int channel_id)
@@ -151,7 +205,8 @@ static int pwm_led_esp32_calculate_max_resolution(struct pwm_ledc_esp32_channel_
 	return -EINVAL;
 }
 
-static int pwm_led_esp32_timer_config(struct pwm_ledc_esp32_channel_config *channel)
+static int pwm_led_esp32_timer_config(const struct device *dev,
+				      struct pwm_ledc_esp32_channel_config *channel)
 {
 	const int *clock_src;
 	int clock_src_num;
@@ -170,6 +225,18 @@ static int pwm_led_esp32_timer_config(struct pwm_ledc_esp32_channel_config *chan
 		clock_src = highspd_clks;
 		clock_src_num = ARRAY_SIZE(highspd_clks);
 	}
+#endif
+
+#if defined(CONFIG_SOC_SERIES_ESP32C6)
+	const struct pwm_ledc_esp32_config *config = dev->config;
+	static const int keep_alive_clks[] = {LEDC_SLOW_CLK_XTAL};
+
+	if (config->sleep_keep_alive) {
+		clock_src = keep_alive_clks;
+		clock_src_num = ARRAY_SIZE(keep_alive_clks);
+	}
+#else
+	ARG_UNUSED(dev);
 #endif
 
 	/**
@@ -285,6 +352,9 @@ static int pwm_led_esp32_channel_update_frequency(const struct device *dev,
 {
 	const struct pwm_ledc_esp32_config *config = dev->config;
 	uint32_t current_freq = channel->freq;
+	uint8_t current_resolution = channel->resolution;
+	ledc_clk_src_t current_clock_src = channel->clock_src;
+	uint32_t current_clock_src_hz = channel->clock_src_hz;
 	uint64_t clk_freq;
 	int ret;
 
@@ -318,17 +388,21 @@ static int pwm_led_esp32_channel_update_frequency(const struct device *dev,
 			(channel->freq != ch->freq)) {
 			LOG_ERR("Timer can't be shared and different frequency be "
 				"requested");
-			channel->freq = 0;
+			channel->freq = current_freq;
 			return -EINVAL;
 		}
 	}
 
-	pwm_led_esp32_timer_config(channel);
+	pwm_led_esp32_timer_config(dev, channel);
 
 	ret = pwm_led_esp32_timer_set(dev, channel);
 
 	if (ret < 0) {
 		LOG_ERR("Error setting timer for channel %d", channel->idx);
+		channel->freq = current_freq;
+		channel->resolution = current_resolution;
+		channel->clock_src = current_clock_src;
+		channel->clock_src_hz = current_clock_src_hz;
 		return ret;
 	}
 
@@ -363,6 +437,8 @@ static int pwm_led_esp32_set_cycles(const struct device *dev, uint32_t channel_i
 
 		/* For duty 0% and 100% stop PWM, set output level and return */
 		pwm_led_esp32_stop(data, channel, (pulse_cycles == period_cycles));
+		channel->running = false;
+		pwm_led_esp32_sleep_clocks_update(dev);
 		goto sem_give;
 	}
 
@@ -381,6 +457,8 @@ static int pwm_led_esp32_set_cycles(const struct device *dev, uint32_t channel_i
 
 	pwm_led_esp32_duty_set(dev, channel);
 
+	channel->running = true;
+	pwm_led_esp32_sleep_clocks_update(dev);
 	pwm_led_esp32_start(data, channel);
 
 sem_give:
@@ -427,7 +505,7 @@ static esp_err_t pwm_led_esp32_create_sleep_retention_cb(void *arg)
 	return ESP_OK;
 }
 
-static void pwm_led_esp32_sleep_retention_init(void)
+static void pwm_led_esp32_sleep_retention_init(bool keep_alive)
 {
 	sleep_retention_module_t module = ledc_reg_retention_info[0].module_id;
 	sleep_retention_module_init_param_t init_param = {
@@ -437,10 +515,13 @@ static void pwm_led_esp32_sleep_retention_init(void)
 
 	esp_err_t err = sleep_retention_module_init(module, &init_param);
 
-	if (err == ESP_OK) {
+	/* An initialized but unretained module prevents TOP power-down.
+	 * Keep-alive needs the peripheral powered throughout light sleep.
+	 */
+	if (err == ESP_OK && !keep_alive) {
 		err = sleep_retention_module_allocate(module);
 	}
-	if (err == ESP_OK) {
+	if (err == ESP_OK && !keep_alive) {
 		err = sleep_retention_module_attach(module);
 	}
 	if (err != ESP_OK) {
@@ -458,6 +539,12 @@ static int pwm_led_esp32_pm_action(const struct device *dev, enum pm_device_acti
 	switch (action) {
 	case PM_DEVICE_ACTION_SUSPEND:
 	case PM_DEVICE_ACTION_RESUME:
+		/* Runtime PM may run concurrently with a PWM API call. System PM
+		 * skips the busy keep-alive device and therefore never waits here.
+		 */
+		if (config->sleep_keep_alive && k_sem_take(&data->cmd_sem, K_NO_WAIT) != 0) {
+			return -EBUSY;
+		}
 
 		for (int i = 0; i < config->channel_len; ++i) {
 			channel = &config->channel_config[i];
@@ -470,17 +557,24 @@ static int pwm_led_esp32_pm_action(const struct device *dev, enum pm_device_acti
 					pwm_led_esp32_stop(data, channel, channel->inverted);
 					ledc_hal_timer_rst(&data->hal, channel->speed_mode,
 							   channel->timer_num);
+					channel->running = false;
 				} else {
+					channel->running = true;
+					pwm_led_esp32_sleep_clocks_update(dev);
 					pwm_led_esp32_start(data, channel);
 				}
 			}
+		}
+		pwm_led_esp32_sleep_clocks_update(dev);
+		if (config->sleep_keep_alive) {
+			k_sem_give(&data->cmd_sem);
 		}
 
 		break;
 
 	case PM_DEVICE_ACTION_TURN_ON:
 #if LEDC_SLEEP_RETENTION_ENABLED
-		pwm_led_esp32_sleep_retention_init();
+		pwm_led_esp32_sleep_retention_init(config->sleep_keep_alive);
 #endif
 		break;
 
@@ -553,6 +647,30 @@ int pwm_led_esp32_init(const struct device *dev)
 		return ret;
 	}
 
+#ifdef LEDC_SLEEP_KEEP_ALIVE_SUPPORTED
+	if (config->sleep_keep_alive) {
+		const struct pinctrl_state *state;
+
+		ret = pinctrl_lookup_state(config->pincfg, PINCTRL_STATE_DEFAULT, &state);
+		if (ret < 0) {
+			return ret;
+		}
+		for (uint8_t i = 0; i < state->pin_cnt; ++i) {
+			const pinctrl_soc_pin_t *pin = &state->pins[i];
+			uint32_t gpio = (pin->pinmux >> ESP32_PIN_NUM_SHIFT) & ESP32_PIN_NUM_MASK;
+
+			/* Holding the pad would freeze the PWM at its last logic level. */
+			if (pin->pincfg & (ESP32_PIN_SLEEP_HOLD_EN << ESP32_PIN_SLEEP_HOLD_SHIFT)) {
+				return -EINVAL;
+			}
+			/* Match IDF KEEP_ALIVE: use the active GPIO configuration in sleep. */
+			if (gpio_sleep_sel_dis(gpio) != ESP_OK) {
+				return -EIO;
+			}
+		}
+	}
+#endif
+
 	return pm_device_driver_init(dev, pwm_led_esp32_pm_action);
 }
 
@@ -582,6 +700,7 @@ static struct pwm_ledc_esp32_config pwm_ledc_esp32_config = {
 	.clock_subsys = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(0, offset),
 	.channel_config = channel_config,
 	.channel_len = ARRAY_SIZE(channel_config),
+	.sleep_keep_alive = DT_INST_PROP(0, sleep_keep_alive),
 };
 
 static struct pwm_ledc_esp32_data pwm_ledc_esp32_data = {

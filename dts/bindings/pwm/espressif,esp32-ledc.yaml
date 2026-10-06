@@ -84,6 +84,21 @@ compatible: "espressif,esp32-ledc"
 include: [pwm-controller.yaml, pinctrl-device.yaml, base.yaml]
 
 properties:
+  sleep-keep-alive:
+    type: boolean
+    description: |
+      Keep active PWM waveforms running during ESP32-C6 light sleep. This option
+      applies to the entire controller because all C6 timers share one source
+      clock. It selects XTAL and retains that source, the LEDC and IOMUX clocks,
+      and the active pad configuration during sleep, increasing sleep power.
+      LEDC register retention is not allocated so the peripheral power domain stays
+      on when peripheral power-down in light sleep is otherwise enabled.
+      Pinctrl pins must not use sleep-hold-en. Explicit device/runtime suspend
+      stops PWM and releases the sleep-clock references; resume restores it.
+      Active PWM marks the device busy so system-managed device PM skips it.
+      With CONFIG_PM_NEED_ALL_DEVICES_IDLE, active PWM prevents system sleep.
+      Only ESP32-C6 is supported. The option has no sleep effect without CONFIG_PM.
+
   "#pwm-cells":
     const: 3
 
