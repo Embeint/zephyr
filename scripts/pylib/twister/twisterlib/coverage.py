@@ -58,19 +58,19 @@ class CoverageTool:
         capture_data = False
         capture_complete = False
         with open(input_file) as fp:
-            for line in fp.readlines():
-                if re.search("GCOV_COVERAGE_DUMP_START", line):
+            for line in fp:
+                if "GCOV_COVERAGE_DUMP_START" in line:
                     capture_data = True
                     capture_complete = False
                     continue
-                if re.search("GCOV_COVERAGE_DUMP_END", line):
+                if "GCOV_COVERAGE_DUMP_END" in line:
                     capture_complete = True
                     # Keep searching for additional dumps
                 # Loop until the coverage data is found.
                 if not capture_data:
                     continue
                 if line.startswith("*"):
-                    sp = line.split("<")
+                    sp = line.split("<", 1)
                     if len(sp) > 1:
                         # Remove the leading delimiter "*"
                         file_name = sp[0][1:]
