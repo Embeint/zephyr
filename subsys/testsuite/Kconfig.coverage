@@ -19,6 +19,15 @@ config COVERAGE
 	  For more information see
 	  https://docs.zephyrproject.org/latest/develop/test/coverage.html
 
+config COVERAGE_ALL
+	bool "Create coverage data for all sources"
+	depends on COVERAGE
+	default y
+	help
+	  This option applies the `coverage` compiler options to all sources in
+	  the build. Disable this to manually enable coverage on a subset of
+	  files or libraries.
+
 choice
 	prompt "Coverage mode"
 	default COVERAGE_NATIVE_GCOV if NATIVE_BUILD
