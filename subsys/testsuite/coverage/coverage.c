@@ -319,6 +319,7 @@ void gcov_coverage_dump(void)
 	size_t written_size;
 	struct gcov_info *gcov_list_first = gcov_info_head;
 	struct gcov_info *gcov_list = gcov_info_head;
+	const char *error = NULL;
 
 #ifdef CONFIG_MULTITHREADING
 	if (!k_is_in_isr()) {
@@ -338,14 +339,14 @@ void gcov_coverage_dump(void)
 
 		buffer = k_heap_alloc(&gcov_heap, size, K_NO_WAIT);
 		if (CONFIG_COVERAGE_GCOV_HEAP_SIZE > 0 && !buffer) {
-			printk("No memory available to continue dump\n");
+			error = "No memory available to continue dump\n";
 			k_heap_free(&gcov_heap, buffer);
 			goto coverage_dump_end;
 		}
 
 		written_size = gcov_populate_buffer(buffer, gcov_list);
 		if (written_size != size) {
-			printk("Write Error on buffer\n");
+			error = "Write Error on buffer\n";
 			k_heap_free(&gcov_heap, buffer);
 			goto coverage_dump_end;
 		}
@@ -361,6 +362,10 @@ file_dump_end:
 	}
 coverage_dump_end:
 	printk("\nGCOV_COVERAGE_DUMP_END\n");
+	if (error != NULL) {
+		printk(error);
+	}
+
 #ifdef CONFIG_MULTITHREADING
 	if (!k_is_in_isr()) {
 		k_sched_unlock();
