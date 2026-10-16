@@ -328,6 +328,7 @@ void dump_on_console_data(char *ptr, size_t len)
  */
 void gcov_coverage_dump_tagged(const char *tag)
 {
+	bool exclude_path_exists = strlen(CONFIG_COVERAGE_DUMP_PATH_EXCLUDE) > 0;
 	uint8_t *buffer;
 	size_t size;
 	size_t written_size;
@@ -350,7 +351,7 @@ void gcov_coverage_dump_tagged(const char *tag)
 			goto file_dump_end;
 		}
 
-		if ((strlen(CONFIG_COVERAGE_DUMP_PATH_EXCLUDE) > 0) &&
+		if (exclude_path_exists &&
 		    (fnmatch(CONFIG_COVERAGE_DUMP_PATH_EXCLUDE, gcov_list->filename, 0) == 0)) {
 			/* Don't print a note here, it would be interpreted as dump data */
 			goto file_dump_end;
@@ -414,6 +415,7 @@ void gcov_coverage_dump(void)
  */
 void gcov_coverage_dump_tagged(const char *tag)
 {
+	bool exclude_path_exists = strlen(CONFIG_COVERAGE_DUMP_PATH_EXCLUDE) > 0;
 	uint8_t *buffer;
 	size_t size;
 	size_t written_size;
@@ -446,7 +448,7 @@ void gcov_coverage_dump_tagged(const char *tag)
 		const char *path;
 		char *tagged_path = NULL;
 
-		if ((strlen(CONFIG_COVERAGE_DUMP_PATH_EXCLUDE) > 0) &&
+		if (exclude_path_exists &&
 		    (fnmatch(CONFIG_COVERAGE_DUMP_PATH_EXCLUDE, gcov_list->filename, 0) == 0)) {
 			goto file_dump_end;
 		}
