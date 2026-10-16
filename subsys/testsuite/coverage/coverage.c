@@ -380,7 +380,8 @@ coverage_dump_end:
  */
 void gcov_coverage_semihost(void)
 {
-	uint8_t *buffer;
+	size_t buffer_size = 0;
+	uint8_t *buffer = NULL;
 	size_t size;
 	size_t written_size;
 	struct gcov_info *gcov_list_first = gcov_info_head;
@@ -396,6 +397,15 @@ void gcov_coverage_semihost(void)
 		gcov_filename_idx += 1;
 	}
 #endif /* defined(CONFIG_COVERAGE_SEMIHOST) && defined(CONFIG_REBOOT) */
+
+	if (CONFIG_COVERAGE_GCOV_HEAP_SIZE > 1024) {
+		buffer_size = CONFIG_COVERAGE_GCOV_HEAP_SIZE - 128;
+		buffer = k_heap_alloc(&gcov_heap, buffer_size, K_NO_WAIT);
+		if (buffer == NULL) {
+			printk("Failed to allocate %zu byte buffer\n", buffer_size);
+			goto coverage_dump_end;
+		}
+	}
 
 #ifdef CONFIG_MULTITHREADING
 	if (!k_is_in_isr()) {
@@ -423,12 +433,9 @@ void gcov_coverage_semihost(void)
 		}
 
 		size = gcov_calculate_buff_size(gcov_list);
-
-		buffer = k_heap_alloc(&gcov_heap, size, K_NO_WAIT);
-		if (CONFIG_COVERAGE_GCOV_HEAP_SIZE > 0 && !buffer) {
+		if (buffer && (size > buffer_size)) {
 			printk("No memory available to continue dump\n");
 			semihost_close(fd);
-			k_heap_free(&gcov_heap, buffer);
 			goto coverage_dump_end;
 		}
 
@@ -436,7 +443,6 @@ void gcov_coverage_semihost(void)
 		if (written_size != size) {
 			printk("Write Error on buffer\n");
 			semihost_close(fd);
-			k_heap_free(&gcov_heap, buffer);
 			goto coverage_dump_end;
 		}
 
@@ -445,11 +451,9 @@ void gcov_coverage_semihost(void)
 		if (ret < 0) {
 			printk("Failed to write data to file: %s\n", gcov_list->filename);
 			semihost_close(fd);
-			k_heap_free(&gcov_heap, buffer);
 			goto coverage_dump_end;
 		}
 
-		k_heap_free(&gcov_heap, buffer);
 		semihost_close(fd);
 file_dump_end:
 		gcov_list = gcov_list->next;
@@ -458,6 +462,11 @@ file_dump_end:
 		}
 	}
 coverage_dump_end:
+
+	if (buffer != NULL) {
+		k_heap_free(&gcov_heap, buffer);
+	}
+
 #ifdef CONFIG_MULTITHREADING
 	if (!k_is_in_isr()) {
 		k_sched_unlock();
