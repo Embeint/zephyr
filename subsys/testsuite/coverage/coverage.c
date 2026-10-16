@@ -94,28 +94,54 @@ static inline void write_u32(void *buffer, size_t *off, uint32_t v)
 	*off = *off + sizeof(uint32_t);
 }
 
+/**
+ * write_data - Store struct data on a buffer and return the size
+ */
+static inline void write_data(void *buffer, size_t *off, const void *data, size_t data_len)
+{
+	if (buffer != NULL) {
+		memcpy((uint8_t *)buffer + *off, data, data_len);
+	} else {
+		for (int i = 0; i < data_len / sizeof(uint32_t); i++) {
+			print_u32(*(((uint32_t *)data) + i));
+		}
+	}
+	*off = *off + data_len;
+}
+
+struct gcov_file_header {
+	uint32_t data_magic;
+	uint32_t version;
+	uint32_t timestamp;
+#ifdef GCOV_12_FORMAT
+	uint32_t checksum;
+#endif
+} __packed __aligned(4);
+
+struct gcov_function_header {
+	uint32_t function;
+	uint32_t function_length;
+	uint32_t ident;
+	uint32_t lineno_checksum;
+	uint32_t cfg_checksum;
+} __packed __aligned(4);
+
+struct gcov_counter {
+	uint32_t tag;
+	uint32_t size;
+} __packed __aligned(4);
+
 size_t gcov_calculate_buff_size(struct gcov_info *info)
 {
 	uint32_t iter;
 	uint32_t iter_1;
-	uint32_t iter_2;
 
-	/* Few fixed values at the start: magic number,
-	 * version, stamp, and checksum.
-	 */
-#ifdef GCOV_12_FORMAT
-	uint32_t size = sizeof(uint32_t) * 4;
-#else
-	uint32_t size = sizeof(uint32_t) * 3;
-#endif
+	/* File header */
+	uint32_t size = sizeof(struct gcov_file_header);
 
 	for (iter = 0U; iter < info->n_functions; iter++) {
-		/* space for TAG_FUNCTION and FUNCTION_LENGTH
-		 * ident
-		 * lineno_checksum
-		 * cfg_checksum
-		 */
-		size += (sizeof(uint32_t) * 5);
+		/* Function header */
+		size += sizeof(struct gcov_function_header);
 
 		for (iter_1 = 0U; iter_1 < GCOV_COUNTERS; iter_1++) {
 			if (!info->merge[iter_1]) {
@@ -123,19 +149,11 @@ size_t gcov_calculate_buff_size(struct gcov_info *info)
 			}
 
 			/*  for function counter and number of values  */
-			size += (sizeof(uint32_t) * 2);
+			size += sizeof(struct gcov_counter);
 
-			for (iter_2 = 0U;
-			     iter_2 < info->functions[iter]->ctrs->num;
-			     iter_2++) {
-
-				/* Iter for values which is uint64_t */
-				size += (sizeof(uint64_t));
-			}
-
+			/* Iter for values which is uint64_t */
+			size += info->functions[iter]->ctrs->num * sizeof(uint64_t);
 		}
-
-
 	}
 
 	return size;
@@ -153,56 +171,36 @@ size_t gcov_populate_buffer(uint8_t *buffer, struct gcov_info *info)
 	struct gcov_ctr_info *counters_per_func;
 	uint32_t iter_functions;
 	uint32_t iter_counts;
-	uint32_t iter_counter_values;
 	size_t buffer_write_position = 0;
 
 	/* File header. */
-	write_u32(buffer,
-		      &buffer_write_position,
-		      GCOV_DATA_MAGIC);
-
-	write_u32(buffer,
-		      &buffer_write_position,
-		      info->version);
-
-	write_u32(buffer,
-		      &buffer_write_position,
-		      info->stamp);
-
+	struct gcov_file_header file_header = {
+		GCOV_DATA_MAGIC,
+		info->version,
+		info->stamp,
 #ifdef GCOV_12_FORMAT
-	write_u32(buffer,
-		      &buffer_write_position,
-		      info->checksum);
+		info->checksum,
 #endif
+	};
+
+	write_data(buffer, &buffer_write_position, &file_header, sizeof(file_header));
 
 	for (iter_functions = 0U;
 	     iter_functions < info->n_functions;
 	     iter_functions++) {
 
 		functions = info->functions[iter_functions];
-
-
-		write_u32(buffer,
-			      &buffer_write_position,
-			      GCOV_TAG_FUNCTION);
-
-		write_u32(buffer,
-			      &buffer_write_position,
-			      GCOV_TAG_FUNCTION_LENGTH);
-
-		write_u32(buffer,
-			      &buffer_write_position,
-			      functions->ident);
-
-		write_u32(buffer,
-			      &buffer_write_position,
-			      functions->lineno_checksum);
-
-		write_u32(buffer,
-			      &buffer_write_position,
-			      functions->cfg_checksum);
-
 		counters_per_func = functions->ctrs;
+
+		struct gcov_function_header func_header = {
+			GCOV_TAG_FUNCTION,
+			GCOV_TAG_FUNCTION_LENGTH,
+			functions->ident,
+			functions->lineno_checksum,
+			functions->cfg_checksum,
+		};
+
+		write_data(buffer, &buffer_write_position, &func_header, sizeof(func_header));
 
 		for (iter_counts = 0U;
 		     iter_counts < GCOV_COUNTERS;
@@ -212,29 +210,20 @@ size_t gcov_populate_buffer(uint8_t *buffer, struct gcov_info *info)
 				continue;
 			}
 
-			write_u32(buffer,
-				      &buffer_write_position,
-				      GCOV_TAG_FOR_COUNTER(iter_counts));
-
+			struct gcov_counter counter = {
+				GCOV_TAG_FOR_COUNTER(iter_counts),
 #ifdef GCOV_12_FORMAT
-			/* GCOV 12 counts the length by bytes */
-			write_u32(buffer,
-				      &buffer_write_position,
-				      counters_per_func->num * 2U * 4);
+				/* GCOV 12 counts the length by bytes */
+				counters_per_func->num * 2U * 4,
 #else
-			write_u32(buffer,
-				      &buffer_write_position,
-				      counters_per_func->num * 2U);
+				counters_per_func->num * 2U,
 #endif
+			};
 
-			for (iter_counter_values = 0U;
-			     iter_counter_values < counters_per_func->num;
-			     iter_counter_values++) {
+			write_data(buffer, &buffer_write_position, &counter, sizeof(counter));
 
-				write_u64(buffer,
-					      &buffer_write_position,
-					      counters_per_func->values[iter_counter_values]);
-			}
+			write_data(buffer, &buffer_write_position, counters_per_func->values,
+				   counters_per_func->num * sizeof(uint64_t));
 
 			counters_per_func++;
 		}
