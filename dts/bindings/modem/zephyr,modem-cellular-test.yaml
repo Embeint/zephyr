@@ -37,6 +37,16 @@ properties:
     default: 1
     description: Time to wait for the modem ready indication after power on
 
+  reset-power-on-delay-ms:
+    type: int
+    default: 100
+    description: Delay between de-asserting the reset pin and pulsing the power pin
+
+  baudrate-update-delay-ms:
+    type: int
+    default: 1
+    description: Time the modem takes to change baudrate
+
   power-pulse-duration-ms:
     type: int
     default: 1
