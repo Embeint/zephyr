@@ -32,6 +32,10 @@ properties:
     type: boolean
     description: Query every modem info string as part of the init script
 
+  # Differs from the UARTs' current-speed in the tests so baudrate changes are observable
+  target-baudrate:
+    default: 921600
+
   startup-time-ms:
     type: int
     default: 1

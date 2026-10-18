@@ -182,7 +182,7 @@ static const struct uart_emul_device_api test_emul_api;
 		vendor_inst, inst) = {                                                             \
 		.set_baudrate = TEST_SCRIPT(inst, no_set_baudrate_script,                          \
 					    set_baudrate_chat_script),                             \
-		.target_baudrate = CONFIG_MODEM_CELLULAR_NEW_BAUDRATE,                             \
+		.target_baudrate = DT_INST_PROP(inst, target_baudrate),                            \
 	};                                                                                         \
                                                                                                    \
 	static const struct modem_cellular_vendor_config MODEM_CELLULAR_INST_NAME(vendor,          \

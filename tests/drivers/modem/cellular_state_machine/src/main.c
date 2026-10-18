@@ -43,7 +43,7 @@ ZTEST(modem_cellular_state_machine, test_boot_with_network_script)
 {
 	modem_restart(modem);
 	advance_to(modem, BOOT_LINK_UP);
-	zassert_equal(CONFIG_MODEM_CELLULAR_NEW_BAUDRATE, uart_baudrate(modem),
+	zassert_equal(DT_PROP(DT_ALIAS(modem), target_baudrate), uart_baudrate(modem),
 		      "UART baudrate was not switched");
 
 	run_periodic_script(modem);
@@ -57,7 +57,7 @@ ZTEST(modem_cellular_state_machine, test_boot_with_network_script)
 	ok(TEST_BACKEND_PIPE_UART);
 
 	expect_line(TEST_BACKEND_PIPE_UART, MODEM_CELLULAR_TEST_INIT_CMD);
-	zassert_equal(CONFIG_MODEM_CELLULAR_NEW_BAUDRATE, uart_baudrate(modem),
+	zassert_equal(DT_PROP(DT_ALIAS(modem), target_baudrate), uart_baudrate(modem),
 		      "UART baudrate was not switched");
 }
 
