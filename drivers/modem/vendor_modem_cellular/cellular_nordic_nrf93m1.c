@@ -158,7 +158,7 @@ static bool nrf93m1_ifc_required(void *user_data)
 	struct nrf93m1_modem_cellular_data *vendor_data =
 		CONTAINER_OF(data, struct nrf93m1_modem_cellular_data, data);
 	const struct modem_cellular_config *config = data->dev->config;
-	const struct nrf93m1_modem_cellular_config *vendor_config = config->vendor_specific;
+	const struct nrf93m1_modem_cellular_config *vendor_config = config->vendor->vendor_inst;
 
 	/* IFC configuration should only be sent if the bus supports HWFC and it is not already
 	 * enabled.
@@ -175,7 +175,7 @@ static void nrf93m1_on_fota_updating(struct modem_chat *chat, char **argv, uint1
 	modem_cellular_delay_startup(data->dev);
 }
 
-static const struct modem_cellular_vendor_config nrf93m1_vendor = {
+static const struct modem_cellular_vendor_config_common nrf93m1_vendor = {
 	/* clang-format off */
 	.scripts = {
 		.init = &nordic_nrf93m1_init_chat_script,
@@ -206,10 +206,16 @@ static const struct modem_cellular_vendor_config nrf93m1_vendor = {
 		.bus_has_hwfc = DT_PROP(DT_INST_BUS(inst), hw_flow_control),                       \
 	};                                                                                         \
                                                                                                    \
+	static const struct modem_cellular_vendor_config MODEM_CELLULAR_INST_NAME(vendor_config,   \
+										  inst) = {        \
+		.common = &nrf93m1_vendor,                                                         \
+		.vendor_inst = &nrf93m1_vendor_cfg##inst,                                          \
+	};                                                                                         \
+                                                                                                   \
 	static struct nrf93m1_modem_cellular_data MODEM_CELLULAR_INST_NAME(data, inst);            \
                                                                                                    \
 	MODEM_CELLULAR_DEFINE_AND_INIT_USER_PIPES(inst, (user_pipe_0, 3), (user_pipe_1, 4))        \
                                                                                                    \
-	MODEM_CELLULAR_DEFINE_INSTANCE(inst, &nrf93m1_vendor, &nrf93m1_vendor_cfg##inst)
+	MODEM_CELLULAR_DEFINE_INSTANCE(inst, &MODEM_CELLULAR_INST_NAME(vendor_config, inst))
 
 DT_INST_FOREACH_STATUS_OKAY(MODEM_CELLULAR_DEVICE_NORDIC_NRF93M1)

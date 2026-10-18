@@ -144,8 +144,8 @@ static const struct uart_emul_device_api test_emul_api;
 	COND_CODE_1(DT_INST_PROP(inst, property), (NULL), (&script))
 
 #define MODEM_CELLULAR_DEVICE_TEST(inst)                                                           \
-	static const struct modem_cellular_vendor_config MODEM_CELLULAR_INST_NAME(vendor,          \
-										  inst) = {        \
+	static const struct modem_cellular_vendor_config_common MODEM_CELLULAR_INST_NAME(          \
+		vendor_common, inst) = {                                                           \
 		.scripts = {                                                                       \
 			.set_baudrate = TEST_SCRIPT(inst, no_set_baudrate_script,                  \
 						    set_baudrate_chat_script),                     \
@@ -174,7 +174,12 @@ static const struct uart_emul_device_api test_emul_api;
 					DT_INST_PROP(inst, cmux_disconnect_timeout_ms),            \
 				.startup_time_ms = DT_INST_PROP(inst, startup_time_ms),            \
 				.shutdown_time_ms = DT_INST_PROP(inst, shutdown_time_ms),          \
-			};
+			};                                                                         \
+                                                                                                   \
+	static const struct modem_cellular_vendor_config MODEM_CELLULAR_INST_NAME(vendor,          \
+										  inst) = {        \
+		.common = &MODEM_CELLULAR_INST_NAME(vendor_common, inst),                          \
+	};
 
 #define MODEM_CELLULAR_DEVICE_TEST_DEFINE(inst)                                                    \
 	MODEM_DT_INST_PPP_DEFINE(inst, MODEM_CELLULAR_INST_NAME(ppp, inst), NULL, 1500, 1500);     \
@@ -183,7 +188,7 @@ static const struct uart_emul_device_api test_emul_api;
                                                                                                    \
 	MODEM_CELLULAR_DEFINE_AND_INIT_USER_PIPES(inst, (user_pipe_0, 3), (user_pipe_1, 4))        \
                                                                                                    \
-	MODEM_CELLULAR_DEFINE_INSTANCE(inst, &MODEM_CELLULAR_INST_NAME(vendor, inst), NULL)        \
+	MODEM_CELLULAR_DEFINE_INSTANCE(inst, &MODEM_CELLULAR_INST_NAME(vendor, inst))              \
 	IF_ENABLED(CONFIG_EMUL, (EMUL_DT_INST_DEFINE(inst, modem_cellular_test_emul_init, NULL,   \
 						    NULL, &test_emul_api, NULL)))
 
