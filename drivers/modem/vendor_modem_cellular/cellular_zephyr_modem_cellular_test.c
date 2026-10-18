@@ -147,8 +147,6 @@ static const struct uart_emul_device_api test_emul_api;
 	static const struct modem_cellular_vendor_config_common MODEM_CELLULAR_INST_NAME(          \
 		vendor_common, inst) = {                                                           \
 		.scripts = {                                                                       \
-			.set_baudrate = TEST_SCRIPT(inst, no_set_baudrate_script,                  \
-						    set_baudrate_chat_script),                     \
 			.init = COND_CODE_1(DT_INST_PROP(inst, modem_info_script),         \
 						    (&init_info_chat_script),                      \
 						    (&init_chat_script)),        \
@@ -180,9 +178,17 @@ static const struct uart_emul_device_api test_emul_api;
 				.shutdown_time_ms = DT_INST_PROP(inst, shutdown_time_ms),          \
 			};                                                                         \
                                                                                                    \
+	static const struct modem_cellular_vendor_config_inst MODEM_CELLULAR_INST_NAME(            \
+		vendor_inst, inst) = {                                                             \
+		.set_baudrate = TEST_SCRIPT(inst, no_set_baudrate_script,                          \
+					    set_baudrate_chat_script),                             \
+		.target_baudrate = CONFIG_MODEM_CELLULAR_NEW_BAUDRATE,                             \
+	};                                                                                         \
+                                                                                                   \
 	static const struct modem_cellular_vendor_config MODEM_CELLULAR_INST_NAME(vendor,          \
 										  inst) = {        \
 		.common = &MODEM_CELLULAR_INST_NAME(vendor_common, inst),                          \
+		.instance = &MODEM_CELLULAR_INST_NAME(vendor_inst, inst),                          \
 	};
 
 #define MODEM_CELLULAR_DEVICE_TEST_DEFINE(inst)                                                    \
