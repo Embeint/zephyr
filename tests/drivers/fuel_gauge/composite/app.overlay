@@ -1,0 +1,36 @@
+/ {
+	test_source: test_source {
+		compatible = "zephyr,fuel-gauge-source-test";
+	};
+
+	test_source_charging: test_source_charging {
+		compatible = "zephyr,fuel-gauge-source-test";
+	};
+
+	test_charger: test_charger {
+		compatible = "zephyr,charger-test";
+	};
+
+	test_gauge: test_gauge {
+		compatible = "zephyr,fuel-gauge-composite";
+		source-primary = <&test_source>;
+		device-chemistry = "lithium-ion";
+		ocv-capacity-table-0 = <3000000 3100000 3200000 3300000 3400000 3500000
+					3600000 3700000 3800000 3900000 4000000>;
+		fuel-gauge-channels;
+	};
+
+	test_gauge_charging: test_gauge_charging {
+		compatible = "zephyr,fuel-gauge-composite";
+		source-primary = <&test_source_charging>;
+		device-chemistry = "lithium-ion";
+		ocv-capacity-table-0 = <3000000 3100000 3200000 3300000 3400000 3500000
+					3600000 3700000 3800000 3900000 4000000>;
+		charge-full-design-microamp-hours = <1000>;
+		fuel-gauge-channels;
+		charger-status = <&test_charger>;
+		charging-soc-estimator;
+		charging-current-threshold-microamp = <10000>;
+		ocv-relaxation-time-ms = <100>;
+	};
+};

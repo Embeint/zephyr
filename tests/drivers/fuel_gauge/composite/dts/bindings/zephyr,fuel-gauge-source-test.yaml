@@ -1,0 +1,5 @@
+description: Test sensor source for the composite fuel gauge
+
+compatible: "zephyr,fuel-gauge-source-test"
+
+include: base.yaml
