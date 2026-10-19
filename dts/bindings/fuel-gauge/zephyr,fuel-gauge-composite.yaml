@@ -49,3 +49,41 @@ properties:
       state detection. If the composite device is computing
       *_STATE_OF_CHARGE_PCT from the measured voltage, the reported
       percentage will be clamped based on the reported charging state.
+
+  charging-soc-estimator:
+    type: boolean
+    description: |
+      Maintain a stateful state-of-charge estimate. Above
+      charging-current-threshold-microamp, positive charging current is
+      integrated using charge-full-design-microamp-hours. After charging, or after the
+      charger stops reporting full, the estimate is gradually blended toward
+      corrected OCV over the relaxation period.
+      Corrected OCV is used otherwise.
+
+      Requires charge-full-design-microamp-hours to be set.
+
+      The estimate is only updated when the state of charge is read, so the
+      application is expected to poll it regularly while charging. Charge is
+      integrated using the current measured at each reading, so frequent
+      polling tracks changes in charging current more closely. Gaps of more
+      than 5 minutes between charging readings are not integrated. Instead,
+      the reading after the gap uses corrected OCV and integration restarts
+      from that reading.
+
+  charging-current-threshold-microamp:
+    type: int
+    default: 10000
+    description: |
+      Positive charging current must exceed this value for the
+      charging-soc-estimator to use coulomb counting instead of corrected OCV.
+
+  ocv-relaxation-time-ms:
+    type: int
+    default: 60000
+    description: |
+      After significant charging ends, or the charger stops reporting full,
+      time over which the estimator is recalibrated from its post-charge value
+      to corrected OCV. The transition is measured from the last significant
+      charging or full reading, and all
+      subsequent readings, including discharge readings, advance it. A value
+      of 0 switches to corrected OCV on the first reading after charging.
