@@ -1,0 +1,5 @@
+description: Test charger for the composite fuel gauge
+
+compatible: "zephyr,charger-test"
+
+include: base.yaml

@@ -1,0 +1,6 @@
+tests:
+  drivers.fuel_gauge.composite:
+    tags:
+      - fuel_gauge
+    platform_allow:
+      - native_sim
