@@ -189,3 +189,10 @@ test_telit_le910c1tx: telit_le910c1tx {
 		compatible = "telit,le910cx-gnss";
 	};
 };
+
+test_modem_cellular: modem_cellular_test {
+	compatible = "zephyr,modem-cellular-test";
+
+	mdm-power-gpios = <&test_gpio 0 0>;
+	mdm-reset-gpios = <&test_gpio 0 0>;
+};
