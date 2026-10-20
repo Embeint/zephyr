@@ -36,6 +36,7 @@
 		zephyr,flash = &flash0;
 		zephyr,code-partition = &slot0_partition;
 		zephyr,display = &jd9853;
+		zephyr,touch = &axs5106l;
 		zephyr,bt-hci = &esp32_bt_hci;
 	};
 
@@ -139,12 +140,23 @@
 	};
 };
 
-/* Shared by the AXS5106L touch controller and the SCL/SDA header pins */
+/* Shared with the SCL/SDA header pins */
 &i2c0 {
 	status = "okay";
 	clock-frequency = <I2C_BITRATE_FAST>;
 	pinctrl-0 = <&i2c0_default>;
 	pinctrl-names = "default";
+
+	axs5106l: axs5106l@63 {
+		status = "okay";
+		compatible = "chipsourcetek,axs5106l";
+		reg = <0x63>;
+		irq-gpios = <&gpio1 16 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;	/* GPIO48 */
+		reset-gpios = <&gpio1 15 GPIO_ACTIVE_LOW>;		/* GPIO47 */
+		screen-width = <172>;
+		screen-height = <320>;
+		inverted-x;
+	};
 };
 
 &ledc0 {

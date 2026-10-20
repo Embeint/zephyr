@@ -30,8 +30,8 @@ Supported Features
 The JD9853 display controller is driven by the ``sitronix,st7789v`` driver. The LCD backlight is
 connected to a PWM channel (``pwm-lcd0`` alias) and is off until the application turns it on.
 
-The AXS5106L touch controller is not supported yet. Its I2C bus is shared with the ``SCL`` and
-``SDA`` pins of the pin header and is enabled as ``i2c0``.
+The AXS5106L touch controller is selected as the ``zephyr,touch`` device. Its I2C bus is shared
+with the ``SCL`` and ``SDA`` pins of the pin header.
 
 The battery voltage is measured on ADC2, which is shared with the Wi-Fi radio. Readings may fail
 while Wi-Fi is in use.
