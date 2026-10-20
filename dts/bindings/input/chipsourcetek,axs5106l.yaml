@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  ChipSourceTek AXS5106L self-capacitive touch controller
+
+  Example:
+
+    &i2c0 {
+      touch: axs5106l@63 {
+        compatible = "chipsourcetek,axs5106l";
+        reg = <0x63>;
+        irq-gpios = <&gpio1 16 GPIO_ACTIVE_LOW>;
+        reset-gpios = <&gpio1 15 GPIO_ACTIVE_LOW>;
+      };
+    };
+
+compatible: "chipsourcetek,axs5106l"
+
+include: [i2c-device.yaml, touchscreen-common.yaml]
+
+properties:
+  irq-gpios:
+    type: phandle-array
+    required: true
+    description: |
+      Interrupt GPIO. Asserted by the controller when touch data is
+      available. Active low.
+
+  reset-gpios:
+    type: phandle-array
+    description: |
+      Reset GPIO (RESX). Active low.

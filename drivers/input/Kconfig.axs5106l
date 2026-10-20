@@ -1,0 +1,13 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config INPUT_AXS5106L
+	bool "AXS5106L capacitive touch controller driver"
+	default y
+	depends on DT_HAS_CHIPSOURCETEK_AXS5106L_ENABLED
+	select GPIO
+	select I2C
+	select INPUT_TOUCH
+	help
+	  Enable driver for the ChipSourceTek AXS5106L capacitive touch
+	  controller.
