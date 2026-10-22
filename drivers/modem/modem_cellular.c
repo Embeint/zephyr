@@ -506,6 +506,7 @@ static bool modem_cellular_is_registered(struct modem_cellular_data *data)
 
 static void modem_cellular_clear_registration_status(struct modem_cellular_data *data)
 {
+	data->access_tech = CELLULAR_ACCESS_TECHNOLOGY_UNKNOWN;
 	data->registration_status_gsm = CELLULAR_REGISTRATION_NOT_REGISTERED;
 	data->registration_status_gprs = CELLULAR_REGISTRATION_NOT_REGISTERED;
 	data->registration_status_lte = CELLULAR_REGISTRATION_NOT_REGISTERED;
