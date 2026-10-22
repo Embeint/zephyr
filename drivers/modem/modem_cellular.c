@@ -1641,9 +1641,11 @@ static int modem_cellular_on_run_dial_script_state_leave(struct modem_cellular_d
 static int modem_cellular_on_await_registered_state_enter(struct modem_cellular_data *data)
 {
 	modem_chat_attach(&data->chat, data->dlci1_pipe);
-	modem_cellular_start_timer(data, MODEM_CELLULAR_PERIODIC_SCRIPT_TIMEOUT);
 	if (modem_cellular_is_registered(data)) {
+		/* Immediately leaving AWAIT_REGISTERED, don't try a periodic script */
 		modem_cellular_delegate_event(data, MODEM_CELLULAR_EVENT_REGISTERED);
+	} else {
+		modem_cellular_start_timer(data, K_NO_WAIT);
 	}
 	return 0;
 }
@@ -1723,7 +1725,7 @@ static int modem_cellular_on_await_registered_state_leave(struct modem_cellular_
 static int modem_cellular_on_registered_state_enter(struct modem_cellular_data *data)
 {
 	net_if_dormant_off(modem_ppp_get_iface(data->ppp));
-	modem_cellular_start_timer(data, MODEM_CELLULAR_PERIODIC_SCRIPT_TIMEOUT);
+	modem_cellular_start_timer(data, K_NO_WAIT);
 	return 0;
 }
 
