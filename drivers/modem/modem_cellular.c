@@ -1561,6 +1561,7 @@ static void modem_cellular_run_dial_script_event_handler(struct modem_cellular_d
 							 enum modem_cellular_event evt)
 {
 	const struct modem_cellular_config *config = data->dev->config;
+	const struct modem_chat_script *script;
 	int ret;
 
 	switch (evt) {
@@ -1573,6 +1574,12 @@ static void modem_cellular_run_dial_script_event_handler(struct modem_cellular_d
 		}
 		break;
 	case MODEM_CELLULAR_EVENT_SCRIPT_FAILED:
+		script = data->event_ptr;
+		if (script != config->vendor->scripts.dial) {
+			/* Non-dial script result (e.g. from modem_cellular_get_signal) */
+			LOG_DBG("Ignoring non-dial result (%s)", script->name);
+			return;
+		}
 		modem_cellular_script_failed(data);
 		if (modem_cellular_is_script_retry_exceeded(data)) {
 			modem_cellular_delegate_event(data, MODEM_CELLULAR_EVENT_SUSPEND);
@@ -1581,6 +1588,12 @@ static void modem_cellular_run_dial_script_event_handler(struct modem_cellular_d
 		}
 		break;
 	case MODEM_CELLULAR_EVENT_SCRIPT_SUCCESS:
+		script = data->event_ptr;
+		if (script != config->vendor->scripts.dial) {
+			/* Non-dial script result (e.g. from modem_cellular_get_signal) */
+			LOG_DBG("Ignoring non-dial result (%s)", script->name);
+			return;
+		}
 		modem_cellular_script_success(data);
 		modem_chat_release(&data->chat);
 		modem_chat_attach(&data->chat, data->dlci1_pipe);
