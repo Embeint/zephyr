@@ -1566,7 +1566,6 @@ static int set_ttl_hop_limit(int sock, int level, int option, int new_limit)
 	return zsock_setsockopt(sock, level, option, &new_limit, sizeof(new_limit));
 }
 
-#if defined(CONFIG_DNS_RESOLVER_RANDOMIZE_SOURCE_PORT)
 /* True when no query is still waiting for an answer, so a socket can be
  * replaced without losing an answer that is on its way. A pending query does
  * not record which server it was sent to, so any one of them holds every
@@ -1707,7 +1706,6 @@ static void dns_randomize_source_port(struct dns_resolve_context *ctx,
 		server->sock = -1;
 	}
 }
-#endif /* CONFIG_DNS_RESOLVER_RANDOMIZE_SOURCE_PORT */
 
 /* Must be invoked with context lock held */
 static int dns_write(struct dns_resolve_context *ctx,
