@@ -15,3 +15,16 @@ properties:
   mdm-reset-gpios:
     type: phandle-array
     required: true
+
+  sim-detect:
+    type: string
+    enum:
+      - "active-low"
+      - "active-high"
+      - "force-present"
+    description: |
+      SIM card detection configuration applied during modem initialization.
+      If not specified, the modem SIM detection configuration is left unchanged.
+      - active-low: SIM presence detected from the SIMIN pin, SIM present when low.
+      - active-high: SIM presence detected from the SIMIN pin, SIM present when high.
+      - force-present: SIMIN pin ignored, SIM always considered present.
