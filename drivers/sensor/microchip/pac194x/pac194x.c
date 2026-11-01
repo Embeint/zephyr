@@ -4,11 +4,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/sensor/pac194x.h>
 #include <zephyr/dt-bindings/sensor/pac194x.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/pm/device.h>
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/math_extras.h>
 #include "pac194x.h"
@@ -75,6 +77,7 @@ static const struct pac194x_chip_info pac194x_chip_info_table[] = {
 
 struct pac194x_config {
 	struct i2c_dt_spec i2c;
+	struct gpio_dt_spec power_down_gpio;
 	uint32_t shunt_micro_ohms;
 	uint8_t refresh_mode;
 	struct pac194x_channel_config channels[4];
@@ -756,8 +759,31 @@ static int pac194x_chip_identify(const struct device *dev)
 		}
 	}
 
-	LOG_ERR("unknown product_id = 0x%02X", product_id);
+	LOG_DBG("unknown product_id = 0x%02X", product_id);
 	return -EINVAL;
+}
+
+static int pac194x_wait_until_ready(const struct device *dev)
+{
+	int elapsed = 0;
+	int ret;
+
+	/* The device does not respond on the bus until it has finished powering up */
+	while (true) {
+		ret = pac194x_chip_identify(dev);
+		if (ret == 0) {
+			LOG_DBG("ready after %d ms", elapsed);
+			return 0;
+		}
+		if (elapsed >= 150) {
+			break;
+		}
+		k_msleep(10);
+		elapsed += 10;
+	}
+
+	LOG_ERR("failed to identify device");
+	return ret;
 }
 
 static void pac194x_dump_config(const struct device *dev)
@@ -914,6 +940,76 @@ static int pac194x_configure_channels(const struct device *dev)
 	return pac194x_cmd_refresh(dev);
 }
 
+static int pac194x_power_up(const struct device *dev)
+{
+	const struct pac194x_config *config = dev->config;
+	int ret;
+
+	if (config->power_down_gpio.port != NULL) {
+		/* Move out of the power down state */
+		ret = gpio_pin_configure_dt(&config->power_down_gpio, GPIO_OUTPUT_INACTIVE);
+		if (ret < 0) {
+			return ret;
+		}
+	}
+
+	ret = pac194x_wait_until_ready(dev);
+	if (ret < 0) {
+		goto end;
+	}
+
+	/* Restore the devicetree configuration after leaving the power down state */
+	ret = pac194x_configure_channels(dev);
+	if (ret < 0) {
+		LOG_ERR("failed to configure channels");
+	}
+
+end:
+	if ((ret < 0) && (config->power_down_gpio.port != NULL)) {
+		/* Power up failed, return to the power down state */
+		(void)gpio_pin_set_dt(&config->power_down_gpio, 1);
+	}
+	return ret;
+}
+
+static int pac194x_pm_action(const struct device *dev, enum pm_device_action action)
+{
+	const struct pac194x_config *config = dev->config;
+	int ret;
+
+	switch (action) {
+	case PM_DEVICE_ACTION_TURN_ON:
+		/* Validate that the device is present */
+		ret = pac194x_power_up(dev);
+		if (ret < 0) {
+			return -EIO;
+		}
+		/* Return to the low power state */
+		if (config->power_down_gpio.port != NULL) {
+			return gpio_pin_set_dt(&config->power_down_gpio, 1);
+		}
+		return 0;
+	case PM_DEVICE_ACTION_TURN_OFF:
+		if (config->power_down_gpio.port != NULL) {
+			return gpio_pin_configure_dt(&config->power_down_gpio, GPIO_DISCONNECTED);
+		}
+		return 0;
+	case PM_DEVICE_ACTION_SUSPEND:
+		if (config->power_down_gpio.port != NULL) {
+			return gpio_pin_set_dt(&config->power_down_gpio, 1);
+		}
+		return 0;
+	case PM_DEVICE_ACTION_RESUME:
+		if (config->power_down_gpio.port != NULL) {
+			return pac194x_power_up(dev);
+		}
+		/* Device remains configured from TURN_ON */
+		return 0;
+	default:
+		return -ENOTSUP;
+	}
+}
+
 static int pac194x_init(const struct device *dev)
 {
 	const struct pac194x_config *config = dev->config;
@@ -922,20 +1018,13 @@ static int pac194x_init(const struct device *dev)
 		return -ENODEV;
 	}
 
-	if (pac194x_chip_identify(dev)) {
+	if ((config->power_down_gpio.port != NULL) && !gpio_is_ready_dt(&config->power_down_gpio)) {
 		return -ENODEV;
 	}
 
 	pac194x_configure_refresh(dev);
 
-	if (pac194x_configure_channels(dev)) {
-		LOG_ERR("failed to configure channels");
-		return -EINVAL;
-	}
-
-	LOG_DBG("initialized at 0x%02x", config->i2c.addr);
-
-	return 0;
+	return pm_device_driver_init(dev, pac194x_pm_action);
 }
 
 #define PAC194X_SET_CHANNEL(node_id)								\
@@ -953,15 +1042,18 @@ static int pac194x_init(const struct device *dev)
 												\
 	static const struct pac194x_config pac194x_config_##inst = {				\
 		.i2c = I2C_DT_SPEC_INST_GET(inst),						\
+		.power_down_gpio = GPIO_DT_SPEC_INST_GET_OR(inst, power_down_gpios, {0}),	\
 		.refresh_mode = DT_INST_PROP(inst, microchip_refresh_mode),			\
 		.channels = {									\
 			DT_INST_FOREACH_CHILD_STATUS_OKAY(inst, PAC194X_SET_CHANNEL)		\
 		},										\
 	};											\
 												\
+	PM_DEVICE_DT_INST_DEFINE(inst, pac194x_pm_action);					\
+												\
 	SENSOR_DEVICE_DT_INST_DEFINE(inst,							\
 				     pac194x_init,						\
-				     NULL,							\
+				     PM_DEVICE_DT_INST_GET(inst),				\
 				     &pac194x_data_##inst,					\
 				     &pac194x_config_##inst,					\
 				     POST_KERNEL,						\

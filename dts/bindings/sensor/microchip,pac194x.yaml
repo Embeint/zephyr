@@ -12,6 +12,12 @@ compatible: "microchip,pac194x"
 include: [sensor-device.yaml, i2c-device.yaml]
 
 properties:
+  power-down-gpios:
+    type: phandle-array
+    description: |
+      GPIO connected to the PWRDN pin. When present, the device is held in the
+      power-down state while suspended and reconfigured on resume.
+
   microchip,refresh-mode:
     type: int
     default: 0

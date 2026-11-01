@@ -9,5 +9,6 @@ config PAC194X
 	default y
 	depends on DT_HAS_MICROCHIP_PAC194X_ENABLED
 	select I2C
+	select GPIO if $(dt_compat_any_has_prop,$(DT_COMPAT_MICROCHIP_PAC194X),power-down-gpios)
 	help
 	  Enables PAC194X/PAC195X power monitor driver.
