@@ -210,6 +210,13 @@ static const struct modem_cellular_vendor_config_common telit_le910c1tx_vendor =
 #define MODEM_CELLULAR_DEVICE_TELIT_LE910C1TX(inst)                                                \
 	MODEM_DT_INST_PPP_DEFINE(inst, MODEM_CELLULAR_INST_NAME(ppp, inst), NULL, 1500, 64);       \
                                                                                                    \
+	MODEM_CELLULAR_COMMON_BAUDRATE_CHAT_SCRIPT(inst);                                          \
+                                                                                                   \
+	static const struct modem_cellular_vendor_config_inst MODEM_CELLULAR_INST_NAME(            \
+		vendor_config_inst, inst) = {                                                      \
+		MODEM_CELLULAR_VENDOR_CONFIG_INST_TARGET_BAUDRATE(inst),                           \
+	};                                                                                         \
+                                                                                                   \
 	static const struct le910c1tx_modem_cellular_config le910c1tx_vendor_cfg##inst = {         \
 		.sim_detect =                                                                      \
 			DT_INST_ENUM_IDX_OR(inst, sim_detect, LE910C1TX_SIM_DETECT_UNCHANGED),     \
@@ -218,6 +225,7 @@ static const struct modem_cellular_vendor_config_common telit_le910c1tx_vendor =
 	static const struct modem_cellular_vendor_config MODEM_CELLULAR_INST_NAME(vendor_config,   \
 										  inst) = {        \
 		.common = &telit_le910c1tx_vendor,                                                 \
+		.instance = &MODEM_CELLULAR_INST_NAME(vendor_config_inst, inst),                   \
 		.vendor_inst = &le910c1tx_vendor_cfg##inst,                                        \
 	};                                                                                         \
                                                                                                    \
