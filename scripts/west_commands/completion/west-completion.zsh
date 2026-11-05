@@ -54,6 +54,7 @@ _west_cmds() {
   'release-build[build an Infuse-IoT application release]'
   'release-flash[flash an Infuse-IoT application release]'
   'release-diff[generate binary diffs between Infuse-IoT application releases]'
+  'release-cve-check[run a CVE analysis over an Infuse-IoT application release]'
   )
 
   local -a all_cmds=(${builtin_cmds} ${zephyr_ext_cmds})
@@ -102,7 +103,7 @@ _west() {
 
   args)
     _opt_args=( ${(@kv)opt_args} )
-    _call_function ret _west_$line[1]
+    _call_function ret _west_${line[1]//-/_}
     ;;
   esac
 }
@@ -734,6 +735,23 @@ _west_release_diff() {
   '(-i --input)'{-i,--input}'[Original release directories]:input directory:_directories'
   '(-o --output)'{-o,--output}'[Upgrade release directory]:output directory:_directories'
   '--tool-compare[Output patch file comparison with other tools]'
+  )
+  _arguments -S $opts
+}
+
+_west_release_cve_check() {
+  local -a opts=(
+  '(-r --release)'{-r,--release}'[release directory]:release directory:_directories'
+  '(-o --output)'{-o,--output}'[output directory]:output directory:_directories'
+  '--zephyr-version[Zephyr version to use for the Zephyr CPE]:zephyr version:'
+  '--include-unused[check modules that did not contribute source files]'
+  '--no-compiled-filter[do not filter CVEs by compiled source files]'
+  '--no-vex[do not load the Infuse-IoT CVE assessments]'
+  '--all[report all matched CVEs]'
+  '--databases-dir[CVE database directory]:databases directory:_directories'
+  '--offline[do not update the CVE databases]'
+  '--fail-on-vulnerable[exit with an error if vulnerable CVEs are found]'
+  '--fail-on-untriaged[exit with an error if vulnerable CVEs without a VEX statement are found]'
   )
   _arguments -S $opts
 }
