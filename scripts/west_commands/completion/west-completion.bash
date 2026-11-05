@@ -1346,6 +1346,47 @@ __comp_west_release_diff()
 	esac
 }
 
+__comp_west_release_cve_check()
+{
+	local dir_opts="
+		--release -r
+		--output -o
+		--databases-dir
+	"
+	local bool_opts="
+		--include-unused
+		--no-compiled-filter
+		--no-vex
+		--all
+		--offline
+		--fail-on-vulnerable
+		--fail-on-untriaged
+	"
+	local other_opts="
+		--zephyr-version
+	"
+
+	all_opts="$dir_opts $bool_opts $other_opts"
+
+	case "$prev" in
+		# We don't know how to autocomplete those
+		$(__west_to_extglob "$other_opts") )
+			return
+			;;
+
+		$(__west_to_extglob "$dir_opts") )
+			__set_comp_dirs
+			return
+			;;
+	esac
+
+	case "$cur" in
+		-*)
+			__set_comp $all_opts
+			;;
+	esac
+}
+
 __comp_west()
 {
 	local previous_extglob_setting=$(shopt -p extglob)
@@ -1396,6 +1437,7 @@ __comp_west()
 		release-build
 		release-diff
 		release-flash
+		release-cve-check
 	)
 
 	local cmds=(${builtin_cmds[*]} ${zephyr_ext_cmds[*]})
