@@ -1,0 +1,384 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://github.com/Embeint/zephyr/scripts/vex/zephyr.openvex.json",
+  "author": "Embeint Holdings Pty Ltd",
+  "timestamp": "2026-11-05T05:12:39Z",
+  "version": 2,
+  "statements": [
+    {
+      "vulnerability": {
+        "name": "CVE-2026-7656"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Listed as fixed in the Zephyr v4.4.1 release notes; CVE record affected range does not account for the v4.4-branch backport. 3b46d2bb7300 (cherry-pick of upstream 095f064c94b9). Fix commits: 3b46d2bb73004d1086c316cf31a53fc0fd4f1a42"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-8023"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Listed as fixed in the Zephyr v4.4.2 release notes; CVE record affected range does not account for the v4.4-branch backport. 11354184d4a3 (cherry-pick of upstream f4a423c98554). Fix commits: 11354184d4a33bca1b8406fc223c3504758bb5b3"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-10641"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Listed as fixed in the Zephyr v4.4.2 release notes; CVE record affected range does not account for the v4.4-branch backport. 19894f68b937 (cherry-pick of upstream cf7693a8261a). Fix commits: 19894f68b9377d817e17cc019e079af650bffccd"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-10645"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Listed as fixed in the Zephyr v4.4.1 release notes; CVE record affected range does not account for the v4.4-branch backport. afe7a4e6315a (cherry-pick of upstream 7cdb534a3c3d). Fix commits: afe7a4e6315a186b2ee6601f583181b8ca7ee79c"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-10651"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Listed as fixed in the Zephyr v4.4.2 release notes; CVE record affected range does not account for the v4.4-branch backport. ead55e783e29 (cherry-pick of upstream dfac5224ab65). Fix commits: ead55e783e2911c7aa053e17bdbc32dd94152353"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-10655"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.1:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.1:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed in the Embeint v4.4.1 branch by d11e44911512 (backport of upstream ef47bdf328b4, first released in v4.4.2). Fix commits: d11e44911512c1a3fb6d8a23a3e27987e1f26c3b"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-10658"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Listed as fixed in the Zephyr v4.4.2 release notes; CVE record affected range does not account for the v4.4-branch backport. 3fc98d4289b1 (cherry-pick of upstream 756b16b64317). Fix commits: 3fc98d4289b1e7075ba20641c284a8159938390c"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-10664"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Listed as fixed in the Zephyr v4.4.1 release notes; CVE record affected range does not account for the v4.4-branch backport. c4475941c20b (cherry-pick of upstream a2c4324acd50). Fix commits: c4475941c20bff42b6f6964eb223fb312f632cd0"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-10666"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Listed as fixed in the Zephyr v4.4.1 release notes; CVE record affected range does not account for the v4.4-branch backport. a1baff787b3d (cherry-pick of upstream 1c8d19a51f9a), 883419d6d3eb (cherry-pick of upstream 6e119a636a57). Fix commits: a1baff787b3da2d7b93b15060340ce2e01a2dc04 883419d6d3eb23b70464ee8cade19c4e6114c043"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-10667"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Listed as fixed in the Zephyr v4.4.2 release notes; CVE record affected range does not account for the v4.4-branch backport. 9544d7cc6393 (cherry-pick of upstream fdc42fa256b8). Fix commits: 9544d7cc6393681960330ef3c721c0551dbb15e8"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-10672"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Listed as fixed in the Zephyr v4.4.1 release notes; CVE record affected range does not account for the v4.4-branch backport. f6b65b95b543 (cherry-pick of upstream 99a164df5cea). Fix commits: f6b65b95b54359314f6c82d380cca81cc2f88924"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-10686"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Listed as fixed in the Zephyr v4.4.2 release notes; CVE record affected range does not account for the v4.4-branch backport. 4f08f8208cd9 (cherry-pick of upstream 7d8f1afa7345), c866cdcc29e4 (cherry-pick of upstream 589eadc74efa). Fix commits: 4f08f8208cd93b8f2af1d954bcb235d84872d533 c866cdcc29e41b607f5ab56a43909f080f1f13a4"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-12365"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed in the Embeint v4.4.2 branch by backporting v4.4-branch commit 1a17336c63a (upstream fix 59cf34bf212e). Fix commits: 1dc58810cfb7a35a901dc3aee28486aee3c59eb8"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-12366"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed in the Embeint v4.4.2 branch by backporting v4.4-branch commits 6d93c80fa52, 3b01c2fd462 (upstream fix 1e68351a2572). Fix commits: 3dc6dc3567fc2181bd187b38c9a4098577d0bc8d 17ed4b37554418d4a532493c2b8131e0a698f5f9"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-19575"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed in the Embeint v4.4.2 branch by backporting v4.4-branch commit 14ccb8391e5 (upstream fix 1036694889ab). Fix commits: b0d0e298b02031165d6bd8137bdcc65cdb5fe105"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-19742"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed in the Embeint v4.4.2 branch by backporting v4.4-branch commit f73491bc98f (upstream fix 253315829d3c). Fix commits: b5944e82323a8f6ebe9a97a764aae55f8e7dd096"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-19935"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed in the Embeint v4.4.2 branch by backporting v4.4-branch commit c81d8c94ff4 (a self-contained v4.4 equivalent of upstream fix 22896cb8d6f2). Fix commits: 16fa692dbe108ea9a9e611eb2d132979845a26c4"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-19938"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed in the Embeint v4.4.2 branch by backporting v4.4-branch commit f0c5d9c5a8a (upstream fix ba8627d91c8c). Fix commits: fd92d9827944a0c3cc24911a8a358fe1b3b2d973"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-78118"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed in the Embeint v4.4.2 branch by backporting v4.4-branch commit b1784ad381d (upstream fix a9b21fb354e8). Fix commits: 4b90cc280571c215ecdc6cbc1f08912b0be5a75c"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-79977"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed in the Embeint v4.4.2 branch by backporting v4.4-branch commit 326931b3e64 (upstream fix cbaaf3e9dbe0). Fix commits: 8b8da9f3c47f9d789bb509b08dd70150ba5331af"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-79980"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed in the Embeint v4.4.2 branch by backporting v4.4-branch commit 1d9ce23e364 (upstream fix 6a96770a1ea8). Fix commits: ec2e7833dc765af87bd5d2d0227337b4032271b5"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-79981"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed in the Embeint v4.4.2 branch by backporting v4.4-branch commit 0c8f909e3f1 (upstream fix 289c14b9103b). Fix commits: dd8191c5787d8f7c6af2f6cc0d8a4e3341c9d062"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-81039"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed in the Embeint v4.4.2 branch by backporting v4.4-branch commit 10be8cc1500 (upstream fix b6a5e6e8aa90). Fix commits: edbc2aa59378c31054855cefe3c81299de606682"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-85034"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed in the Embeint v4.4.2 branch by backporting v4.4-branch commit 20f7d8c7f75 (upstream fix 64b1e7447856). Fix commits: 53b13c7e241e30ced8cad075d5c2b17bd44d89a4"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-87043"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed in the Embeint v4.4.2 branch by backporting v4.4-branch commit 0dfd8361dfd (upstream fix 76eb10b5c3e9). Fix commits: e7bacba258acfdd78a8068b83cbecd80807b7899"
+    }
+  ]
+}
