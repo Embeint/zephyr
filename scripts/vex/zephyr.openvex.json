@@ -1,0 +1,159 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://github.com/Embeint/zephyr/scripts/vex/zephyr.openvex.json",
+  "author": "Embeint Holdings Pty Ltd",
+  "timestamp": "2026-11-07T02:06:42Z",
+  "version": 1,
+  "statements": [
+    {
+      "vulnerability": {
+        "name": "CVE-2026-7656"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.5.0:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.5.0:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed upstream before v4.5.0-rc1 by commit 095f064c94b9; CVE record affected range ends at 4.6.0 and does not account for the fix being included in v4.5.0. Fix commits: 095f064c94b95f9c35e05602e693dc268f0cb865"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-8023"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.5.0:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.5.0:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed upstream before v4.5.0-rc1 by commit f4a423c98554; CVE record affected range ends at 4.6.0 and does not account for the fix being included in v4.5.0. Fix commits: f4a423c98554f209c5d2f22f041822422c9263b8"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-10641"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.5.0:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.5.0:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed upstream before v4.5.0-rc1 by commit cf7693a8261a; CVE record affected range ends at 4.6.0 and does not account for the fix being included in v4.5.0. Fix commits: cf7693a8261ae363c9cf46cfd51005486637173e"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-10645"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.5.0:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.5.0:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed upstream before v4.5.0-rc1 by commit 7cdb534a3c3d; CVE record affected range ends at 4.6.0 and does not account for the fix being included in v4.5.0. Fix commits: 7cdb534a3c3daeaec18f656953857dcafa33a2bf"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-10651"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.5.0:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.5.0:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed upstream before v4.5.0-rc1 by commit dfac5224ab65; CVE record affected range ends at 4.6.0 and does not account for the fix being included in v4.5.0. Fix commits: dfac5224ab65fc7b81be2926386173c169318335"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-10658"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.5.0:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.5.0:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed upstream before v4.5.0-rc1 by commit 756b16b64317; CVE record affected range ends at 4.6.0 and does not account for the fix being included in v4.5.0. Fix commits: 756b16b64317defefad36fc994316cf96e418708"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-10664"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.5.0:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.5.0:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed upstream before v4.5.0-rc1 by commit a2c4324acd50; CVE record affected range ends at 4.6.0 and does not account for the fix being included in v4.5.0. Fix commits: a2c4324acd50a5f92e492e6e460e6297af826148"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-10666"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.5.0:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.5.0:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed upstream before v4.5.0-rc1 by commits 1c8d19a51f9a and 6e119a636a57; CVE record affected range ends at 4.6.0 and does not account for the fix being included in v4.5.0. Fix commits: 1c8d19a51f9a3c1be6de53854c8ad8c2720a0f48 6e119a636a57be449ea21e73cad762ebc6f5ff7a"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-10667"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.5.0:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.5.0:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed upstream before v4.5.0-rc1 by commit fdc42fa256b8; CVE record affected range ends at 4.6.0 and does not account for the fix being included in v4.5.0. Fix commits: fdc42fa256b8c2a7b27790f032d5385f8058c4a9"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-10672"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.5.0:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.5.0:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed upstream before v4.5.0-rc1 by commit 99a164df5cea; CVE record affected range ends at 4.6.0 and does not account for the fix being included in v4.5.0. Fix commits: 99a164df5cea5af76e32b57c6d51854f018969a2"
+    }
+  ]
+}
