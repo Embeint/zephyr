@@ -2,8 +2,8 @@
   "@context": "https://openvex.dev/ns/v0.2.0",
   "@id": "https://github.com/Embeint/zephyr/scripts/vex/zephyr.openvex.json",
   "author": "Embeint Holdings Pty Ltd",
-  "timestamp": "2026-11-06T23:44:11Z",
-  "version": 3,
+  "timestamp": "2026-11-08T23:43:28Z",
+  "version": 4,
   "statements": [
     {
       "vulnerability": {
@@ -1332,6 +1332,22 @@
       ],
       "status": "fixed",
       "status_notes": "Fixed in the Embeint v4.4.2 branch by backporting v4.4-branch commits 7ac0d85b17e, fe2818738ab, 35ab74eba51 and 4c5acefd3ba (upstream fix 8e7e9e9bf9f0). Fix commits: 51112c178d9fae8809e6ff12027adc6a887dbfdf 82457421e1e12405b5d81a90ceda65359181c573 a31279df3d04752401d0f1fce1df5159469845aa d2caddfd6dc3ab40a00c775510eb93b550a6d625"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-87045"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "affected",
+      "status_notes": "Vulnerable code is in the HTTP/2 server, which is not enabled by Infuse-IoT.",
+      "action_statement": "Fix will not be backported: not standard Infuse-IoT feature"
     }
   ]
 }
