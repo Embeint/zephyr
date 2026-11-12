@@ -1697,7 +1697,33 @@ struct bt_gatt_exchange_params {
 	/** Callback for MTU exchange response */
 	void (*func)(struct bt_conn *conn, uint8_t err,
 		     struct bt_gatt_exchange_params *params);
+	/** Internal */
+	uint16_t _mtu;
 };
+
+/** @brief Limit the local ATT MTU of a connection
+ *
+ *  Limit the MTU that the local device uses in the ATT MTU exchange on the
+ *  unenhanced ATT bearer of a connection, below the default of the maximum
+ *  possible size the buffers can hold. The exchange sets the ATT MTU of the
+ *  connection to the smaller of the values of the two devices, so this limits
+ *  the size of the ATT PDUs that both devices can send on the connection.
+ *
+ *  The MTU exchange can only take place once per connection, so the limit must
+ *  be set before it, for example immediately after @ref bt_conn_le_create. The
+ *  limit applies for the lifetime of the connection.
+ *
+ *  @kconfig_dep{CONFIG_BT_ATT_CONN_MTU_LIMIT}
+ *
+ *  @param conn Connection object.
+ *  @param mtu MTU limit, or 0 to use the default MTU.
+ *
+ *  @retval 0 Successfully set the limit.
+ *  @retval -EINVAL @p conn is not an LE connection, or @p mtu is smaller than
+ *  the minimum LE ATT MTU (23).
+ *  @retval -EALREADY The MTU exchange procedure has been already performed.
+ */
+int bt_gatt_conn_mtu_limit(struct bt_conn *conn, uint16_t mtu);
 
 /** @brief Exchange MTU
  *
