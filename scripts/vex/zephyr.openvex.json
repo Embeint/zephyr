@@ -2,8 +2,8 @@
   "@context": "https://openvex.dev/ns/v0.2.0",
   "@id": "https://github.com/Embeint/zephyr/scripts/vex/zephyr.openvex.json",
   "author": "Embeint Holdings Pty Ltd",
-  "timestamp": "2026-11-10T23:25:20Z",
-  "version": 6,
+  "timestamp": "2026-11-13T06:31:51Z",
+  "version": 7,
   "statements": [
     {
       "vulnerability": {
@@ -1555,6 +1555,36 @@
       "status": "affected",
       "status_notes": "Vulnerable code is in UART wide-data syscall verifiers, only reachable from user mode threads (CONFIG_USERSPACE), which is not enabled by Infuse-IoT.",
       "action_statement": "Fix will not be backported: not standard Infuse-IoT feature"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-91007"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed in the Embeint v4.4.2 branch by backporting v4.4-branch commit 24cee0f58ae (upstream fix 5467b7a73fe0). Fix commits: 6355e9a5c589f6d4145f30720900a1ce879f8c1a"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-19809"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed in the Embeint v4.4.2 branch by backporting v4.4-branch commits 08b7bba9374 and 3ade8a154eb (upstream fixes 5054384e983c and c31cac727d02). Fix commits: 8df8c7569908ceb4ea4438e58ef1ba3b4f3169c8 2dd964463befa103af4573b5c173fdf10cf5803e"
     }
   ]
 }
