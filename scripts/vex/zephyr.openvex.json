@@ -2,8 +2,8 @@
   "@context": "https://openvex.dev/ns/v0.2.0",
   "@id": "https://github.com/Embeint/zephyr/scripts/vex/zephyr.openvex.json",
   "author": "Embeint Holdings Pty Ltd",
-  "timestamp": "2026-11-13T06:31:51Z",
-  "version": 7,
+  "timestamp": "2026-11-14T04:05:56Z",
+  "version": 8,
   "statements": [
     {
       "vulnerability": {
@@ -1585,6 +1585,22 @@
       ],
       "status": "fixed",
       "status_notes": "Fixed in the Embeint v4.4.2 branch by backporting v4.4-branch commits 08b7bba9374 and 3ade8a154eb (upstream fixes 5054384e983c and c31cac727d02). Fix commits: 8df8c7569908ceb4ea4438e58ef1ba3b4f3169c8 2dd964463befa103af4573b5c173fdf10cf5803e"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-92241"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "affected",
+      "status_notes": "Vulnerable code is in the Bluetooth Classic AVRCP browsing channel (CONFIG_BT_CLASSIC), which is not enabled by Infuse-IoT.",
+      "action_statement": "Fix will not be backported: not standard Infuse-IoT feature"
     }
   ]
 }
