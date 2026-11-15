@@ -153,6 +153,8 @@ enum cellular_event {
 	CELLULAR_EVENT_NETWORK_STATUS_CHANGED = BIT(3),
 	/** Cellular modem suspension callback */
 	CELLULAR_EVENT_MODEM_SUSPENDED = BIT(4),
+	/** The data context used for the data call was reported activated or deactivated */
+	CELLULAR_EVENT_DATA_CONTEXT_CHANGED = BIT(5),
 };
 
 /* Opaque bit-mask large enough for all current & future events */
@@ -171,6 +173,11 @@ struct cellular_evt_registration_status {
 /** Payload for @ref CELLULAR_EVENT_MODEM_COMMS_CHECK_RESULT */
 struct cellular_evt_modem_comms_check_result {
 	bool success; /**< Communications to modem checked successfully */
+};
+
+/** Payload for @ref CELLULAR_EVENT_DATA_CONTEXT_CHANGED */
+struct cellular_evt_data_context {
+	bool active; /**< Data context is active */
 };
 
 /** E-UTRAN Global Cell Identifier (GCI) is a 28bit value */
