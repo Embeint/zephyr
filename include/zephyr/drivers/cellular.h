@@ -113,6 +113,24 @@ enum cellular_modem_info_type {
 	CELLULAR_MODEM_INFO_SERIAL_NUMBER,
 };
 
+/** SIM status, as found once the modem has started */
+enum cellular_sim_status {
+	/** SIM ready for use */
+	CELLULAR_SIM_STATUS_READY,
+	/** SIM locked, its PIN is required */
+	CELLULAR_SIM_STATUS_PIN_REQUIRED,
+	/** SIM blocked, its PUK is required */
+	CELLULAR_SIM_STATUS_PUK_REQUIRED,
+	/** Another code is required, e.g. a phone-to-SIM or network personalisation code */
+	CELLULAR_SIM_STATUS_LOCKED,
+	/** No SIM inserted */
+	CELLULAR_SIM_STATUS_NOT_INSERTED,
+	/** SIM failure, or the wrong SIM */
+	CELLULAR_SIM_STATUS_FAILURE,
+	/** SIM status not known within the time allowed, e.g. as no SIM is inserted */
+	CELLULAR_SIM_STATUS_TIMEOUT,
+};
+
 /** Cellular registration status (3GPP TS 27.007) */
 enum cellular_registration_status {
 	/** Not registered, not searching */
@@ -157,6 +175,8 @@ enum cellular_event {
 	CELLULAR_EVENT_DATA_CONTEXT_CHANGED = BIT(5),
 	/** The modem could not be brought up, and has been powered down */
 	CELLULAR_EVENT_MODEM_FAILED = BIT(6),
+	/** The SIM status was found after the modem started */
+	CELLULAR_EVENT_SIM_STATUS_CHANGED = BIT(7),
 };
 
 /* Opaque bit-mask large enough for all current & future events */
@@ -185,6 +205,11 @@ struct cellular_evt_data_context {
 /** Payload for @ref CELLULAR_EVENT_MODEM_FAILED */
 struct cellular_evt_modem_failed {
 	int reason; /**< Negative errno value describing the failure */
+};
+
+/** Payload for @ref CELLULAR_EVENT_SIM_STATUS_CHANGED */
+struct cellular_evt_sim_status {
+	enum cellular_sim_status status; /**< SIM status */
 };
 
 /** E-UTRAN Global Cell Identifier (GCI) is a 28bit value */
