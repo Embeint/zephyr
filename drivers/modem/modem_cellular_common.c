@@ -27,8 +27,15 @@ LOG_MODULE_DECLARE(modem_cellular, CONFIG_MODEM_LOG_LEVEL);
 void modem_cellular_emit_event(struct modem_cellular_data *data,
 			       enum cellular_event evt, const void *payload)
 {
-	if ((data->cb.fn != NULL) && (data->cb.mask & evt)) {
-		data->cb.fn(data->dev, evt, payload, data->cb.user_data);
+	struct modem_cellular_event_cb cb;
+
+	/* Take a consistent snapshot, then invoke outside the lock so callbacks may call the API. */
+	k_mutex_lock(&data->api_lock, K_FOREVER);
+	cb = data->cb;
+	k_mutex_unlock(&data->api_lock);
+
+	if ((cb.fn != NULL) && ((cb.mask & evt) != 0U)) {
+		cb.fn(data->dev, evt, payload, cb.user_data);
 	}
 }
 

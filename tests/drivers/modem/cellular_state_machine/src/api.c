@@ -21,6 +21,31 @@ static const struct device *const modem = DEVICE_DT_GET(DT_ALIAS(modem));
 #define INVALID_INFO_TYPE   ((enum cellular_modem_info_type)99)
 #define INVALID_ACCESS_TECH ((enum cellular_access_technology)99)
 
+static int callback_generation;
+
+static void replacement_callback(const struct device *dev, enum cellular_event event,
+				 const void *payload, void *user_data)
+{
+	ARG_UNUSED(dev);
+	ARG_UNUSED(event);
+	ARG_UNUSED(payload);
+	ARG_UNUSED(user_data);
+
+	callback_generation = 2;
+}
+
+static void replacing_callback(const struct device *dev, enum cellular_event event,
+			       const void *payload, void *user_data)
+{
+	ARG_UNUSED(event);
+	ARG_UNUSED(payload);
+	ARG_UNUSED(user_data);
+
+	callback_generation = 1;
+	zassert_ok(cellular_set_callback(dev, CELLULAR_EVENT_MODEM_SUSPENDED,
+					 replacement_callback, NULL));
+}
+
 /* An unknown signal type is rejected without querying the modem */
 ZTEST(modem_cellular_api, test_get_signal)
 {
@@ -58,6 +83,24 @@ ZTEST(modem_cellular_api, test_get_registration_status)
 					modem, CELLULAR_ACCESS_TECHNOLOGY_UNKNOWN, &status));
 	zassert_equal(-ENODATA, cellular_get_registration_status(modem, INVALID_ACCESS_TECH,
 								  &status));
+}
+
+/* Event delivery snapshots callbacks without holding the API lock while invoking them. */
+ZTEST(modem_cellular_api, test_callback_can_replace_itself)
+{
+	struct modem_cellular_data *data;
+
+	modem_restart(modem);
+	data = modem->data;
+	callback_generation = 0;
+	zassert_ok(cellular_set_callback(modem, CELLULAR_EVENT_MODEM_SUSPENDED,
+					 replacing_callback, NULL));
+
+	modem_cellular_emit_event(data, CELLULAR_EVENT_MODEM_SUSPENDED, NULL);
+	zassert_equal(1, callback_generation);
+	modem_cellular_emit_event(data, CELLULAR_EVENT_MODEM_SUSPENDED, NULL);
+	zassert_equal(2, callback_generation);
+	zassert_ok(cellular_set_callback(modem, 0, NULL, NULL));
 }
 
 /* Missing, empty and oversized APNs are rejected and leave the driver waiting for one */
