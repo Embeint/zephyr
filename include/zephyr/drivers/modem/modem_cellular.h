@@ -482,6 +482,21 @@ void modem_cellular_chat_callback_handler(struct modem_chat *chat,
 					  void *user_data);
 
 /**
+ * @brief Run check for script commands that need the modem registered.
+ *
+ * Pass it as the @c _run_check of @ref MODEM_CHAT_SCRIPT_CMD_RESP_COND and its variants in the
+ * scripts of a @ref modem_cellular_vendor_config, which requires
+ * @kconfig{CONFIG_MODEM_CHAT_COMMANDS_CONDITIONAL}. The command runs while the modem last
+ * reported itself registered, at home or roaming, with any access technology.
+ *
+ * @param user_data User data the driver runs its scripts with.
+ *
+ * @retval true Registered, the command is run.
+ * @retval false Not registered, the command is skipped.
+ */
+bool modem_cellular_run_check_registered(void *user_data);
+
+/**
  * @defgroup modem_driver_macros Cellular modem driver definition macros
  * @brief Define device instances that use the cellular modem driver.
  * @ingroup modem_cellular_backend

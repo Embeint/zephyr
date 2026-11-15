@@ -326,6 +326,11 @@ uint32_t modem_cellular_baudrate_update(struct modem_cellular_data *data,
 	return original_baudrate;
 }
 
+bool modem_cellular_run_check_registered(void *user_data)
+{
+	return modem_cellular_is_registered(user_data);
+}
+
 int modem_cellular_get_modem_info(const struct device *dev, enum cellular_modem_info_type type,
 				  char *info, size_t size)
 {
