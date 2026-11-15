@@ -177,6 +177,8 @@ enum cellular_event {
 	CELLULAR_EVENT_MODEM_FAILED = BIT(6),
 	/** The SIM status was found after the modem started */
 	CELLULAR_EVENT_SIM_STATUS_CHANGED = BIT(7),
+	/** The modem has started and is ready for commands. Not reported by every driver. */
+	CELLULAR_EVENT_MODEM_READY = BIT(8),
 };
 
 /* Opaque bit-mask large enough for all current & future events */
