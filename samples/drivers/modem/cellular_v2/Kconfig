@@ -1,0 +1,36 @@
+# Copyright (c) 2026 Embeint Inc
+# SPDX-License-Identifier: Apache-2.0
+
+mainmenu "Cellular modem state machine driver sample"
+
+config SAMPLE_REGISTRATION_TIMEOUT_S
+	int "Time to wait for network registration, in seconds"
+	default 120
+
+config SAMPLE_CONNECT_TIMEOUT_S
+	int "Time to wait for the data call, in seconds"
+	default 120
+	help
+	  Time allowed, after the network interface is brought up, for the
+	  modem to register and the data call to be connected.
+
+config SAMPLE_DNS_HOSTNAME
+	string "Hostname resolved over the data call"
+	default "zephyrproject.org"
+
+config SAMPLE_CONNECTED_TIME_S
+	int "Time the data call is kept up, in seconds"
+	default 10
+
+config SAMPLE_PPP_CHANNEL_CLOSE_TEST
+	bool "Open and close the PPP channel before the first call"
+	help
+	  Once the modem is ready, open the PPP channel, CMUX DLCI 2, and
+	  close it again without a call having been made on it, logging how
+	  long each takes, to show whether the modem answers the close.
+
+# The DNS query is made from the main thread
+configdefault MAIN_STACK_SIZE
+	default 2048
+
+source "Kconfig.zephyr"

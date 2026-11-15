@@ -1,0 +1,19 @@
+sample:
+  description: Power and LTE RF control with the cellular modem state machine driver
+  name: Cellular modem state machine driver
+common:
+  tags:
+    - cellular
+    - modem
+  filter: dt_alias_exists("modem")
+  harness: console
+  harness_config:
+    type: one_line
+    regex:
+      - "LTE RF requested, waiting for registration"
+tests:
+  sample.drivers.modem.cellular_v2:
+    platform_allow:
+      - nrf93m1dk/nrf54l15/cpuapp
+    integration_platforms:
+      - nrf93m1dk/nrf54l15/cpuapp
