@@ -107,6 +107,26 @@ enum cellular_modem_info_type {
 	CELLULAR_MODEM_INFO_SERIAL_NUMBER,
 };
 
+/** SIM status, as found once the modem has started */
+enum cellular_sim_status {
+	/** SIM status is unknown */
+	CELLULAR_SIM_STATUS_UNKNOWN,
+	/** SIM ready for use */
+	CELLULAR_SIM_STATUS_READY,
+	/** SIM locked, its PIN is required */
+	CELLULAR_SIM_STATUS_PIN_REQUIRED,
+	/** SIM blocked, its PUK is required */
+	CELLULAR_SIM_STATUS_PUK_REQUIRED,
+	/** Another code is required, e.g. a phone-to-SIM or network personalisation code */
+	CELLULAR_SIM_STATUS_LOCKED,
+	/** No SIM inserted */
+	CELLULAR_SIM_STATUS_NOT_INSERTED,
+	/** SIM failure, or the wrong SIM */
+	CELLULAR_SIM_STATUS_FAILURE,
+	/** SIM status not known within the time allowed, e.g. as no SIM is inserted */
+	CELLULAR_SIM_STATUS_TIMEOUT,
+};
+
 /** Cellular registration status (3GPP TS 27.007) */
 enum cellular_registration_status {
 	/** Not registered, not searching */
@@ -149,6 +169,8 @@ enum cellular_event {
 	CELLULAR_EVENT_MODEM_SUSPENDED = BIT(4),
 	/** eDRX configuration from the network has changed */
 	CELLULAR_EVENT_EDRX_PARAMETERS_CHANGED = BIT(5),
+	/** The SIM status was found after the modem started */
+	CELLULAR_EVENT_SIM_STATUS_CHANGED = BIT(6),
 };
 
 /* Opaque bit-mask large enough for all current & future events */
@@ -167,6 +189,11 @@ struct cellular_evt_registration_status {
 /** Payload for @ref CELLULAR_EVENT_MODEM_COMMS_CHECK_RESULT */
 struct cellular_evt_modem_comms_check_result {
 	bool success; /**< Communications to modem checked successfully */
+};
+
+/** Payload for @ref CELLULAR_EVENT_SIM_STATUS_CHANGED */
+struct cellular_evt_sim_status {
+	enum cellular_sim_status status; /**< SIM status */
 };
 
 /** E-UTRAN Global Cell Identifier (GCI) is a 28bit value */
