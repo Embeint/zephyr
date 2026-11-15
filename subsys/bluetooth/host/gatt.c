@@ -3723,7 +3723,15 @@ int bt_gatt_exchange_mtu(struct bt_conn *conn,
 		return -ENOTCONN;
 	}
 
-	/* This request shall only be sent once during a connection by the client. */
+	/* An exchange initiated by the peer is sufficient for both directions */
+	if (atomic_test_bit(conn->flags, BT_CONN_ATT_MTU_REQ_RECEIVED)) {
+		return -EALREADY;
+	}
+
+	/* This request shall only be sent once during a connection by the client.
+	 * The flag is cleared again if the request is not sent, which leaves
+	 * BT_CONN_ATT_MTU_REQ_RECEIVED untouched.
+	 */
 	if (atomic_test_and_set_bit(conn->flags, BT_CONN_ATT_MTU_EXCHANGED)) {
 		return -EALREADY;
 	}
