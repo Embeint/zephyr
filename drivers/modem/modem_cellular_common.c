@@ -496,8 +496,10 @@ int modem_cellular_store_registration(struct modem_cellular_data *data, char **a
 
 	/* This receives both +C*REG? read command answers and unsolicited notifications.
 	 * Their syntax differs in that the former has one more parameter, <n>, which is first.
+	 * A notification's <stat> is followed by a quoted area code, or by an empty one when a
+	 * later parameter such as the EMM cause is given without the location.
 	 */
-	if (argc >= 3 && argv[2][0] != '"') {
+	if (argc >= 3 && argv[2][0] != '"' && argv[2][0] != '\0') {
 		/* +CEREG: <n>,<stat>[,<tac>[...]] */
 		base = 2;
 	} else if (argc >= 2) {
@@ -514,7 +516,7 @@ int modem_cellular_store_registration(struct modem_cellular_data *data, char **a
 	 */
 	num_args = argc - base;
 	*status = atoi(argv[base]);
-	if (num_args >= 4) {
+	if ((num_args >= 4) && (argv[base + 3][0] != '\0')) {
 		data->access_tech = strtol(argv[base + 3], NULL, 10);
 	}
 	LOG_DBG("REG %d AcT %d", *status, data->access_tech);

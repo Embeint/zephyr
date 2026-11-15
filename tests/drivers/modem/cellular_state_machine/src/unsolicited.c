@@ -135,6 +135,27 @@ ZTEST(modem_cellular_unsolicited, test_read_answer_form)
 	zassert_equal(CELLULAR_REGISTRATION_REGISTERED_ROAMING, status, "status %d", status);
 }
 
+/* An EMM cause may follow <stat> without the location, which is then left empty */
+ZTEST(modem_cellular_unsolicited, test_cause_without_location)
+{
+	const struct modem_cellular_data *data = modem->data;
+	enum cellular_registration_status status;
+
+	modem_restart(modem);
+	advance_to(modem, BOOT_AWAIT_REGISTRATION);
+	listen_for_events(modem, CELLULAR_EVENT_REGISTRATION_STATUS_CHANGED);
+
+	notify("+CEREG: 3,,,,0,19\r");
+	expect_reg_status(CELLULAR_REGISTRATION_DENIED);
+	zassert_ok(cellular_get_registration_status(modem, CELLULAR_ACCESS_TECHNOLOGY_E_UTRAN,
+						    &status));
+	zassert_equal(CELLULAR_REGISTRATION_DENIED, status, "status %d", status);
+	zassert_equal(CELLULAR_ACCESS_TECHNOLOGY_UNKNOWN, data->access_tech,
+		      "empty access technology taken as %d", data->access_tech);
+
+	zassert_ok(cellular_set_callback(modem, 0, NULL, NULL));
+}
+
 /* The link stays up while any radio access technology is still registered */
 ZTEST(modem_cellular_unsolicited, test_other_rat_keeps_link)
 {
