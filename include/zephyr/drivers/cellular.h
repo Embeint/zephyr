@@ -155,6 +155,8 @@ enum cellular_event {
 	CELLULAR_EVENT_MODEM_SUSPENDED = BIT(4),
 	/** The data context used for the data call was reported activated or deactivated */
 	CELLULAR_EVENT_DATA_CONTEXT_CHANGED = BIT(5),
+	/** The modem could not be brought up, and has been powered down */
+	CELLULAR_EVENT_MODEM_FAILED = BIT(6),
 };
 
 /* Opaque bit-mask large enough for all current & future events */
@@ -178,6 +180,11 @@ struct cellular_evt_modem_comms_check_result {
 /** Payload for @ref CELLULAR_EVENT_DATA_CONTEXT_CHANGED */
 struct cellular_evt_data_context {
 	bool active; /**< Data context is active */
+};
+
+/** Payload for @ref CELLULAR_EVENT_MODEM_FAILED */
+struct cellular_evt_modem_failed {
+	int reason; /**< Negative errno value describing the failure */
 };
 
 /** E-UTRAN Global Cell Identifier (GCI) is a 28bit value */
