@@ -697,7 +697,7 @@ bool modem_cellular_needs_apn(const struct modem_cellular_data *data)
 	if (config->use_default_apn) {
 		return false;
 	}
-	return data->apn[0] == '\0';
+	return !data->apn_set;
 }
 
 void modem_cellular_init_apn(struct modem_cellular_data *data,
@@ -705,9 +705,9 @@ void modem_cellular_init_apn(struct modem_cellular_data *data,
 			     size_t abort_matches_size)
 {
 #ifdef CONFIG_MODEM_CELLULAR_APN
+	/* An empty APN in Kconfig leaves it to cellular_set_apn() */
 	if (strlen(CONFIG_MODEM_CELLULAR_APN) > 0) {
-		strncpy(data->apn, CONFIG_MODEM_CELLULAR_APN, sizeof(data->apn) - 1);
-		data->apn[sizeof(data->apn) - 1] = '\0';
+		modem_cellular_store_apn(data, CONFIG_MODEM_CELLULAR_APN);
 	}
 #endif
 
@@ -721,7 +721,7 @@ void modem_cellular_init_apn(struct modem_cellular_data *data,
 
 int modem_cellular_check_apn(const struct modem_cellular_data *data, const char *apn)
 {
-	if ((apn == NULL) || (*apn == '\0')) {
+	if (apn == NULL) {
 		return -EINVAL;
 	}
 
@@ -729,9 +729,16 @@ int modem_cellular_check_apn(const struct modem_cellular_data *data, const char 
 		return -EINVAL;
 	}
 
-	if (strcmp(apn, data->apn) == 0) {
+	if (data->apn_set && (strcmp(apn, data->apn) == 0)) {
 		return -EALREADY;
 	}
 
 	return 0;
+}
+
+void modem_cellular_store_apn(struct modem_cellular_data *data, const char *apn)
+{
+	strncpy(data->apn, apn, sizeof(data->apn) - 1);
+	data->apn[sizeof(data->apn) - 1] = '\0';
+	data->apn_set = true;
 }

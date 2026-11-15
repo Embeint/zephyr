@@ -103,7 +103,7 @@ ZTEST(modem_cellular_api, test_callback_can_replace_itself)
 	zassert_ok(cellular_set_callback(modem, 0, NULL, NULL));
 }
 
-/* Missing, empty and oversized APNs are rejected and leave the driver waiting for one */
+/* Missing and oversized APNs are rejected and leave the driver waiting for one */
 ZTEST(modem_cellular_api, test_set_apn_invalid)
 {
 	/* One character more than the driver stores, with its terminator */
@@ -116,7 +116,6 @@ ZTEST(modem_cellular_api, test_set_apn_invalid)
 	memset(apn, 'a', MODEM_CELLULAR_DATA_APN_LEN);
 	apn[MODEM_CELLULAR_DATA_APN_LEN] = '\0';
 	zassert_equal(-EINVAL, cellular_set_apn(modem, NULL));
-	zassert_equal(-EINVAL, cellular_set_apn(modem, ""));
 	zassert_equal(-EINVAL, cellular_set_apn(modem, apn), "APN of %zu accepted", strlen(apn));
 	expect_no_line(K_MSEC(100));
 
@@ -125,6 +124,16 @@ ZTEST(modem_cellular_api, test_set_apn_invalid)
 	zassert_ok(cellular_set_apn(modem, apn));
 	snprintf(cmd, sizeof(cmd), "AT+CGDCONT=1,\"IP\",\"%s\"", apn);
 	expect_line(TEST_BACKEND_PIPE_DLCI1, cmd);
+}
+
+/* An empty APN is configured as such, for the network to select the default APN */
+ZTEST(modem_cellular_api, test_set_apn_empty)
+{
+	modem_restart(modem);
+	advance_to(modem, BOOT_AWAIT_APN);
+
+	zassert_ok(cellular_set_apn(modem, ""));
+	expect_line(TEST_BACKEND_PIPE_DLCI1, "AT+CGDCONT=1,\"IP\",\"\"");
 }
 
 /* Once configured, the APN cannot be set again or changed while connected */

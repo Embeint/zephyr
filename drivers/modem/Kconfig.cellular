@@ -96,7 +96,9 @@ config MODEM_CELLULAR_APN
 	default "internet"
 	help
 	  If left empty the driver will wait for the application to call
-	  cellular_set_apn() before it proceeds to the dial phase.
+	  cellular_set_apn() before it proceeds to the dial phase. An empty
+	  APN set with cellular_set_apn() has the network select the default
+	  APN of the subscription, as the zephyr,use-default-apn property does.
 
 config MODEM_CELLULAR_PERIODIC_SCRIPT_MS
 	int "Periodic script interval in milliseconds"

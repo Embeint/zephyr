@@ -2479,8 +2479,7 @@ static int modem_cellular_set_apn(const struct device *dev, const char *apn)
 		goto out;
 	}
 
-	strncpy(data->apn, apn, MODEM_CELLULAR_DATA_APN_LEN - 1);
-	data->apn[MODEM_CELLULAR_DATA_APN_LEN - 1] = '\0';
+	modem_cellular_store_apn(data, apn);
 
 	/* Wake the state-machine if it is parked in WAIT_FOR_APN */
 	modem_cellular_delegate_event(data, MODEM_CELLULAR_EVENT_APN_SET);
@@ -2701,6 +2700,7 @@ void modem_cellular_ztest_halt(const struct device *dev)
 	data->state = MODEM_CELLULAR_STATE_IDLE;
 	data->original_baudrate = 0;
 	data->apn[0] = '\0';
+	data->apn_set = false;
 	data->recovery_count = 0;
 	data->script_failure_counter = 0;
 	atomic_clear(&data->periodic_paused);

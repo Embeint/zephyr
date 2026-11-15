@@ -145,6 +145,8 @@ struct modem_cellular_data {
 	uint8_t manufacturer[MODEM_CELLULAR_DATA_MANUFACTURER_LEN];
 	uint8_t fw_version[MODEM_CELLULAR_DATA_FW_VERSION_LEN];
 	uint8_t apn[MODEM_CELLULAR_DATA_APN_LEN];
+	/* An APN has been set, which may be empty to use the default APN of the subscription */
+	bool apn_set;
 
 	struct modem_chat_script_chat apn_chats[MODEM_CELLULAR_MAX_APN_CMDS];
 	struct modem_chat_script apn_script;

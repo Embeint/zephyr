@@ -97,7 +97,13 @@ void modem_cellular_init_apn(struct modem_cellular_data *data,
 /* Build the APN script from the current APN */
 void modem_cellular_build_apn_script(struct modem_cellular_data *data);
 
-/* Validate @p apn as a new APN: -EINVAL if empty or too long, -EALREADY if unchanged */
+/*
+ * Validate @p apn as a new APN: -EINVAL if NULL or too long, -EALREADY if unchanged. An empty
+ * APN is valid, and has the network select the default APN of the subscription.
+ */
 int modem_cellular_check_apn(const struct modem_cellular_data *data, const char *apn);
+
+/* Store @p apn, validated with modem_cellular_check_apn(), as the APN in use */
+void modem_cellular_store_apn(struct modem_cellular_data *data, const char *apn);
 
 #endif /* ZEPHYR_DRIVERS_MODEM_MODEM_CELLULAR_COMMON_H_ */
