@@ -49,10 +49,6 @@ LOG_MODULE_REGISTER(modem_cellular, CONFIG_MODEM_LOG_LEVEL);
 
 BUILD_ASSERT(sizeof(enum modem_cellular_event) == 1, "Event enum expanded");
 
-#ifdef CONFIG_MODEM_CELLULAR_APN
-BUILD_ASSERT(sizeof(CONFIG_MODEM_CELLULAR_APN) - 1 < MODEM_CELLULAR_DATA_APN_LEN,
-			"CONFIG_MODEM_CELLULAR_APN too long for data->apn");
-#endif
 
 static void modem_cellular_enter_state(struct modem_cellular_data *data,
 				       enum modem_cellular_state state);
@@ -198,16 +194,6 @@ static bool modem_cellular_has_network_script(const struct modem_cellular_config
 	return config->vendor->common->scripts.network != NULL;
 }
 
-static bool modem_cellular_needs_apn(const struct modem_cellular_data *data)
-{
-	const struct modem_cellular_config *config = data->dev->config;
-
-	if (config->use_default_apn) {
-		return false;
-	}
-	return data->apn[0] == '\0';
-}
-
 static void modem_cellular_enter_state_network_or_dial(struct modem_cellular_data *data)
 {
 	const struct modem_cellular_config *config = data->dev->config;
@@ -298,12 +284,6 @@ void modem_cellular_chat_on_modem_ready(struct modem_chat *chat, char **argv, ui
 }
 
 
-/* Whether a data call can be made: registered, or with the data context active per +CGEV */
-static bool modem_cellular_is_attached(struct modem_cellular_data *data)
-{
-	return modem_cellular_is_registered(data) || data->pdn_active;
-}
-
 #if defined(CONFIG_MODEM_CELLULAR_STATS)
 static void modem_cellular_stats_on_reg_transition(struct modem_cellular_data *data,
 						   bool was_registered, bool is_registered)
@@ -387,73 +367,19 @@ void modem_cellular_chat_on_cxreg(struct modem_chat *chat, char **argv, uint16_t
 	modem_cellular_emit_reg_state(data, registration_status);
 }
 
-/* Context ID in a +CGEV parameter, or -1 when the parameter is empty or not numeric */
-static int modem_cellular_cgev_parse_cid(const char *param)
-{
-	char *end;
-	long cid = strtol(param, &end, 10);
-
-	return ((end == param) || (cid < 0)) ? -1 : (int)cid;
-}
-
-/* Context ID of a +CGEV ACT or DEACT event, or -1 when the event does not carry one */
-static int modem_cellular_cgev_cid(char **argv, uint16_t argc)
-{
-	/* The last word of the event is <cid>, <p_cid> or <PDP_type> */
-	const char *param = strrchr(argv[1], ' ');
-
-	if (param == NULL) {
-		return -1;
-	}
-	param++;
-
-	if ((*param < '0') || (*param > '9')) {
-		/* DEACT <PDP_type>, <PDP_addr>, [<cid>], the <cid> only given if known to the MT */
-		return (argc > 3) ? modem_cellular_cgev_parse_cid(argv[3]) : -1;
-	}
-	if (strstr(argv[1], "PDN") != NULL) {
-		/* PDN ACT <cid> or PDN DEACT <cid> */
-		return modem_cellular_cgev_parse_cid(param);
-	}
-	/* ACT <p_cid>, <cid>, <event_type> or DEACT <p_cid>, <cid>, <event_type> */
-	return (argc > 2) ? modem_cellular_cgev_parse_cid(argv[2]) : -1;
-}
-
 void modem_cellular_chat_on_cgev(struct modem_chat *chat, char **argv, uint16_t argc,
 				 void *user_data)
 {
 	struct modem_cellular_data *data = (struct modem_cellular_data *)user_data;
-	const struct modem_cellular_config *config = data->dev->config;
-	/* The modem dials the default context itself, otherwise the driver dials its own */
-	const int data_cid =
-		config->use_default_pdp_context ? 0 : CONFIG_MODEM_CELLULAR_PDP_CONTEXT_ID;
 	bool connected;
-	int cid;
+	int ret;
 
-	if ((argc < 2) || (strcmp(argv[0], "+CGEV: ") != 0)) {
+	ret = modem_cellular_parse_cgev(data, argv, argc, &connected);
+	if (ret < 0) {
 		return;
 	}
-	/* See 3GPP TS 27.007 for +CGEV syntax
-	 *
-	 * Any of the following means PDN connected:
-	 * +CGEV: NW PDN ACT <cid>
-	 * +CGEV: ME PDN ACT <cid>[,<reason>[,<cid_other>]]
-	 * +CGEV: NW ACT <p_cid>, <cid>, <event_type>
-	 * +CGEV: ME ACT <p_cid>, <cid>, <event_type>
-	 *
-	 * Any of the following means PDN disconnected:
-	 * +CGEV: NW DETACH
-	 * +CGEV: ME DETACH
-	 * +CGEV: NW DEACT <PDP_type>, <PDP_addr>, [<cid>]
-	 * +CGEV: ME DEACT <PDP_type>, <PDP_addr>, [<cid>]
-	 * +CGEV: NW PDN DEACT <cid>
-	 * +CGEV: ME PDN DEACT <cid>
-	 * +CGEV: NW DEACT <p_cid>, <cid>, <event_type>
-	 * +CGEV: ME DEACT <p_cid>, <cid>, <event_type>
-	 */
 
-	/* argv[0] is the match, the event up to the first ',' follows in argv[1] */
-	if (strstr(argv[1], "DETACH") != NULL) {
+	if (ret == 1) {
 		IF_ENABLED(CONFIG_MODEM_CELLULAR_STATS,
 			   (const bool was_registered = modem_cellular_is_registered(data)));
 
@@ -466,18 +392,6 @@ void modem_cellular_chat_on_cgev(struct modem_chat *chat, char **argv, uint16_t 
 		IF_ENABLED(CONFIG_MODEM_CELLULAR_STATS,
 			   (modem_cellular_stats_on_reg_transition(
 				   data, was_registered, modem_cellular_is_registered(data))));
-		connected = false;
-	} else if ((strstr(argv[1], " ACT") != NULL) || (strstr(argv[1], "DEACT") != NULL)) {
-		cid = modem_cellular_cgev_cid(argv, argc);
-		/* Events for other contexts do not affect the data call. An event without a
-		 * <cid> may be for the data call, so it is assumed to be.
-		 */
-		if ((cid >= 0) && (cid != data_cid)) {
-			return;
-		}
-		connected = (strstr(argv[1], " ACT") != NULL);
-	} else {
-		return;
 	}
 
 	/* Retained, as the states that ignore the events below still need it on leaving */
@@ -495,7 +409,7 @@ void modem_cellular_chat_on_cgev(struct modem_chat *chat, char **argv, uint16_t 
 	}
 }
 
-MODEM_CHAT_MATCH_DEFINE(ok_match, "OK", "", NULL);
+MODEM_CHAT_MATCH_DEFINE(ok_match __maybe_unused, "OK", "", NULL);
 MODEM_CHAT_MATCHES_DEFINE(__maybe_unused allow_match,
 			  MODEM_CHAT_MATCH("OK", "", NULL),
 			  MODEM_CHAT_MATCH("ERROR", "", NULL));
@@ -526,57 +440,6 @@ MODEM_CHAT_MATCHES_DEFINE(__maybe_unused dial_abort_matches,
 			  MODEM_CHAT_MATCH("NO ANSWER", "", NULL),
 			  MODEM_CHAT_MATCH("NO CARRIER", "", NULL),
 			  MODEM_CHAT_MATCH("NO DIALTONE", "", NULL));
-
-static int append_apn_cmd(struct modem_cellular_data *data, uint8_t *steps, const char *fmt,
-			  const char *apn_value)
-{
-	int n;
-
-	if (*steps >= MODEM_CELLULAR_MAX_APN_CMDS) {
-		return -ENOMEM;
-	}
-
-	n = snprintk(data->apn_buf[*steps], MODEM_CELLULAR_APN_BUF_SIZE, fmt, apn_value);
-
-	if (n < 0 || n >= MODEM_CELLULAR_APN_BUF_SIZE) {
-		return -ENOMEM;
-	}
-
-	/* Fill the matching chat entry */
-	modem_chat_script_chat_init(&data->apn_chats[*steps]);
-	modem_chat_script_chat_set_request(&data->apn_chats[*steps], data->apn_buf[*steps]);
-	modem_chat_script_chat_set_response_matches(&data->apn_chats[*steps], &ok_match, 1);
-
-	(*steps)++;
-	return 0;
-}
-
-static void modem_cellular_build_apn_script(struct modem_cellular_data *data)
-{
-	const struct modem_cellular_config *config = data->dev->config;
-	uint8_t steps = 0;
-	const char *apn_value = data->apn;
-
-	if (config->use_default_apn) {
-		/* Omit the APN name AT+CGDCONT=<cid>,"IP","" */
-		apn_value = "";
-	}
-	append_apn_cmd(data, &steps,
-		       "AT+CGDCONT=" STRINGIFY(CONFIG_MODEM_CELLULAR_PDP_CONTEXT_ID)
-		       ",\"IP\",\"%s\"",
-		       apn_value);
-
-	/* Vendor‑specific extras */
-#if DT_HAS_COMPAT_STATUS_OKAY(swir_hl7800)
-	append_apn_cmd(data, &steps,
-		       "AT+KCNXCFG=" STRINGIFY(CONFIG_MODEM_CELLULAR_PDP_CONTEXT_ID)
-		       ",\"GPRS\",\"%s\",,,\"IPV4\"",
-		       apn_value);
-#endif
-
-	/* Glue the array into the script object */
-	modem_chat_script_set_script_chats(&data->apn_script, data->apn_chats, steps);
-}
 
 static void modem_cellular_log_state_changed(enum modem_cellular_state last_state,
 					     enum modem_cellular_state new_state)
@@ -2602,20 +2465,12 @@ static int modem_cellular_get_signal(const struct device *dev,
 static int modem_cellular_set_apn(const struct device *dev, const char *apn)
 {
 	struct modem_cellular_data *data = dev->data;
-	int ret = 0;
-
-	if ((apn == NULL) || (*apn == '\0')) {
-		return -EINVAL;
-	}
-
-	if (strlen(apn) >= MODEM_CELLULAR_DATA_APN_LEN) {
-		return -EINVAL;
-	}
+	int ret;
 
 	k_mutex_lock(&data->api_lock, K_FOREVER);
 
-	if (strcmp(apn, data->apn) == 0) {
-		ret = -EALREADY;
+	ret = modem_cellular_check_apn(data, apn);
+	if (ret < 0) {
 		goto out;
 	}
 
@@ -2860,25 +2715,6 @@ void modem_cellular_ztest_halt(const struct device *dev)
 }
 #endif /* CONFIG_ZTEST && !CONFIG_MODEM_BACKEND_UART */
 
-static void modem_cellular_init_apn(struct modem_cellular_data *data)
-{
-#ifdef CONFIG_MODEM_CELLULAR_APN
-	if (strlen(CONFIG_MODEM_CELLULAR_APN) > 0) {
-		strncpy(data->apn, CONFIG_MODEM_CELLULAR_APN, sizeof(data->apn) - 1);
-		data->apn[sizeof(data->apn) - 1] = '\0';
-	}
-#endif
-
-	modem_chat_script_init(&data->apn_script);
-	modem_chat_script_set_name(&data->apn_script, "modem_celullar_set_apn");
-	modem_chat_script_set_abort_matches(&data->apn_script,
-					    abort_matches,
-					    ARRAY_SIZE(abort_matches));
-	modem_chat_script_set_timeout(&data->apn_script, 1);
-	modem_chat_script_set_callback(&data->apn_script,
-				       modem_cellular_chat_callback_handler);
-}
-
 int modem_cellular_init(const struct device *dev)
 {
 	struct modem_cellular_data *data = (struct modem_cellular_data *)dev->data;
@@ -3071,7 +2907,7 @@ int modem_cellular_init(const struct device *dev)
 	}
 #endif
 
-	modem_cellular_init_apn(data);
+	modem_cellular_init_apn(data, abort_matches, ARRAY_SIZE(abort_matches));
 
 	return pm_device_driver_init(dev, modem_cellular_pm_action);
 }

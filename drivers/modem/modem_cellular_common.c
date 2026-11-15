@@ -533,3 +533,198 @@ int modem_cellular_store_registration(struct modem_cellular_data *data, char **a
 	*stored = *status;
 	return 0;
 }
+
+/* Whether a data call can be made: registered, or with the data context active per +CGEV */
+bool modem_cellular_is_attached(const struct modem_cellular_data *data)
+{
+	return modem_cellular_is_registered(data) || data->pdn_active;
+}
+
+/* Context ID in a +CGEV parameter, or -1 when the parameter is empty or not numeric */
+static int modem_cellular_cgev_parse_cid(const char *param)
+{
+	char *end;
+	long cid = strtol(param, &end, 10);
+
+	return ((end == param) || (cid < 0)) ? -1 : (int)cid;
+}
+
+/* Context ID of a +CGEV ACT or DEACT event, or -1 when the event does not carry one */
+static int modem_cellular_cgev_cid(char **argv, uint16_t argc)
+{
+	/* The last word of the event is <cid>, <p_cid> or <PDP_type> */
+	const char *param = strrchr(argv[1], ' ');
+
+	if (param == NULL) {
+		return -1;
+	}
+	param++;
+
+	if ((*param < '0') || (*param > '9')) {
+		/* DEACT <PDP_type>, <PDP_addr>, [<cid>], the <cid> only given if known to the MT */
+		return (argc > 3) ? modem_cellular_cgev_parse_cid(argv[3]) : -1;
+	}
+	if (strstr(argv[1], "PDN") != NULL) {
+		/* PDN ACT <cid> or PDN DEACT <cid> */
+		return modem_cellular_cgev_parse_cid(param);
+	}
+	/* ACT <p_cid>, <cid>, <event_type> or DEACT <p_cid>, <cid>, <event_type> */
+	return (argc > 2) ? modem_cellular_cgev_parse_cid(argv[2]) : -1;
+}
+
+int modem_cellular_parse_cgev(const struct modem_cellular_data *data, char **argv, uint16_t argc,
+			      bool *connected)
+{
+	const struct modem_cellular_config *config = data->dev->config;
+	/* The modem dials the default context itself, otherwise the driver dials its own */
+	const int data_cid =
+		config->use_default_pdp_context ? 0 : CONFIG_MODEM_CELLULAR_PDP_CONTEXT_ID;
+	int cid;
+
+	if ((argc < 2) || (strcmp(argv[0], "+CGEV: ") != 0)) {
+		return -EINVAL;
+	}
+	/* See 3GPP TS 27.007 for +CGEV syntax
+	 *
+	 * Any of the following means PDN connected:
+	 * +CGEV: NW PDN ACT <cid>
+	 * +CGEV: ME PDN ACT <cid>[,<reason>[,<cid_other>]]
+	 * +CGEV: NW ACT <p_cid>, <cid>, <event_type>
+	 * +CGEV: ME ACT <p_cid>, <cid>, <event_type>
+	 *
+	 * Any of the following means PDN disconnected:
+	 * +CGEV: NW DETACH
+	 * +CGEV: ME DETACH
+	 * +CGEV: NW DEACT <PDP_type>, <PDP_addr>, [<cid>]
+	 * +CGEV: ME DEACT <PDP_type>, <PDP_addr>, [<cid>]
+	 * +CGEV: NW PDN DEACT <cid>
+	 * +CGEV: ME PDN DEACT <cid>
+	 * +CGEV: NW DEACT <p_cid>, <cid>, <event_type>
+	 * +CGEV: ME DEACT <p_cid>, <cid>, <event_type>
+	 */
+
+	/* argv[0] is the match, the event up to the first ',' follows in argv[1] */
+	if (strstr(argv[1], "DETACH") != NULL) {
+		/* Detaching from the packet domain ends every context */
+		*connected = false;
+		return 1;
+	}
+
+	if ((strstr(argv[1], " ACT") != NULL) || (strstr(argv[1], "DEACT") != NULL)) {
+		cid = modem_cellular_cgev_cid(argv, argc);
+		/* Events for other contexts do not affect the data call. An event without a
+		 * <cid> may be for the data call, so it is assumed to be.
+		 */
+		if ((cid >= 0) && (cid != data_cid)) {
+			return -ENOENT;
+		}
+		*connected = (strstr(argv[1], " ACT") != NULL);
+		return 0;
+	}
+
+	return -ENOENT;
+}
+
+#ifdef CONFIG_MODEM_CELLULAR_APN
+BUILD_ASSERT(sizeof(CONFIG_MODEM_CELLULAR_APN) - 1 < MODEM_CELLULAR_DATA_APN_LEN,
+	     "CONFIG_MODEM_CELLULAR_APN too long for data->apn");
+#endif
+
+MODEM_CHAT_MATCH_DEFINE(apn_ok_match, "OK", "", NULL);
+
+static int append_apn_cmd(struct modem_cellular_data *data, uint8_t *steps, const char *fmt,
+			  const char *apn_value)
+{
+	int n;
+
+	if (*steps >= MODEM_CELLULAR_MAX_APN_CMDS) {
+		return -ENOMEM;
+	}
+
+	n = snprintk(data->apn_buf[*steps], MODEM_CELLULAR_APN_BUF_SIZE, fmt, apn_value);
+
+	if (n < 0 || n >= MODEM_CELLULAR_APN_BUF_SIZE) {
+		return -ENOMEM;
+	}
+
+	/* Fill the matching chat entry */
+	modem_chat_script_chat_init(&data->apn_chats[*steps]);
+	modem_chat_script_chat_set_request(&data->apn_chats[*steps], data->apn_buf[*steps]);
+	modem_chat_script_chat_set_response_matches(&data->apn_chats[*steps], &apn_ok_match, 1);
+
+	(*steps)++;
+	return 0;
+}
+
+void modem_cellular_build_apn_script(struct modem_cellular_data *data)
+{
+	const struct modem_cellular_config *config = data->dev->config;
+	uint8_t steps = 0;
+	const char *apn_value = data->apn;
+
+	if (config->use_default_apn) {
+		/* Omit the APN name AT+CGDCONT=<cid>,"IP","" */
+		apn_value = "";
+	}
+	append_apn_cmd(data, &steps,
+		       "AT+CGDCONT=" STRINGIFY(CONFIG_MODEM_CELLULAR_PDP_CONTEXT_ID)
+		       ",\"IP\",\"%s\"",
+		       apn_value);
+
+	/* Vendor‑specific extras */
+#if DT_HAS_COMPAT_STATUS_OKAY(swir_hl7800)
+	append_apn_cmd(data, &steps,
+		       "AT+KCNXCFG=" STRINGIFY(CONFIG_MODEM_CELLULAR_PDP_CONTEXT_ID)
+		       ",\"GPRS\",\"%s\",,,\"IPV4\"",
+		       apn_value);
+#endif
+
+	/* Glue the array into the script object */
+	modem_chat_script_set_script_chats(&data->apn_script, data->apn_chats, steps);
+}
+
+bool modem_cellular_needs_apn(const struct modem_cellular_data *data)
+{
+	const struct modem_cellular_config *config = data->dev->config;
+
+	if (config->use_default_apn) {
+		return false;
+	}
+	return data->apn[0] == '\0';
+}
+
+void modem_cellular_init_apn(struct modem_cellular_data *data,
+			     const struct modem_chat_match *abort_matches,
+			     size_t abort_matches_size)
+{
+#ifdef CONFIG_MODEM_CELLULAR_APN
+	if (strlen(CONFIG_MODEM_CELLULAR_APN) > 0) {
+		strncpy(data->apn, CONFIG_MODEM_CELLULAR_APN, sizeof(data->apn) - 1);
+		data->apn[sizeof(data->apn) - 1] = '\0';
+	}
+#endif
+
+	modem_chat_script_init(&data->apn_script);
+	modem_chat_script_set_name(&data->apn_script, "modem_cellular_set_apn");
+	modem_chat_script_set_abort_matches(&data->apn_script, abort_matches, abort_matches_size);
+	modem_chat_script_set_timeout(&data->apn_script, 1);
+	modem_chat_script_set_callback(&data->apn_script,
+				       modem_cellular_chat_callback_handler);
+}
+
+int modem_cellular_check_apn(const struct modem_cellular_data *data, const char *apn)
+{
+	if ((apn == NULL) || (*apn == '\0')) {
+		return -EINVAL;
+	}
+
+	if (strlen(apn) >= MODEM_CELLULAR_DATA_APN_LEN) {
+		return -EINVAL;
+	}
+
+	if (strcmp(apn, data->apn) == 0) {
+		return -EALREADY;
+	}
+
+	return 0;
+}

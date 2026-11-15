@@ -38,6 +38,21 @@ bool modem_cellular_status_is_registered(enum cellular_registration_status statu
 /* Whether any access technology is registered, at home or roaming */
 bool modem_cellular_is_registered(const struct modem_cellular_data *data);
 
+/* Whether registered, or with the data context active per +CGEV */
+bool modem_cellular_is_attached(const struct modem_cellular_data *data);
+
+/*
+ * Parse a +CGEV event into whether the data context is connected.
+ *
+ * @retval 0 Event for the data context, @p connected set.
+ * @retval 1 Detach from the packet domain, which ends every context and the packet domain
+ *         registration, @p connected set to false.
+ * @retval -ENOENT Event for another context, or not about contexts.
+ * @retval -EINVAL Not a +CGEV event.
+ */
+int modem_cellular_parse_cgev(const struct modem_cellular_data *data, char **argv, uint16_t argc,
+			      bool *connected);
+
 /* Forget the registration of every access technology */
 void modem_cellular_clear_registration_status(struct modem_cellular_data *data);
 
@@ -70,5 +85,19 @@ int modem_cellular_get_network_status(const struct device *dev,
 
 int modem_cellular_set_callback(const struct device *dev, cellular_event_mask_t mask,
 				cellular_event_cb_t cb, void *user_data);
+
+/* Whether an APN must be set before the data context can be configured */
+bool modem_cellular_needs_apn(const struct modem_cellular_data *data);
+
+/* Set the APN from CONFIG_MODEM_CELLULAR_APN and initialize the APN script */
+void modem_cellular_init_apn(struct modem_cellular_data *data,
+			     const struct modem_chat_match *abort_matches,
+			     size_t abort_matches_size);
+
+/* Build the APN script from the current APN */
+void modem_cellular_build_apn_script(struct modem_cellular_data *data);
+
+/* Validate @p apn as a new APN: -EINVAL if empty or too long, -EALREADY if unchanged */
+int modem_cellular_check_apn(const struct modem_cellular_data *data, const char *apn);
 
 #endif /* ZEPHYR_DRIVERS_MODEM_MODEM_CELLULAR_COMMON_H_ */
