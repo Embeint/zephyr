@@ -69,11 +69,50 @@ bool test_backend_has_network_script(const struct device *modem);
 bool test_backend_has_dlci_setup_script(const struct device *modem);
 bool test_backend_has_periodic_script(const struct device *modem);
 
+/* Whether @p modem runs a script once the SIM is ready, only with MODEM_CELLULAR_V2 */
+bool test_backend_has_sim_ready_script(const struct device *modem);
+
 /* Whether the init script of @p modem queries every modem info string */
 bool test_backend_has_modem_info_script(const struct device *modem);
 
 /* Whether @p modem dials the default PDP context, skipping the APN */
 bool test_backend_uses_default_pdp_context(const struct device *modem);
+
+/* Make the next UART backend initialization fail. */
+void test_backend_uart_init_fail_once(void);
+
+/* Make the next operation on @p pipe fail synchronously. */
+void test_backend_pipe_fail_next_open(enum test_backend_pipe_id pipe);
+void test_backend_pipe_fail_next_close(enum test_backend_pipe_id pipe);
+
+/* Make the next open of @p pipe finish with a closed notification. */
+void test_backend_pipe_close_next_open(enum test_backend_pipe_id pipe);
+
+/* Leave the next open of @p pipe pending, the pipe still closed, until
+ * test_backend_pipe_open_finish(). Later opens complete as usual, so the pending open can
+ * complete after one the driver retried.
+ */
+void test_backend_pipe_open_hold(enum test_backend_pipe_id pipe);
+
+/* Wait for the driver to start the open held by test_backend_pipe_open_hold(). */
+bool test_backend_pipe_wait_for_open(enum test_backend_pipe_id pipe, k_timeout_t timeout);
+
+/* Complete the pending open of @p pipe. */
+void test_backend_pipe_open_finish(enum test_backend_pipe_id pipe);
+
+/* Leave the next close of @p pipe pending, the pipe still open, until
+ * test_backend_pipe_close_finish().
+ */
+void test_backend_pipe_close_hold(enum test_backend_pipe_id pipe);
+
+/* Wait for the driver to start the close held by test_backend_pipe_close_hold(). */
+bool test_backend_pipe_wait_for_close(enum test_backend_pipe_id pipe, k_timeout_t timeout);
+
+/* Complete the pending close of @p pipe. */
+void test_backend_pipe_close_finish(enum test_backend_pipe_id pipe);
+
+/* Close an open pipe as if its transport failed. */
+void test_backend_pipe_disconnect(enum test_backend_pipe_id pipe);
 
 /* Wait for the next complete line sent by the driver. */
 bool test_backend_wait_for_line(struct test_backend_line *line, k_timeout_t timeout);
@@ -95,6 +134,9 @@ bool test_backend_wait_for_cmux_connect(k_timeout_t timeout);
  * answered when @p connected is false.
  */
 void test_backend_cmux_connect_finish(bool connected);
+
+/* Number of times the driver disconnected a connected CMUX since test_backend_reset() */
+int test_backend_cmux_disconnects(void);
 
 /* Close the UART under the CMUX, as its power saving does with close_pipe_on_power_save */
 void test_backend_cmux_power_save(void);

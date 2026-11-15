@@ -63,7 +63,7 @@ ZTEST(modem_cellular_modem_info, test_reported_during_init)
 					 info_event_handler, NULL));
 
 	modem_restart(modem_info);
-	advance_to(modem_info, BOOT_DLCI1_SETUP);
+	advance_to(modem_info, BOOT_CMUX_CONNECTED);
 
 	for (size_t i = 0; i < ARRAY_SIZE(expected_events); i++) {
 		zassert_ok(k_msgq_get(&info_events, &field, K_NO_WAIT),
@@ -88,7 +88,7 @@ ZTEST(modem_cellular_modem_info, test_truncated)
 	char buf[4];
 
 	modem_restart(modem_info);
-	advance_to(modem_info, BOOT_DLCI1_SETUP);
+	advance_to(modem_info, BOOT_CMUX_CONNECTED);
 
 	zassert_ok(cellular_get_modem_info(modem_info, CELLULAR_MODEM_INFO_IMEI, buf, sizeof(buf)));
 	zassert_str_equal("352", buf);

@@ -1,0 +1,21 @@
+# Copyright (c) 2026 Embeint Inc
+# SPDX-License-Identifier: Apache-2.0
+
+common:
+  tags:
+    - drivers
+    - modem
+  platform_allow:
+    - native_sim
+  integration_platforms:
+    - native_sim
+tests:
+  drivers.modem.cellular.v2:
+    extra_configs:
+      # Extra logging on one scenario for driver coverage
+      - CONFIG_MODEM_LOG_LEVEL_DBG=y
+  drivers.modem.cellular.v2.dedicated_workqueue:
+    extra_configs:
+      # The driver and the modem modules then share a workqueue other than the system one
+      - CONFIG_MODEM_DEDICATED_WORKQUEUE=y
+      - CONFIG_MODEM_DEDICATED_WORKQUEUE_STACK_SIZE=4096

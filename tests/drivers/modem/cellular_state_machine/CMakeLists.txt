@@ -2,17 +2,20 @@
 # SPDX-License-Identifier: Apache-2.0
 
 cmake_minimum_required(VERSION 3.28.0)
+# The test driver binding is shared with the MODEM_CELLULAR_V2 tests
+list(APPEND DTS_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../cellular_common)
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(modem_cellular_state_machine_test)
 
+set(common ${CMAKE_CURRENT_SOURCE_DIR}/../cellular_common)
 target_sources(app PRIVATE
-  driver/modem_cellular_test.c
-  src/common/stubs.c
-  src/common/test_helpers.c
+  ${common}/driver/modem_cellular_test.c
+  ${common}/src/stubs.c
+  ${common}/src/test_helpers.c
 )
 target_include_directories(app PRIVATE
-  driver
-  src/common
+  ${common}/driver
+  ${common}/src
   ${ZEPHYR_BASE}/subsys/modem
 )
 

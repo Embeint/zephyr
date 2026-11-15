@@ -115,7 +115,7 @@ ZTEST(modem_cellular_script_errors, test_init_recovers)
 
 	expect_line(TEST_BACKEND_PIPE_UART, MODEM_CELLULAR_TEST_INIT_CMD);
 	ok(TEST_BACKEND_PIPE_UART);
-	expect_line(TEST_BACKEND_PIPE_DLCI1, MODEM_CELLULAR_TEST_DLCI_SETUP_CMD);
+	expect_state(modem, TEST_BACKEND_STATE_CMUX);
 }
 
 ZTEST(modem_cellular_script_errors, test_init_exhausts_recoveries)

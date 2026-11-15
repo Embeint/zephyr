@@ -17,6 +17,7 @@
 #include <zephyr/net/ppp.h>
 #include <zephyr/drivers/modem/modem_cellular.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/pm/device_runtime.h>
 #include <zephyr/sys/ring_buffer.h>
 #include <zephyr/ztest.h>
 
@@ -42,6 +43,17 @@ struct test_pipe {
 	uint8_t rx_buf[512];
 	enum test_backend_pipe_id id;
 	bool open;
+	bool fail_next_open;
+	bool fail_next_close;
+	bool close_next_open;
+	/* Leave the next open pending until test_backend_pipe_open_finish() */
+	bool hold_next_open;
+	/* An open is pending, later opens completing as usual */
+	atomic_t open_held;
+	/* Leave the next close pending until test_backend_pipe_close_finish() */
+	bool hold_next_close;
+	/* A close is pending, the pipe still open */
+	atomic_t close_held;
 	char line[128];
 	size_t line_len;
 };
@@ -54,12 +66,15 @@ struct test_backend {
 	bool set_baudrate_script;
 	bool network_script;
 	bool dlci_setup_script;
+	bool sim_ready_script;
 	bool periodic_script;
 	bool modem_info_script;
 	bool default_pdp_context;
 	struct modem_cmux *cmux;
 	bool cmux_connecting;
 	bool cmux_connected;
+	/* CMUX disconnects of a connected CMUX, as the modem sees them */
+	atomic_t cmux_disconnects;
 	struct modem_ppp *ppp;
 	struct test_pipe uart_pipe;
 	struct test_pipe dlci1_pipe;
@@ -97,6 +112,7 @@ K_MSGQ_DEFINE(line_msgq, sizeof(struct test_backend_line), 16, 4);
 		.set_baudrate_script = DT_INST_NODE_HAS_PROP(inst, target_baudrate),               \
 		.network_script = !DT_INST_PROP(inst, no_network_script),                          \
 		.dlci_setup_script = !DT_INST_PROP(inst, no_dlci_setup_script),                    \
+		.sim_ready_script = !DT_INST_PROP(inst, no_sim_ready_script),                      \
 		.periodic_script = !DT_INST_PROP(inst, no_periodic_script),                        \
 		.modem_info_script = DT_INST_PROP(inst, modem_info_script),                        \
 		.default_pdp_context = DT_INST_PROP_OR(inst, zephyr_use_default_pdp_ctx, 0),       \
@@ -110,6 +126,7 @@ K_MSGQ_DEFINE(line_msgq, sizeof(struct test_backend_line), 16, 4);
 static struct test_backend test_backends[] = {DT_INST_FOREACH_STATUS_OKAY(TEST_BACKEND_DEFINE)};
 static struct test_backend *active_backend;
 static bool cmux_connect_hold;
+static bool uart_init_fail;
 /* Set when a driver line was truncated or did not fit in the queue */
 static bool lines_lost;
 
@@ -180,6 +197,21 @@ static int test_pipe_open(void *data)
 {
 	struct test_pipe *tpipe = data;
 
+	if (tpipe->fail_next_open) {
+		tpipe->fail_next_open = false;
+		return -EIO;
+	}
+	if (tpipe->close_next_open) {
+		tpipe->close_next_open = false;
+		modem_pipe_notify_closed(&tpipe->pipe);
+		return 0;
+	}
+	if (tpipe->hold_next_open) {
+		tpipe->hold_next_open = false;
+		atomic_set(&tpipe->open_held, 1);
+		return 0;
+	}
+
 	tpipe->open = true;
 	modem_pipe_notify_opened(&tpipe->pipe);
 	return 0;
@@ -213,6 +245,16 @@ static int test_pipe_close(void *data)
 {
 	struct test_pipe *tpipe = data;
 
+	if (tpipe->fail_next_close) {
+		tpipe->fail_next_close = false;
+		return -EIO;
+	}
+	if (tpipe->hold_next_close) {
+		tpipe->hold_next_close = false;
+		atomic_set(&tpipe->close_held, 1);
+		return 0;
+	}
+
 	tpipe->open = false;
 	modem_pipe_notify_closed(&tpipe->pipe);
 	return 0;
@@ -240,12 +282,41 @@ void test_backend_reset(const struct device *modem)
 	cmux_connect_hold = false;
 	active_backend->cmux_connecting = false;
 	active_backend->cmux_connected = false;
+	atomic_clear(&active_backend->cmux_disconnects);
 
 	active_backend->uart_pipe.open = false;
 	active_backend->dlci1_pipe.open = false;
 	active_backend->dlci2_pipe.open = false;
 	active_backend->user3_pipe.open = false;
 	active_backend->user4_pipe.open = false;
+	active_backend->uart_pipe.fail_next_open = false;
+	active_backend->uart_pipe.fail_next_close = false;
+	active_backend->uart_pipe.close_next_open = false;
+	active_backend->dlci1_pipe.fail_next_open = false;
+	active_backend->dlci1_pipe.fail_next_close = false;
+	active_backend->dlci1_pipe.close_next_open = false;
+	active_backend->dlci2_pipe.fail_next_open = false;
+	active_backend->dlci2_pipe.fail_next_close = false;
+	active_backend->dlci2_pipe.close_next_open = false;
+	active_backend->user3_pipe.fail_next_open = false;
+	active_backend->user3_pipe.fail_next_close = false;
+	active_backend->user3_pipe.close_next_open = false;
+	active_backend->user4_pipe.fail_next_open = false;
+	active_backend->user4_pipe.fail_next_close = false;
+	active_backend->user4_pipe.close_next_open = false;
+
+	struct test_pipe *const pipes[] = {
+		&active_backend->uart_pipe,  &active_backend->dlci1_pipe,
+		&active_backend->dlci2_pipe, &active_backend->user3_pipe,
+		&active_backend->user4_pipe,
+	};
+
+	for (size_t i = 0; i < ARRAY_SIZE(pipes); i++) {
+		pipes[i]->hold_next_open = false;
+		atomic_clear(&pipes[i]->open_held);
+		pipes[i]->hold_next_close = false;
+		atomic_clear(&pipes[i]->close_held);
+	}
 
 	active_backend->uart_pipe.line_len = 0;
 	active_backend->dlci1_pipe.line_len = 0;
@@ -307,6 +378,11 @@ bool test_backend_has_dlci_setup_script(const struct device *modem)
 	return test_backend_from_modem(modem)->dlci_setup_script;
 }
 
+bool test_backend_has_sim_ready_script(const struct device *modem)
+{
+	return test_backend_from_modem(modem)->sim_ready_script;
+}
+
 bool test_backend_has_periodic_script(const struct device *modem)
 {
 	return test_backend_from_modem(modem)->periodic_script;
@@ -320,6 +396,11 @@ bool test_backend_has_modem_info_script(const struct device *modem)
 bool test_backend_uses_default_pdp_context(const struct device *modem)
 {
 	return test_backend_from_modem(modem)->default_pdp_context;
+}
+
+void test_backend_uart_init_fail_once(void)
+{
+	uart_init_fail = true;
 }
 
 bool test_backend_wait_for_line(struct test_backend_line *line, k_timeout_t timeout)
@@ -347,6 +428,89 @@ static struct test_pipe *test_backend_pipe(enum test_backend_pipe_id pipe)
 		zassert_unreachable("unknown pipe %d", pipe);
 		return NULL;
 	}
+}
+
+void test_backend_pipe_fail_next_open(enum test_backend_pipe_id pipe)
+{
+	test_backend_pipe(pipe)->fail_next_open = true;
+}
+
+void test_backend_pipe_fail_next_close(enum test_backend_pipe_id pipe)
+{
+	test_backend_pipe(pipe)->fail_next_close = true;
+}
+
+void test_backend_pipe_close_next_open(enum test_backend_pipe_id pipe)
+{
+	test_backend_pipe(pipe)->close_next_open = true;
+}
+
+void test_backend_pipe_open_hold(enum test_backend_pipe_id pipe)
+{
+	test_backend_pipe(pipe)->hold_next_open = true;
+}
+
+bool test_backend_pipe_wait_for_open(enum test_backend_pipe_id pipe, k_timeout_t timeout)
+{
+	struct test_pipe *tpipe = test_backend_pipe(pipe);
+	k_timepoint_t end = sys_timepoint_calc(timeout);
+
+	while (!atomic_get(&tpipe->open_held)) {
+		if (sys_timepoint_expired(end)) {
+			return false;
+		}
+		k_msleep(1);
+	}
+
+	return true;
+}
+
+void test_backend_pipe_open_finish(enum test_backend_pipe_id pipe)
+{
+	struct test_pipe *tpipe = test_backend_pipe(pipe);
+
+	zassert_true(atomic_cas(&tpipe->open_held, 1, 0), "no %s open pending",
+		     test_backend_pipe_name(pipe));
+	tpipe->open = true;
+	modem_pipe_notify_opened(&tpipe->pipe);
+}
+
+void test_backend_pipe_close_hold(enum test_backend_pipe_id pipe)
+{
+	test_backend_pipe(pipe)->hold_next_close = true;
+}
+
+bool test_backend_pipe_wait_for_close(enum test_backend_pipe_id pipe, k_timeout_t timeout)
+{
+	struct test_pipe *tpipe = test_backend_pipe(pipe);
+	k_timepoint_t end = sys_timepoint_calc(timeout);
+
+	while (!atomic_get(&tpipe->close_held)) {
+		if (sys_timepoint_expired(end)) {
+			return false;
+		}
+		k_msleep(1);
+	}
+
+	return true;
+}
+
+void test_backend_pipe_close_finish(enum test_backend_pipe_id pipe)
+{
+	struct test_pipe *tpipe = test_backend_pipe(pipe);
+
+	zassert_true(atomic_cas(&tpipe->close_held, 1, 0), "no %s close pending",
+		     test_backend_pipe_name(pipe));
+	tpipe->open = false;
+	modem_pipe_notify_closed(&tpipe->pipe);
+}
+
+void test_backend_pipe_disconnect(enum test_backend_pipe_id pipe)
+{
+	struct test_pipe *tpipe = test_backend_pipe(pipe);
+
+	tpipe->open = false;
+	modem_pipe_notify_closed(&tpipe->pipe);
 }
 
 void test_backend_respond(enum test_backend_pipe_id pipe, const char *response)
@@ -403,6 +567,10 @@ struct modem_pipe *modem_backend_uart_init(struct modem_backend_uart *backend,
 
 	ARG_UNUSED(backend);
 	__ASSERT_NO_MSG(tbackend != NULL);
+	if (uart_init_fail) {
+		uart_init_fail = false;
+		return NULL;
+	}
 
 	test_pipe_init_once(&tbackend->uart_pipe);
 	return &tbackend->uart_pipe.pipe;
@@ -562,11 +730,17 @@ int modem_cmux_disconnect(struct modem_cmux *cmux)
 	}
 
 	tbackend->cmux_connected = false;
+	atomic_inc(&tbackend->cmux_disconnects);
 	if (cmux->config.callback != NULL) {
 		cmux->config.callback(cmux, MODEM_CMUX_EVENT_DISCONNECTED, cmux->config.user_data);
 	}
 
 	return 0;
+}
+
+int test_backend_cmux_disconnects(void)
+{
+	return (int)atomic_get(&active_backend->cmux_disconnects);
 }
 
 int modem_cmux_disconnect_async(struct modem_cmux *cmux)
@@ -646,35 +820,51 @@ int modem_ppp_init_internal(const struct device *dev)
 	return 0;
 }
 
-static void test_ppp_iface_init(struct net_if *iface)
+/*
+ * Answer an LCP Terminate-Request as the peer would, so that net_if_down() completes. As over a
+ * real channel, the answer takes a moment to arrive, and is lost if PPP is released from the
+ * channel meanwhile.
+ */
+#define TEST_PPP_TERMINATE_ACK_DELAY K_MSEC(20)
+
+static struct {
+	struct k_work_delayable work;
+	struct modem_ppp *ppp;
+	uint8_t id;
+} test_ppp_terminate_ack;
+
+static void test_ppp_terminate_ack_handler(struct k_work *work)
 {
-	const struct device *dev = net_if_get_device(iface);
-	struct modem_ppp *ppp = dev->data;
-
-	net_ppp_init(iface);
-	net_if_flag_set(iface, NET_IF_NO_AUTO_START);
-	net_if_carrier_off(iface);
-	net_if_dormant_on(iface);
-
-	ppp->iface = iface;
-}
-
-static int test_ppp_start(const struct device *dev)
-{
-	ARG_UNUSED(dev);
-	return 0;
-}
-
-static int test_ppp_stop(const struct device *dev)
-{
-	ARG_UNUSED(dev);
-	return 0;
-}
-
-/* Answer an LCP Terminate-Request as the peer would, so that net_if_down() completes */
-static void test_ppp_ack_terminate(struct net_if *iface, struct net_pkt *pkt)
-{
+	struct modem_ppp *ppp = test_ppp_terminate_ack.ppp;
 	struct net_pkt *ack;
+
+	ARG_UNUSED(work);
+
+	if (ppp->pipe == NULL) {
+		LOG_DBG("LCP Terminate-Ack lost, PPP released");
+		return;
+	}
+
+	ack = net_pkt_rx_alloc_with_buffer(ppp->iface, 6, NET_AF_UNSPEC, 0, K_NO_WAIT);
+	if (ack == NULL) {
+		LOG_ERR("no buffer for the LCP Terminate-Ack");
+		return;
+	}
+
+	(void)net_pkt_write_be16(ack, PPP_LCP);
+	(void)net_pkt_write_u8(ack, PPP_TERMINATE_ACK);
+	(void)net_pkt_write_u8(ack, test_ppp_terminate_ack.id);
+	(void)net_pkt_write_be16(ack, 4);
+	net_pkt_cursor_init(ack);
+	net_pkt_set_ppp(ack, true);
+
+	if (net_recv_data(ppp->iface, ack) < 0) {
+		net_pkt_unref(ack);
+	}
+}
+
+static void test_ppp_ack_terminate(struct modem_ppp *ppp, struct net_pkt *pkt)
+{
 	uint16_t protocol;
 	uint8_t code;
 	uint8_t id;
@@ -686,29 +876,53 @@ static void test_ppp_ack_terminate(struct net_if *iface, struct net_pkt *pkt)
 		return;
 	}
 
-	ack = net_pkt_rx_alloc_with_buffer(iface, 6, NET_AF_UNSPEC, 0, K_NO_WAIT);
-	if (ack == NULL) {
-		LOG_ERR("no buffer for the LCP Terminate-Ack");
-		return;
+	test_ppp_terminate_ack.ppp = ppp;
+	test_ppp_terminate_ack.id = id;
+	(void)k_work_reschedule(&test_ppp_terminate_ack.work, TEST_PPP_TERMINATE_ACK_DELAY);
+}
+
+static void test_ppp_iface_init(struct net_if *iface)
+{
+	const struct device *dev = net_if_get_device(iface);
+	struct modem_ppp *ppp = dev->data;
+
+	k_work_init_delayable(&test_ppp_terminate_ack.work, test_ppp_terminate_ack_handler);
+	net_ppp_init(iface);
+	net_if_flag_set(iface, NET_IF_NO_AUTO_START);
+	net_if_carrier_off(iface);
+	net_if_dormant_on(iface);
+
+	ppp->iface = iface;
+}
+
+/* As the real module, hold the device the PPP was defined with active while the L2 is up */
+static int test_ppp_start(const struct device *dev)
+{
+	const struct modem_ppp_config *config = dev->config;
+
+	if ((config == NULL) || (config->dev == NULL)) {
+		return 0;
 	}
 
-	(void)net_pkt_write_be16(ack, PPP_LCP);
-	(void)net_pkt_write_u8(ack, PPP_TERMINATE_ACK);
-	(void)net_pkt_write_u8(ack, id);
-	(void)net_pkt_write_be16(ack, 4);
-	net_pkt_cursor_init(ack);
-	net_pkt_set_ppp(ack, true);
+	return pm_device_runtime_get(config->dev);
+}
 
-	if (net_recv_data(iface, ack) < 0) {
-		net_pkt_unref(ack);
+static int test_ppp_stop(const struct device *dev)
+{
+	const struct modem_ppp_config *config = dev->config;
+
+	if ((config == NULL) || (config->dev == NULL)) {
+		return 0;
 	}
+
+	return pm_device_runtime_put_async(config->dev, K_NO_WAIT);
 }
 
 static int test_ppp_send(const struct device *dev, struct net_pkt *pkt)
 {
 	struct modem_ppp *ppp = dev->data;
 
-	test_ppp_ack_terminate(ppp->iface, pkt);
+	test_ppp_ack_terminate(ppp, pkt);
 	return 0;
 }
 

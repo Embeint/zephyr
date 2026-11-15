@@ -58,8 +58,24 @@ enum boot_step {
 	 * test_backend_cmux_connect_finish()
 	 */
 	BOOT_CMUX_PENDING,
+	/* CMUX connected and handled by the driver, which carries on with the DLCI setup */
+	BOOT_CMUX_CONNECTED,
 	/* DLCI setup command sent on DLCI1, unanswered */
 	BOOT_DLCI1_SETUP,
+	/* Error code command, the first to enable reports, sent on DLCI1 and unanswered. Only
+	 * MODEM_CELLULAR_V2.
+	 */
+	BOOT_REPORTS,
+	/* SIM status query sent on DLCI1, unanswered. Only MODEM_CELLULAR_V2. */
+	BOOT_SIM,
+	/* SIM reported ready, SIM ready command sent on DLCI1 and unanswered. Only
+	 * MODEM_CELLULAR_V2 with a modem that has a SIM ready script.
+	 */
+	BOOT_SIM_READY,
+	/* DLCI1 set up and ready for commands. MODEM_CELLULAR_V2 stops here with its
+	 * pipelinks connected, the original driver carries on with DLCI2.
+	 */
+	BOOT_AT_READY,
 	/* DLCI setup command sent on DLCI2, unanswered */
 	BOOT_DLCI2_SETUP,
 	/* Channels open and set up, nothing sent until an APN is configured */
@@ -103,6 +119,20 @@ void ok(enum test_backend_pipe_id pipe);
 /* Respond "ERROR" on @p pipe */
 void respond_error(enum test_backend_pipe_id pipe);
 
+/* Commands MODEM_CELLULAR_V2 enables error codes and its reports with once DLCI1 is set up */
+#define TEST_CMEE_CMD   "AT+CMEE=1"
+#define TEST_CEREG_CMD  "AT+CEREG=3"
+#define TEST_CGEREP_CMD "AT+CGEREP=1"
+
+/* Expect the report commands on DLCI1 and answer them with OK */
+void answer_reports(void);
+
+/* SIM status query the driver sends once the reports are enabled */
+#define TEST_CPIN_CMD "AT+CPIN?"
+
+/* Report @p code, e.g. "READY", in answer to TEST_CPIN_CMD */
+void respond_cpin(const char *code);
+
 /* Report LTE registration on @p pipe */
 void registered(enum test_backend_pipe_id pipe);
 
@@ -136,8 +166,19 @@ void finish_suspend(const struct device *dev);
 /* Suspend @p dev, answering the shutdown script */
 void suspend_and_shutdown(const struct device *dev);
 
+/* As suspend_and_shutdown(), for a modem with its LTE RF enabled, which is disabled first */
+void suspend_with_lte_rf_and_shutdown(const struct device *dev);
+
 /* Suite hooks shared by every suite in this application */
+/* Set TEST_APN on every modem, and again on those reset, until the next test */
+void set_test_apn(void);
+
+/* Expect the data context to be configured with TEST_APN, and answer it */
+void expect_apn_configured(void);
+
 void *modem_test_setup(void);
+/* As modem_test_before(), with TEST_APN set on every modem */
+void modem_test_before_with_apn(void *fixture);
 void modem_test_before(void *fixture);
 void modem_test_after(void *fixture);
 

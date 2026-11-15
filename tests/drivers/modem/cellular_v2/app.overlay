@@ -1,0 +1,59 @@
+/*
+ * Copyright (c) 2026 Embeint Inc
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include "../cellular_common/modems.dtsi"
+
+/* Modems only the MODEM_CELLULAR_V2 suites use */
+/ {
+	modem_uart_runtime: uart-emul-runtime {
+		compatible = "zephyr,uart-emul";
+		current-speed = <115200>;
+		rx-fifo-size = <4096>;
+		tx-fifo-size = <4096>;
+		status = "okay";
+
+		/* Only powered while something holds a runtime PM reference on it */
+		modem_runtime: modem {
+			compatible = "zephyr,modem-cellular-test";
+			zephyr,pm-device-runtime-auto;
+			/* Keeps the PPP tests to the commands they drive */
+			no-periodic-script;
+			target-baudrate = <921600>;
+			status = "okay";
+		};
+	};
+
+	modem_uart_conditional: uart-emul-conditional {
+		compatible = "zephyr,uart-emul";
+		current-speed = <115200>;
+		rx-fifo-size = <4096>;
+		tx-fifo-size = <4096>;
+		status = "okay";
+
+		modem_conditional: modem {
+			compatible = "zephyr,modem-cellular-test";
+			conditional-periodic-script;
+			target-baudrate = <921600>;
+			status = "okay";
+		};
+	};
+
+	modem_uart_no_sim_ready: uart-emul-no-sim-ready {
+		compatible = "zephyr,uart-emul";
+		current-speed = <115200>;
+		rx-fifo-size = <4096>;
+		tx-fifo-size = <4096>;
+		status = "okay";
+
+		modem_no_sim_ready: modem {
+			compatible = "zephyr,modem-cellular-test";
+			no-sim-ready-script;
+			no-periodic-script;
+			target-baudrate = <921600>;
+			status = "okay";
+		};
+	};
+};

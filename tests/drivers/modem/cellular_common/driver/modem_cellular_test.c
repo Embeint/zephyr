@@ -112,6 +112,20 @@ MODEM_CHAT_SCRIPT_DEFINE(periodic_chat_script, periodic_chat_cmds, abort_matches
 			 modem_cellular_chat_callback_handler, 1);
 #endif
 
+#if DT_ANY_INST_HAS_BOOL_STATUS_OKAY(conditional_periodic_script)
+MODEM_CHAT_SCRIPT_CMDS_DEFINE(
+	conditional_periodic_chat_cmds,
+	MODEM_CHAT_SCRIPT_CMD_RESP(MODEM_CELLULAR_TEST_PERIODIC_CMD, ok_match),
+	MODEM_CHAT_SCRIPT_CMD_RESP_COND(MODEM_CELLULAR_TEST_PERIODIC_LTE_RF_OFF_CMD, ok_match,
+					modem_cellular_run_check_lte_rf_disabled),
+	MODEM_CHAT_SCRIPT_CMD_RESP_COND(MODEM_CELLULAR_TEST_PERIODIC_LTE_RF_CMD, ok_match,
+					modem_cellular_run_check_lte_rf_enabled),
+	MODEM_CHAT_SCRIPT_CMD_RESP_COND(MODEM_CELLULAR_TEST_PERIODIC_REGISTERED_CMD, ok_match,
+					modem_cellular_run_check_registered));
+MODEM_CHAT_SCRIPT_DEFINE(conditional_periodic_chat_script, conditional_periodic_chat_cmds,
+			 abort_matches, modem_cellular_chat_callback_handler, 1);
+#endif
+
 #if !DT_ALL_INST_HAS_BOOL_STATUS_OKAY(no_shutdown_script)
 MODEM_CHAT_SCRIPT_CMDS_DEFINE(shutdown_chat_cmds,
 			      MODEM_CHAT_SCRIPT_CMD_RESP(MODEM_CELLULAR_TEST_SHUTDOWN_CMD,
@@ -128,6 +142,28 @@ MODEM_CHAT_SCRIPT_DEFINE(dlci_setup_chat_script, dlci_setup_chat_cmds, abort_mat
 			 modem_cellular_chat_callback_handler, 1);
 #endif
 
+#if defined(CONFIG_MODEM_CELLULAR_V2)
+MODEM_CHAT_SCRIPT_CMDS_DEFINE(lte_rf_enable_chat_cmds,
+			      MODEM_CHAT_SCRIPT_CMD_RESP(MODEM_CELLULAR_TEST_LTE_RF_ENABLE_CMD,
+							 ok_match));
+MODEM_CHAT_SCRIPT_DEFINE(lte_rf_enable_chat_script, lte_rf_enable_chat_cmds, abort_matches,
+			 modem_cellular_chat_callback_handler, 1);
+
+MODEM_CHAT_SCRIPT_CMDS_DEFINE(lte_rf_disable_chat_cmds,
+			      MODEM_CHAT_SCRIPT_CMD_RESP(MODEM_CELLULAR_TEST_LTE_RF_DISABLE_CMD,
+							 ok_match));
+MODEM_CHAT_SCRIPT_DEFINE(lte_rf_disable_chat_script, lte_rf_disable_chat_cmds, abort_matches,
+			 modem_cellular_chat_callback_handler, 1);
+
+#if !DT_ALL_INST_HAS_BOOL_STATUS_OKAY(no_sim_ready_script)
+MODEM_CHAT_SCRIPT_CMDS_DEFINE(sim_ready_chat_cmds,
+			      MODEM_CHAT_SCRIPT_CMD_RESP(MODEM_CELLULAR_TEST_SIM_READY_CMD,
+							 ok_match));
+MODEM_CHAT_SCRIPT_DEFINE(sim_ready_chat_script, sim_ready_chat_cmds, abort_matches,
+			 modem_cellular_chat_callback_handler, 1);
+#endif
+#endif /* CONFIG_MODEM_CELLULAR_V2 */
+
 #ifdef CONFIG_EMUL
 static int modem_cellular_test_emul_init(const struct emul *target, const struct device *parent)
 {
@@ -142,6 +178,11 @@ static const struct uart_emul_device_api test_emul_api;
 
 #define TEST_SCRIPT(inst, property, script)                                                        \
 	COND_CODE_1(DT_INST_PROP(inst, property), (NULL), (&script))
+
+#define PERIODIC_SCRIPT(inst)                                                                      \
+	COND_CODE_1(DT_INST_PROP(inst, conditional_periodic_script),                               \
+		    (&conditional_periodic_chat_script),                                           \
+		    (TEST_SCRIPT(inst, no_periodic_script, periodic_chat_script)))
 
 #define INIT_SCRIPT(inst)                                                                          \
 	COND_CODE_1(DT_INST_PROP(inst, modem_info_script),                                         \
@@ -164,12 +205,16 @@ static const struct uart_emul_device_api test_emul_api;
 				.network =                                                         \
 					TEST_SCRIPT(inst, no_network_script, network_chat_script), \
 				.dial = &dial_chat_script,                                         \
-				.periodic = TEST_SCRIPT(inst, no_periodic_script,                  \
-							periodic_chat_script),                     \
+				.periodic = PERIODIC_SCRIPT(inst),                                 \
 				.shutdown = TEST_SCRIPT(inst, no_shutdown_script,                  \
 							shutdown_chat_script),                     \
 				.dlci_setup = TEST_SCRIPT(inst, no_dlci_setup_script,              \
 							  dlci_setup_chat_script),                 \
+				IF_ENABLED(CONFIG_MODEM_CELLULAR_V2,                               \
+					   (.lte_rf_enable = &lte_rf_enable_chat_script,           \
+					    .lte_rf_disable = &lte_rf_disable_chat_script,         \
+					    .sim_ready = TEST_SCRIPT(inst, no_sim_ready_script,    \
+								     sim_ready_chat_script),)) \
 			},                                                                         \
 		.unsol_matches = {.matches = test_unsol, .size = ARRAY_SIZE(test_unsol)},          \
 		.chat_delimiter = "\r",                                                            \
@@ -199,7 +244,7 @@ static const struct uart_emul_device_api test_emul_api;
 	};
 
 #define MODEM_CELLULAR_DEVICE_TEST_DEFINE(inst)                                                    \
-	MODEM_DT_INST_PPP_DEFINE(inst, MODEM_CELLULAR_INST_NAME(ppp, inst), NULL, 1500, 1500);     \
+	MODEM_CELLULAR_PPP_DEFINE(inst, NULL, 1500, 1500);                                         \
                                                                                                    \
 	static struct modem_cellular_data MODEM_CELLULAR_INST_NAME(data, inst);                    \
                                                                                                    \

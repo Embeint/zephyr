@@ -1,0 +1,11 @@
+# Copyright (c) 2026 Embeint Inc
+# SPDX-License-Identifier: Apache-2.0
+
+config TEST_MODEM_CELLULAR_CONDITIONAL_COMMANDS
+	bool
+	default y
+	depends on MODEM_CHAT
+	select MODEM_CHAT_COMMANDS_CONDITIONAL
+	help
+	  Instances of the test driver with the conditional-periodic-script
+	  property run commands conditionally.

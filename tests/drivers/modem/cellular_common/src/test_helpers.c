@@ -16,6 +16,8 @@
 
 #include <string.h>
 
+#include "modem_workqueue.h"
+
 struct test_modem {
 	const struct device *dev;
 	/* Baudrate the modem powers up at */
@@ -30,6 +32,9 @@ struct test_modem {
 
 static const struct test_modem modems[] = {
 	DT_FOREACH_STATUS_OKAY(zephyr_modem_cellular_test, TEST_MODEM)};
+
+/* Whether TEST_APN is set again on the modems reset during the test */
+static bool test_apn_kept;
 
 static K_THREAD_STACK_DEFINE(suspend_stack, 1024);
 static struct k_thread suspend_thread;
@@ -113,6 +118,16 @@ void respond_error(enum test_backend_pipe_id pipe)
 	test_backend_respond(pipe, "ERROR\r");
 }
 
+void respond_cpin(const char *code)
+{
+	char response[32];
+
+	zassert_true(snprintk(response, sizeof(response), "+CPIN: %s\r", code) <
+		     (int)sizeof(response));
+	test_backend_respond(TEST_BACKEND_PIPE_DLCI1, response);
+	ok(TEST_BACKEND_PIPE_DLCI1);
+}
+
 void registered(enum test_backend_pipe_id pipe)
 {
 	test_backend_respond(pipe, "+CEREG: 1,1\r");
@@ -144,6 +159,10 @@ void modem_reset_state(const struct device *dev)
 	struct uart_config cfg;
 
 	modem_cellular_ztest_halt(dev);
+	/* The halt forgets the APN, which MODEM_CELLULAR_V2 keeps across power cycles */
+	if (IS_ENABLED(CONFIG_MODEM_CELLULAR_V2) && test_apn_kept) {
+		zassert_ok(cellular_set_apn(dev, TEST_APN));
+	}
 
 	/* A previous test may have left the UART at the new baudrate */
 	zassert_ok(uart_config_get(uart, &cfg));
@@ -190,6 +209,16 @@ static void answer_init(const struct device *dev, enum boot_step target)
 		test_backend_respond(TEST_BACKEND_PIPE_UART, modem_info[i].response);
 		ok(TEST_BACKEND_PIPE_UART);
 	}
+}
+
+void answer_reports(void)
+{
+	expect_line(TEST_BACKEND_PIPE_DLCI1, TEST_CMEE_CMD);
+	ok(TEST_BACKEND_PIPE_DLCI1);
+	expect_line(TEST_BACKEND_PIPE_DLCI1, TEST_CEREG_CMD);
+	ok(TEST_BACKEND_PIPE_DLCI1);
+	expect_line(TEST_BACKEND_PIPE_DLCI1, TEST_CGEREP_CMD);
+	ok(TEST_BACKEND_PIPE_DLCI1);
 }
 
 void advance_to(const struct device *dev, enum boot_step target)
@@ -242,11 +271,39 @@ void advance_to(const struct device *dev, enum boot_step target)
 	answer_init(dev, target);
 	STOP_AT(MODEM_INFO);
 
+	expect_state(dev, TEST_BACKEND_STATE_CMUX);
+	flush_driver_events();
+	STOP_AT(CMUX_CONNECTED);
+
 	if (test_backend_has_dlci_setup_script(dev)) {
 		expect_line(TEST_BACKEND_PIPE_DLCI1, MODEM_CELLULAR_TEST_DLCI_SETUP_CMD);
 		STOP_AT(DLCI1_SETUP);
 		ok(TEST_BACKEND_PIPE_DLCI1);
+		expect_read(TEST_BACKEND_PIPE_DLCI1);
+	}
+	if (IS_ENABLED(CONFIG_MODEM_CELLULAR_V2)) {
+		expect_line(TEST_BACKEND_PIPE_DLCI1, TEST_CMEE_CMD);
+		STOP_AT(REPORTS);
+		ok(TEST_BACKEND_PIPE_DLCI1);
+		expect_line(TEST_BACKEND_PIPE_DLCI1, TEST_CEREG_CMD);
+		ok(TEST_BACKEND_PIPE_DLCI1);
+		expect_line(TEST_BACKEND_PIPE_DLCI1, TEST_CGEREP_CMD);
+		ok(TEST_BACKEND_PIPE_DLCI1);
 
+		expect_line(TEST_BACKEND_PIPE_DLCI1, TEST_CPIN_CMD);
+		STOP_AT(SIM);
+		respond_cpin("READY");
+		if (test_backend_has_sim_ready_script(dev)) {
+			expect_line(TEST_BACKEND_PIPE_DLCI1, MODEM_CELLULAR_TEST_SIM_READY_CMD);
+			STOP_AT(SIM_READY);
+			ok(TEST_BACKEND_PIPE_DLCI1);
+		}
+		expect_read(TEST_BACKEND_PIPE_DLCI1);
+	}
+	flush_driver_events();
+	STOP_AT(AT_READY);
+
+	if (test_backend_has_dlci_setup_script(dev)) {
 		expect_line(TEST_BACKEND_PIPE_DLCI2, MODEM_CELLULAR_TEST_DLCI_SETUP_CMD);
 		STOP_AT(DLCI2_SETUP);
 		ok(TEST_BACKEND_PIPE_DLCI2);
@@ -325,7 +382,7 @@ void flush_driver_events(void)
 	/* Returns false if the marker already ran, which is equally complete */
 	(void)k_work_flush(&chat_marker, &sync);
 
-	/* The driver handles its events on the system workqueue, ahead of the marker */
+	/* The original driver handles its events on the system workqueue. */
 	k_work_init(&driver_marker, flush_marker_handler);
 	zassert_equal(1, k_work_submit(&driver_marker));
 	(void)k_work_flush(&driver_marker, &sync);
@@ -359,11 +416,36 @@ void suspend_and_shutdown(const struct device *dev)
 	finish_suspend(dev);
 }
 
+void suspend_with_lte_rf_and_shutdown(const struct device *dev)
+{
+	start_suspend(dev);
+	expect_line(TEST_BACKEND_PIPE_DLCI1, MODEM_CELLULAR_TEST_LTE_RF_DISABLE_CMD);
+	ok(TEST_BACKEND_PIPE_DLCI1);
+	expect_line(TEST_BACKEND_PIPE_UART, MODEM_CELLULAR_TEST_SHUTDOWN_CMD);
+	ok(TEST_BACKEND_PIPE_UART);
+	finish_suspend(dev);
+}
+
 static void halt_all_modems(void)
 {
 	for (size_t i = 0; i < ARRAY_SIZE(modems); i++) {
 		modem_cellular_ztest_halt(modems[i].dev);
 	}
+}
+
+void set_test_apn(void)
+{
+	test_apn_kept = true;
+	for (size_t i = 0; i < ARRAY_SIZE(modems); i++) {
+		zassert_ok(cellular_set_apn(modems[i].dev, TEST_APN));
+	}
+}
+
+void expect_apn_configured(void)
+{
+	expect_line(TEST_BACKEND_PIPE_DLCI1, TEST_APN_CMD);
+	ok(TEST_BACKEND_PIPE_DLCI1);
+	expect_read(TEST_BACKEND_PIPE_DLCI1);
 }
 
 void *modem_test_setup(void)
@@ -382,7 +464,14 @@ void modem_test_before(void *fixture)
 	ARG_UNUSED(fixture);
 
 	/* All instances share the line queue, so stop any left running */
+	test_apn_kept = false;
 	halt_all_modems();
+}
+
+void modem_test_before_with_apn(void *fixture)
+{
+	modem_test_before(fixture);
+	set_test_apn();
 }
 
 void modem_test_after(void *fixture)

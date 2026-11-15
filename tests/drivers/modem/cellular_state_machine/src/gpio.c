@@ -312,7 +312,7 @@ ZTEST(modem_cellular_gpio, test_status_powered)
 	boot_modem(modem_status);
 
 	/* Pulsing the power key would turn the running modem off */
-	advance_to(modem_status, BOOT_DLCI1_SETUP);
+	advance_to(modem_status, BOOT_CMUX_CONNECTED);
 	expect_no_edge();
 }
 

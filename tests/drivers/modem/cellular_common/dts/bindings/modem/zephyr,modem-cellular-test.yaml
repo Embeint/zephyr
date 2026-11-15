@@ -30,9 +30,20 @@ properties:
     type: boolean
     description: Omit the optional DLCI setup script
 
+  no-sim-ready-script:
+    type: boolean
+    description: Omit the optional script run once the SIM is ready
+
   modem-info-script:
     type: boolean
     description: Query every modem info string as part of the init script
+
+  conditional-periodic-script:
+    type: boolean
+    description: |
+      Follow the periodic command with one run only while the LTE RF is
+      disabled, one run only while it is enabled, and one run only while
+      registered
 
   startup-time-ms:
     type: int
