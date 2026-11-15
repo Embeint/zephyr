@@ -275,6 +275,19 @@ void modem_cellular_chat_callback_handler(struct modem_chat *chat,
 	}
 }
 
+/* The vendor scripts enable the LTE RF themselves */
+bool modem_cellular_run_check_lte_rf_enabled(void *user_data)
+{
+	ARG_UNUSED(user_data);
+
+	return true;
+}
+
+bool modem_cellular_run_check_lte_rf_disabled(void *user_data)
+{
+	return !modem_cellular_run_check_lte_rf_enabled(user_data);
+}
+
 void modem_cellular_chat_on_modem_ready(struct modem_chat *chat, char **argv, uint16_t argc,
 					void *user_data)
 {

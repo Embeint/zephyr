@@ -48,6 +48,24 @@ config MODEM_CELLULAR
 
 if MODEM_CELLULAR
 
+config MODEM_CELLULAR_V2
+	bool "State Machine Framework based driver [EXPERIMENTAL]"
+	depends on PM_DEVICE_RUNTIME
+	select EXPERIMENTAL
+	select SMF
+	select SMF_ANCESTOR_SUPPORT
+	help
+	  Build the cellular modem driver on the State Machine Framework.
+	  The core boots the modem until CMUX is connected and the AT command
+	  channel is set up, enables the LTE RF while it is requested, and
+	  powers the modem down again on suspend. A separate PPP device dials
+	  the data call on the PPP channel while the PPP network interface is
+	  up, holding a runtime PM reference on the core for as long.
+	  Vendor drivers need LTE RF enable and disable scripts, with the init
+	  and disable scripts leaving the SIM powered, and define their PPP
+	  network interface with MODEM_CELLULAR_PPP_DEFINE. Of the vendor
+	  drivers, only the Nordic nRF93M1 driver provides them.
+
 config MODEM_CELLULAR_PDP_CONTEXT_ID
 	int "PDP context identifier used for the data call"
 	default 1
@@ -151,8 +169,31 @@ config MODEM_CELLULAR_MAX_RECOVERIES
 	help
 	  After this many consecutive init or CMUX-connect recovery attempts without
 	  restored service, the driver suspends to idle instead of resetting the modem
-	  indefinitely. The counter resets once CMUX reconnects. Set to 0 to retry
-	  without a limit.
+	  indefinitely. The counter resets once CMUX reconnects, or with
+	  MODEM_CELLULAR_V2 once the modem is ready and its periodic script, if
+	  any, succeeds. Set to 0 to retry without a limit.
+
+config MODEM_CELLULAR_SIM_TIMEOUT_MS
+	int "Time allowed for the SIM to become ready, in milliseconds"
+	depends on MODEM_CELLULAR_V2
+	range 0 600000
+	default 5000
+	help
+	  Once the AT command channel is set up, the SIM status is queried with
+	  AT+CPIN? until the SIM is ready, the SIM reports an error that will
+	  not clear, such as a PIN being required, or this time has passed.
+	  Each outcome is reported with CELLULAR_EVENT_SIM_STATUS_CHANGED, and
+	  the modem is brought up regardless.
+
+config MODEM_CELLULAR_LTE_RF_RETRY_MS
+	int "LTE RF control retry interval, in milliseconds"
+	depends on MODEM_CELLULAR_V2
+	range 100 600000
+	default 1000
+	help
+	  When configuring the data context with the APN or enabling the LTE RF
+	  fails while the LTE RF is requested, or disabling it fails while it is
+	  no longer requested, the step is retried after this time.
 
 config MODEM_CELLULAR_RECOVERY_BACKOFF_MS
 	int "Recovery backoff step in milliseconds"
@@ -173,6 +214,7 @@ config MODEM_CELLULAR_RECOVERY_BACKOFF_MAX_MS
 config MODEM_CELLULAR_SHELL
 	bool "Cellular modem driver shell commands"
 	depends on !MODEM_SHELL
+	depends on !MODEM_CELLULAR_V2
 	select SHELL
 	help
 	  Enable shell commands for the cellular_modem driver, exposing

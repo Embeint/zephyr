@@ -38,7 +38,10 @@ bool modem_cellular_status_is_registered(enum cellular_registration_status statu
 /* Whether any access technology is registered, at home or roaming */
 bool modem_cellular_is_registered(const struct modem_cellular_data *data);
 
-/* Whether registered, or with the data context active per +CGEV */
+/*
+ * Whether registered, or with the data context active per +CGEV. With MODEM_CELLULAR_V2 only
+ * the packet domain registration counts.
+ */
 bool modem_cellular_is_attached(const struct modem_cellular_data *data);
 
 /*
@@ -105,5 +108,20 @@ int modem_cellular_check_apn(const struct modem_cellular_data *data, const char 
 
 /* Store @p apn, validated with modem_cellular_check_apn(), as the APN in use */
 void modem_cellular_store_apn(struct modem_cellular_data *data, const char *apn);
+
+#if defined(CONFIG_MODEM_CELLULAR_V2)
+/*
+ * Set the callback of the PPP device of @p dev, which receives the events in @p mask
+ * alongside the callback set with cellular_set_callback(). A NULL @p cb clears it.
+ */
+void modem_cellular_set_ppp_callback(const struct device *dev, cellular_event_mask_t mask,
+				     cellular_event_cb_t cb, void *user_data);
+
+/*
+ * Reason the modem was reported failed with CELLULAR_EVENT_MODEM_FAILED, or 0 if it has not
+ * failed since it was last resumed.
+ */
+int modem_cellular_failure_reason(const struct modem_cellular_data *data);
+#endif
 
 #endif /* ZEPHYR_DRIVERS_MODEM_MODEM_CELLULAR_COMMON_H_ */

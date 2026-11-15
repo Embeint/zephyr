@@ -4,14 +4,20 @@ zephyr_library()
 
 zephyr_library_include_directories(${ZEPHYR_BASE}/subsys/net/ip)
 zephyr_library_include_directories(${ZEPHYR_BASE}/subsys/net/lib/sockets)
+zephyr_library_include_directories(${ZEPHYR_BASE}/subsys/modem)
 
 add_subdirectory(vendor_standalone)
 add_subdirectory_ifdef(CONFIG_MODEM_CELLULAR vendor_modem_cellular)
 
+if(CONFIG_MODEM_CELLULAR_V2)
+  zephyr_library_sources(modem_cellular_v2_core.c modem_cellular_v2_ppp.c)
+elseif(CONFIG_MODEM_CELLULAR)
+  zephyr_library_sources(modem_cellular.c)
+endif()
+
 # zephyr-keep-sorted-start
 zephyr_library_sources_ifdef(CONFIG_MODEM_AT_SHELL modem_at_shell.c)
 zephyr_library_sources_ifdef(CONFIG_MODEM_AT_USER_PIPE modem_at_user_pipe.c)
-zephyr_library_sources_ifdef(CONFIG_MODEM_CELLULAR modem_cellular.c)
 zephyr_library_sources_ifdef(CONFIG_MODEM_CELLULAR modem_cellular_common.c)
 zephyr_library_sources_ifdef(CONFIG_MODEM_CELLULAR_SHELL modem_cellular_shell.c)
 zephyr_library_sources_ifdef(CONFIG_MODEM_CMD_HANDLER modem_cmd_handler.c)

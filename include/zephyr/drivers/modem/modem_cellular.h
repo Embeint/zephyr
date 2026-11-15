@@ -82,27 +82,113 @@ struct modem_cellular_user_pipe {
  *
  * Only the init and dial scripts are mandatory, other scripts are optional.
  *
- * If the network script is provided, it will be used to wait for network registration
- * before issuing the dial script.
+ * With the original driver, if the network script is provided, it is used to wait for
+ * network registration before issuing the dial script. If it is not provided, the dial script
+ * is expected to configure the network registration and the modem waits for registration after
+ * the dial script completes.
  *
- * If the network script is not provided, the dial script is expected to
- * configure the network registration and the modem will wait for
- * registration after the dial script completes.
- *
+ * With @kconfig{CONFIG_MODEM_CELLULAR_V2}, each script runs in a fixed step of the boot or of
+ * the LTE RF control, as documented on each member. The scripts run with the instance's
+ * @c modem_cellular_data as user data, and must be defined with
+ * modem_cellular_chat_callback_handler() as their callback, through which the driver gets
+ * their results. The init, dial and LTE RF scripts are required, which modem_cellular_init()
+ * asserts.
+ * After the init script, every script but the shutdown script runs on the AT command channel,
+ * CMUX DLCI 1, except for the dial script, which runs on the PPP channel, CMUX DLCI 2. The
+ * driver tracks the registration from +CREG, +CGREG, +CEREG or +C5GREG reports and the data
+ * context from +CGEV reports on the AT command channel. Modems may keep the settings for these
+ * reports per CMUX channel, so once the DLCI setup script has run the driver enables them on
+ * the AT command channel itself, with AT+CEREG=3 and AT+CGEREP=1, after enabling numeric
+ * +CME ERROR codes with AT+CMEE=1, which it reads the SIM status from. Scripts are not
+ * expected to enable them, but may enable +CREG, +CGREG or +C5GREG reports where the modem
+ * needs them.
  */
 struct modem_cellular_config_scripts {
-	/** Script that initializes the modem and enables CMUX. Must not be NULL. */
+	/**
+	 * Script that initializes the modem and enables CMUX. Must not be NULL.
+	 *
+	 * With @kconfig{CONFIG_MODEM_CELLULAR_V2}, run on the UART once the modem is powered,
+	 * and expected to end by switching the modem to CMUX, e.g. with AT+CMUX=0. It is expected
+	 * to leave the LTE RF disabled with the SIM powered, e.g. with AT+CFUN=4. A failure
+	 * recovers the modem.
+	 */
 	const struct modem_chat_script *init;
-	/** Optional script that waits for network registration before dialing. */
+	/**
+	 * Optional script that waits for network registration before dialing.
+	 *
+	 * Not used with @kconfig{CONFIG_MODEM_CELLULAR_V2}, which registers once the LTE RF is
+	 * enabled.
+	 */
 	const struct modem_chat_script *network;
-	/** Script that starts the PPP data connection. Must not be NULL. */
+	/**
+	 * Script that starts the PPP data connection. Must not be NULL.
+	 *
+	 * With @kconfig{CONFIG_MODEM_CELLULAR_V2}, run by the PPP device on the PPP channel once
+	 * the modem is attached, and expected to complete on CONNECT. A failure is retried after
+	 * @kconfig{CONFIG_MODEM_CELLULAR_PERIODIC_SCRIPT_MS}.
+	 */
 	const struct modem_chat_script *dial;
-	/** Optional script that periodically polls modem state while registered. */
+	/**
+	 * Optional script that periodically polls modem state while registered.
+	 *
+	 * With @kconfig{CONFIG_MODEM_CELLULAR_V2}, run every
+	 * @kconfig{CONFIG_MODEM_CELLULAR_PERIODIC_SCRIPT_MS} while the AT command channel is
+	 * ready, whether the LTE RF is enabled or not, and never while an LTE RF script runs.
+	 * Commands that need the LTE RF can be made conditional on
+	 * modem_cellular_run_check_lte_rf_enabled(). Its success reports the modem as
+	 * responsive, and @kconfig{CONFIG_MODEM_CELLULAR_MAX_SCRIPT_FAILURES} consecutive failures
+	 * recover the modem.
+	 */
 	const struct modem_chat_script *periodic;
-	/** Optional script that prepares the modem for power-off. */
+	/**
+	 * Optional script that prepares the modem for power-off.
+	 *
+	 * With @kconfig{CONFIG_MODEM_CELLULAR_V2}, run on the UART once CMUX is disconnected, or
+	 * on the AT command channel if CMUX does not disconnect, and expected to complete once
+	 * the modem is powering down. A failure falls back to the power key, if there is one.
+	 */
 	const struct modem_chat_script *shutdown;
-	/** Optional script for configuring DLCI channels after opening */
+	/**
+	 * Optional script for configuring DLCI channels after opening.
+	 *
+	 * The original driver runs it on both the AT command channel and the PPP channel. With
+	 * @kconfig{CONFIG_MODEM_CELLULAR_V2}, run on the AT command channel only, once it is
+	 * open, before the driver enables the error codes and reports it relies on and checks
+	 * the SIM. A failure
+	 * is logged, and the modem brought up regardless.
+	 */
 	const struct modem_chat_script *dlci_setup;
+#if defined(CONFIG_MODEM_CELLULAR_V2) || defined(__DOXYGEN__)
+	/**
+	 * Required script that enables the LTE RF, e.g. with AT+CFUN=1. Only available with
+	 * @kconfig{CONFIG_MODEM_CELLULAR_V2}.
+	 *
+	 * Run on the AT command channel while the LTE RF is requested, after the data context is
+	 * configured with the APN. The registration reports are already enabled by the driver.
+	 * A failure is retried after
+	 * @kconfig{CONFIG_MODEM_CELLULAR_LTE_RF_RETRY_MS} while still requested.
+	 */
+	const struct modem_chat_script *lte_rf_enable;
+	/**
+	 * Required script that disables the LTE RF, leaving the SIM powered, e.g. with
+	 * AT+CFUN=4. Only available with @kconfig{CONFIG_MODEM_CELLULAR_V2}.
+	 *
+	 * Run on the AT command channel once the last LTE RF request is released, and before
+	 * the modem is powered down while the LTE RF is enabled. A failure is retried after
+	 * @kconfig{CONFIG_MODEM_CELLULAR_LTE_RF_RETRY_MS} while still not requested, or
+	 * ignored by a power down.
+	 */
+	const struct modem_chat_script *lte_rf_disable;
+	/**
+	 * Optional script run once AT+CPIN? reports the SIM ready after the modem starts, e.g. to
+	 * read the IMSI and ICCID. Only available with @kconfig{CONFIG_MODEM_CELLULAR_V2}.
+	 *
+	 * Run on the AT command channel before any board-specific init script and before the
+	 * LTE RF is first enabled, so that e.g. the APN can be selected from the IMSI. A failure
+	 * is logged, and the modem brought up regardless.
+	 */
+	const struct modem_chat_script *sim_ready;
+#endif
 };
 
 /**
@@ -164,7 +250,13 @@ struct modem_cellular_vendor_config_common {
  * the lifetime of every device instance that uses this configuration.
  */
 struct modem_cellular_vendor_config_inst {
-	/** Optional script that configures the modem's UART baud rate. */
+	/**
+	 * Optional script that configures the modem's UART baud rate.
+	 *
+	 * With @kconfig{CONFIG_MODEM_CELLULAR_V2}, run on the UART at the baud rate the modem
+	 * powers up at, before the init script, which then runs at @a target_baudrate. A failure
+	 * is taken to mean the modem already runs at the new baud rate.
+	 */
 	const struct modem_chat_script *set_baudrate;
 	/** Integer baudrate associated with @a set_baudrate */
 	uint32_t target_baudrate;
@@ -184,7 +276,7 @@ struct modem_cellular_vendor_config {
 
 /** @cond INTERNAL_HIDDEN */
 
-/* Initialise the members of struct modem_cellular_config shared by every implementation */
+/* Initialise the members of struct modem_cellular_config shared by both implementations */
 #define Z_MODEM_CELLULAR_CONFIG_INIT(inst, vendor_config)                                          \
 	.uart = DEVICE_DT_GET(DT_INST_BUS(inst)),                                                  \
 	.vendor = vendor_config,                                                                   \
@@ -223,7 +315,11 @@ struct modem_cellular_vendor_config {
 /** @endcond */
 
 /* The state machine implementation, with its runtime data and configuration */
+#if defined(CONFIG_MODEM_CELLULAR_V2)
+#include <zephyr/drivers/modem/modem_cellular_v2.h>
+#else
 #include <zephyr/drivers/modem/modem_cellular_v1.h>
+#endif
 
 /** @cond INTERNAL_HIDDEN */
 
@@ -320,6 +416,40 @@ void modem_cellular_chat_callback_handler(struct modem_chat *chat,
 					  enum modem_chat_script_result result,
 					  const struct modem_chat_script_completion_info *info,
 					  void *user_data);
+
+/**
+ * @brief Run check for script commands that need the LTE RF enabled.
+ *
+ * Pass it as the @c _run_check of @ref MODEM_CHAT_SCRIPT_CMD_RESP_COND and its variants in the
+ * scripts of a @ref modem_cellular_vendor_config, which requires
+ * @kconfig{CONFIG_MODEM_CHAT_COMMANDS_CONDITIONAL}. With @kconfig{CONFIG_MODEM_CELLULAR_V2}
+ * the command runs while the driver has the LTE RF enabled through the @c lte_rf_enable
+ * script. The original driver leaves the LTE RF to the vendor scripts, so the command always
+ * runs.
+ *
+ * Changes to the LTE RF made outside of the driver, such as through a user pipe, are not
+ * seen.
+ *
+ * @param user_data User data the driver runs its scripts with.
+ *
+ * @retval true LTE RF enabled, the command is run.
+ * @retval false LTE RF disabled, the command is skipped.
+ */
+bool modem_cellular_run_check_lte_rf_enabled(void *user_data);
+
+/**
+ * @brief Run check for script commands that need the LTE RF disabled.
+ *
+ * The inverse of modem_cellular_run_check_lte_rf_enabled(), e.g. for a periodic script that
+ * only checks the modem responds while the LTE RF is disabled. With the original driver the
+ * command never runs.
+ *
+ * @param user_data User data the driver runs its scripts with.
+ *
+ * @retval true LTE RF disabled, the command is run.
+ * @retval false LTE RF enabled, the command is skipped.
+ */
+bool modem_cellular_run_check_lte_rf_disabled(void *user_data);
 
 /**
  * @brief Run check for script commands that need the modem registered.
@@ -475,6 +605,37 @@ bool modem_cellular_run_check_registered(void *user_data);
 		(.set_baudrate = NULL))
 
 /**
+ * @brief Define the standard scripts for controlling the LTE RF
+ *
+ * Defines a script that enables the LTE RF with AT+CFUN=1, and one that disables it with
+ * AT+CFUN=4, leaving the SIM powered. Point the @c lte_rf_enable and @c lte_rf_disable members
+ * of @ref modem_cellular_config_scripts at them with @ref MODEM_CELLULAR_COMMON_LTE_RF_SCRIPTS.
+ * Requires the matches defined by @ref MODEM_CELLULAR_COMMON_CHAT_MATCHES.
+ *
+ * @param timeout_s Timeout of each script, in seconds.
+ */
+#define MODEM_CELLULAR_COMMON_LTE_RF_CHAT_SCRIPTS(timeout_s)                                       \
+	MODEM_CHAT_SCRIPT_CMDS_DEFINE(modem_cellular_lte_rf_enable_cmds,                           \
+				      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CFUN=1", ok_match));          \
+	MODEM_CHAT_SCRIPT_DEFINE(modem_cellular_lte_rf_enable_script,                              \
+				 modem_cellular_lte_rf_enable_cmds, abort_matches,                 \
+				 modem_cellular_chat_callback_handler, timeout_s);                 \
+	MODEM_CHAT_SCRIPT_CMDS_DEFINE(modem_cellular_lte_rf_disable_cmds,                          \
+				      MODEM_CHAT_SCRIPT_CMD_RESP("AT+CFUN=4", ok_match));          \
+	MODEM_CHAT_SCRIPT_DEFINE(modem_cellular_lte_rf_disable_script,                             \
+				 modem_cellular_lte_rf_disable_cmds, abort_matches,                \
+				 modem_cellular_chat_callback_handler, timeout_s)
+
+/**
+ * @brief Helper macro for populating the LTE RF members of @ref modem_cellular_config_scripts
+ *
+ * Points them at the scripts defined by @ref MODEM_CELLULAR_COMMON_LTE_RF_CHAT_SCRIPTS.
+ */
+#define MODEM_CELLULAR_COMMON_LTE_RF_SCRIPTS                                                       \
+	.lte_rf_enable = &modem_cellular_lte_rf_enable_script,                                     \
+	.lte_rf_disable = &modem_cellular_lte_rf_disable_script
+
+/**
  * @brief Define common chat matches used by cellular modem scripts.
  *
  * Invoke this macro once at file scope. It defines matches for successful commands, common command
@@ -534,6 +695,22 @@ bool modem_cellular_run_check_registered(void *user_data);
 	MODEM_CHAT_MATCH("+CGEV: ", ",", modem_cellular_chat_on_cgev),				   \
 	MODEM_CHAT_MATCH("APP RDY", "", modem_cellular_chat_on_modem_ready),			   \
 	MODEM_CHAT_MATCH("Ready", "", modem_cellular_chat_on_modem_ready)
+
+/**
+ * @brief Define the PPP network interface of a cellular modem instance.
+ *
+ * Defines the @c modem_ppp object used by @ref MODEM_CELLULAR_DEFINE_INSTANCE. With
+ * @kconfig{CONFIG_MODEM_CELLULAR_V2} it also defines the instance's PPP device, which the
+ * network interface takes a runtime PM reference on while it is up. Invoke it before
+ * @ref MODEM_CELLULAR_DEFINE_INSTANCE.
+ *
+ * @param inst Devicetree instance number.
+ * @param _init_iface Hook for the PPP L2 network interface init function, or NULL.
+ * @param _mtu Max size of net_pkt data sent and received on the PPP L2 network interface.
+ * @param _buf_size Size of the partial PPP frame transmit and receive buffers.
+ */
+#define MODEM_CELLULAR_PPP_DEFINE(inst, _init_iface, _mtu, _buf_size)                              \
+	Z_MODEM_CELLULAR_PPP_DEFINE(inst, _init_iface, _mtu, _buf_size)
 
 /**
  * @brief Define a cellular modem device instance.

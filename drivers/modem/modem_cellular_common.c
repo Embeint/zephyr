@@ -28,15 +28,28 @@ void modem_cellular_emit_event(struct modem_cellular_data *data,
 			       enum cellular_event evt, const void *payload)
 {
 	struct modem_cellular_event_cb cb;
+#if defined(CONFIG_MODEM_CELLULAR_V2)
+	struct modem_cellular_event_cb ppp_cb;
+#endif
 
-	/* Take a consistent snapshot, then invoke outside the lock so callbacks may call the API. */
+	/* Take consistent snapshots, then invoke outside the lock so callbacks may call the API. */
 	k_mutex_lock(&data->api_lock, K_FOREVER);
 	cb = data->cb;
+
+#if defined(CONFIG_MODEM_CELLULAR_V2)
+	ppp_cb = data->ppp_cb;
+#endif
 	k_mutex_unlock(&data->api_lock);
 
 	if ((cb.fn != NULL) && ((cb.mask & evt) != 0U)) {
 		cb.fn(data->dev, evt, payload, cb.user_data);
 	}
+
+#if defined(CONFIG_MODEM_CELLULAR_V2)
+	if ((ppp_cb.fn != NULL) && ((ppp_cb.mask & evt) != 0U)) {
+		ppp_cb.fn(data->dev, evt, payload, ppp_cb.user_data);
+	}
+#endif
 }
 
 /*
@@ -541,9 +554,20 @@ int modem_cellular_store_registration(struct modem_cellular_data *data, char **a
 	return 0;
 }
 
-/* Whether a data call can be made: registered, or with the data context active per +CGEV */
+/*
+ * Whether a data call can be made: registered, or with the data context active per +CGEV.
+ * MODEM_CELLULAR_V2 only counts the packet domain registration, as a circuit-switched +CREG
+ * registration outlives a detach from the packet domain.
+ */
 bool modem_cellular_is_attached(const struct modem_cellular_data *data)
 {
+	if (IS_ENABLED(CONFIG_MODEM_CELLULAR_V2)) {
+		return modem_cellular_status_is_registered(data->registration_status_gprs) ||
+		       modem_cellular_status_is_registered(data->registration_status_lte) ||
+		       modem_cellular_status_is_registered(data->registration_status_5g) ||
+		       data->pdn_active;
+	}
+
 	return modem_cellular_is_registered(data) || data->pdn_active;
 }
 

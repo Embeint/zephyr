@@ -45,6 +45,7 @@ MODEM_CHAT_MATCHES_DEFINE(nordic_nrf93m1_ifc_matches,
 			  MODEM_CHAT_MATCH_INITIALIZER("+IFC:", ",", nrf93m1_on_ifc, false, true),
 			  MODEM_CHAT_MATCH("OK", "", NULL));
 
+/* Leaves the LTE RF disabled with the SIM powered, as MODEM_CELLULAR_V2 expects */
 MODEM_CHAT_SCRIPT_CMDS_DEFINE(
 	nordic_nrf93m1_init_chat_script_cmds, MODEM_CHAT_SCRIPT_CMD_RESP("ATE0", ok_match),
 	MODEM_CHAT_SCRIPT_CMD_RESP_MULT("AT+IFC?", nordic_nrf93m1_ifc_matches),
@@ -61,6 +62,64 @@ MODEM_CHAT_SCRIPT_CMDS_DEFINE(
 MODEM_CHAT_SCRIPT_DEFINE(nordic_nrf93m1_init_chat_script, nordic_nrf93m1_init_chat_script_cmds,
 			 abort_matches, modem_cellular_chat_callback_handler, 10);
 
+MODEM_CHAT_SCRIPT_CMDS_DEFINE(nordic_nrf93m1_dial_chat_script_cmds,
+			      MODEM_CHAT_SCRIPT_CMD_RESP("ATD*99***" STRINGIFY(CONFIG_MODEM_CELLULAR_PDP_CONTEXT_ID) "#", connect_match));
+
+MODEM_CHAT_SCRIPT_DEFINE(nordic_nrf93m1_dial_chat_script, nordic_nrf93m1_dial_chat_script_cmds,
+			 dial_abort_matches, modem_cellular_chat_callback_handler, 60);
+
+MODEM_CHAT_SCRIPT_CMDS_DEFINE(nordic_nrf93m1_shutdown_chat_script_cmds,
+			      MODEM_CHAT_SCRIPT_CMD_RESP("AT%POWD=1", pwd_match));
+
+MODEM_CHAT_SCRIPT_DEFINE(nordic_nrf93m1_shutdown_chat_script,
+			 nordic_nrf93m1_shutdown_chat_script_cmds, abort_matches,
+			 modem_cellular_chat_callback_handler, 10);
+
+MODEM_CHAT_SCRIPT_CMDS_DEFINE(nordic_nrf93m1_dlci_setup_chat_script_cmds,
+			      MODEM_CHAT_SCRIPT_CMD_RESP("ATE0", ok_match));
+
+MODEM_CHAT_SCRIPT_DEFINE(nordic_nrf93m1_dlci_setup_chat_script,
+			 nordic_nrf93m1_dlci_setup_chat_script_cmds, abort_matches,
+			 modem_cellular_chat_callback_handler, 1);
+
+#if defined(CONFIG_MODEM_CELLULAR_V2)
+
+/* SIM queries that also complete on ERROR, so that a failed query does not skip the other */
+MODEM_CHAT_MATCHES_DEFINE(nordic_nrf93m1_try_cimi_matches,
+			  MODEM_CHAT_MATCH_INITIALIZER("", "", modem_cellular_chat_on_imsi, false,
+						       true),
+			  MODEM_CHAT_MATCH("OK", "", NULL), MODEM_CHAT_MATCH("ERROR", "", NULL));
+MODEM_CHAT_MATCHES_DEFINE(nordic_nrf93m1_try_iccid_matches,
+			  MODEM_CHAT_MATCH_INITIALIZER("%ICCID: ", "", modem_cellular_chat_on_iccid,
+						       false, true),
+			  MODEM_CHAT_MATCH("OK", "", NULL), MODEM_CHAT_MATCH("ERROR", "", NULL));
+
+/* Run once the SIM is ready, before the LTE RF is first enabled, so that e.g. the APN can be
+ * selected from the IMSI
+ */
+MODEM_CHAT_SCRIPT_CMDS_DEFINE(nordic_nrf93m1_sim_ready_chat_script_cmds,
+			      MODEM_CHAT_SCRIPT_CMD_RESP_MULT("AT%ICCID",
+							      nordic_nrf93m1_try_iccid_matches),
+			      MODEM_CHAT_SCRIPT_CMD_RESP_MULT("AT+CIMI",
+							      nordic_nrf93m1_try_cimi_matches));
+
+MODEM_CHAT_SCRIPT_DEFINE(nordic_nrf93m1_sim_ready_chat_script,
+			 nordic_nrf93m1_sim_ready_chat_script_cmds, abort_matches,
+			 modem_cellular_chat_callback_handler, 10);
+
+MODEM_CELLULAR_COMMON_LTE_RF_CHAT_SCRIPTS(10);
+
+/* Basic cell information for only the serving cell, which needs the LTE RF enabled. With the
+ * LTE RF disabled, the script only checks the modem responds.
+ */
+MODEM_CHAT_SCRIPT_CMDS_DEFINE(
+	nordic_nrf93m1_periodic_chat_script_cmds,
+	MODEM_CHAT_SCRIPT_CMD_RESP_COND("AT", ok_match, modem_cellular_run_check_lte_rf_disabled),
+	MODEM_CHAT_SCRIPT_CMD_RESP_COND("AT%BCINFO=0,4,0,1", ok_match,
+					modem_cellular_run_check_lte_rf_enabled));
+
+#else /* CONFIG_MODEM_CELLULAR_V2 */
+
 /* Differs from common `iccid_match` only in the % vs + prefix */
 MODEM_CELLULAR_OK_CHAT_MATCH_DEFINE(nrf93m1_iccid_match, "%ICCID: ", "",
 				    modem_cellular_chat_on_iccid);
@@ -76,24 +135,11 @@ MODEM_CHAT_SCRIPT_DEFINE(nordic_nrf93m1_network_chat_script,
 			 nordic_nrf93m1_network_chat_script_cmds, abort_matches,
 			 modem_cellular_chat_callback_handler, 10);
 
-MODEM_CHAT_SCRIPT_CMDS_DEFINE(nordic_nrf93m1_dial_chat_script_cmds,
-			      MODEM_CHAT_SCRIPT_CMD_RESP(
-				"ATD*99***" STRINGIFY(CONFIG_MODEM_CELLULAR_PDP_CONTEXT_ID) "#",
-				connect_match));
-
-MODEM_CHAT_SCRIPT_DEFINE(nordic_nrf93m1_dial_chat_script, nordic_nrf93m1_dial_chat_script_cmds,
-			 dial_abort_matches, modem_cellular_chat_callback_handler, 60);
-
-MODEM_CHAT_SCRIPT_CMDS_DEFINE(nordic_nrf93m1_shutdown_chat_script_cmds,
-			      MODEM_CHAT_SCRIPT_CMD_RESP("AT%POWD=1", pwd_match));
-
-MODEM_CHAT_SCRIPT_DEFINE(nordic_nrf93m1_shutdown_chat_script,
-			 nordic_nrf93m1_shutdown_chat_script_cmds, abort_matches,
-			 modem_cellular_chat_callback_handler, 10);
-
-/* Basic cell information for only the serving cell */
+/* Basic cell information for only the serving cell, run while registered */
 MODEM_CHAT_SCRIPT_CMDS_DEFINE(nordic_nrf93m1_periodic_chat_script_cmds,
 			      MODEM_CHAT_SCRIPT_CMD_RESP("AT%BCINFO=0,4,0,1", ok_match));
+
+#endif /* CONFIG_MODEM_CELLULAR_V2 */
 
 MODEM_CHAT_SCRIPT_DEFINE(nordic_nrf93m1_periodic_chat_script,
 			 nordic_nrf93m1_periodic_chat_script_cmds, abort_matches,
@@ -128,13 +174,6 @@ static void nrf93m1_on_bcinfosc(struct modem_chat *chat, char **argv, uint16_t a
 	modem_cellular_emit_network_status(data, &evt);
 }
 
-MODEM_CHAT_SCRIPT_CMDS_DEFINE(nordic_nrf93m1_dlci_setup_chat_script_cmds,
-			      MODEM_CHAT_SCRIPT_CMD_RESP("ATE0", ok_match));
-
-MODEM_CHAT_SCRIPT_DEFINE(nordic_nrf93m1_dlci_setup_chat_script,
-			 nordic_nrf93m1_dlci_setup_chat_script_cmds, abort_matches,
-			 modem_cellular_chat_callback_handler, 1);
-
 static void nrf93m1_on_ifc(struct modem_chat *chat, char **argv, uint16_t argc, void *user_data)
 {
 	struct modem_cellular_data *data = (struct modem_cellular_data *)user_data;
@@ -167,11 +206,16 @@ static const struct modem_cellular_vendor_config_common nrf93m1_vendor = {
 	/* clang-format off */
 	.scripts = {
 		.init = &nordic_nrf93m1_init_chat_script,
-		.network = &nordic_nrf93m1_network_chat_script,
 		.dial = &nordic_nrf93m1_dial_chat_script,
 		.periodic = &nordic_nrf93m1_periodic_chat_script,
 		.shutdown = &nordic_nrf93m1_shutdown_chat_script,
 		.dlci_setup = &nordic_nrf93m1_dlci_setup_chat_script,
+#if defined(CONFIG_MODEM_CELLULAR_V2)
+		MODEM_CELLULAR_COMMON_LTE_RF_SCRIPTS,
+		.sim_ready = &nordic_nrf93m1_sim_ready_chat_script,
+#else
+		.network = &nordic_nrf93m1_network_chat_script,
+#endif
 	},
 	.unsol_matches = {
 		.matches = nordic_nrf93m1_unsol,
@@ -190,7 +234,7 @@ static const struct modem_cellular_vendor_config_common nrf93m1_vendor = {
 };
 
 #define MODEM_CELLULAR_DEVICE_NORDIC_NRF93M1(inst)                                                 \
-	MODEM_DT_INST_PPP_DEFINE(inst, MODEM_CELLULAR_INST_NAME(ppp, inst), NULL, 1500, 1500);     \
+	MODEM_CELLULAR_PPP_DEFINE(inst, NULL, 1500, 1500);                                         \
                                                                                                    \
 	static const struct nrf93m1_modem_cellular_config nrf93m1_vendor_cfg##inst = {             \
 		.bus_has_hwfc = DT_PROP(DT_INST_BUS(inst), hw_flow_control),                       \

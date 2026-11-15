@@ -8,7 +8,7 @@
  * @file modem_cellular_v1.h
  * @brief Original cellular modem driver implementation.
  *
- * Included by modem_cellular.h.
+ * Included by modem_cellular.h unless @kconfig{CONFIG_MODEM_CELLULAR_V2} is enabled.
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MODEM_MODEM_CELLULAR_V1_H_
@@ -237,6 +237,10 @@ struct modem_cellular_config {
 	struct modem_cellular_user_pipe *user_pipes;
 	uint8_t user_pipes_size;
 };
+
+#define Z_MODEM_CELLULAR_PPP_DEFINE(inst, _init_iface, _mtu, _buf_size)                            \
+	MODEM_DT_INST_PPP_DEFINE(inst, MODEM_CELLULAR_INST_NAME(ppp, inst), _init_iface, _mtu,     \
+				 _buf_size)
 
 #define Z_MODEM_CELLULAR_DEFINE_INSTANCE(inst, vendor_config)                                      \
 	static const struct modem_cellular_config MODEM_CELLULAR_INST_NAME(config, inst) = {       \
