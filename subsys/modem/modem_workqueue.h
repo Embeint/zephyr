@@ -20,6 +20,20 @@ extern "C" {
 
 K_DEDICATED_WORK_QUEUE_DECLARE(modem, MODEM);
 
+#ifdef CONFIG_MODEM_DEDICATED_WORKQUEUE
+
+/* Thread of the workqueue the modem modules submit their work to */
+k_tid_t modem_work_queue_thread_get(void);
+
+#else
+
+static inline k_tid_t modem_work_queue_thread_get(void)
+{
+	return k_work_queue_thread_get(&k_sys_work_q);
+}
+
+#endif /* CONFIG_MODEM_DEDICATED_WORKQUEUE */
+
 #ifdef __cplusplus
 }
 #endif
