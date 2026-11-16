@@ -3698,10 +3698,12 @@ static void gatt_mtu_rsp(struct bt_conn *conn, int err, const void *pdu,
 static int gatt_exchange_mtu_encode(struct net_buf *buf, size_t len,
 				    void *user_data)
 {
+	struct bt_gatt_exchange_params *params = user_data;
 	struct bt_att_exchange_mtu_req *req;
 	uint16_t mtu;
 
-	mtu = BT_LOCAL_ATT_MTU_UATT;
+	/* Local MTU of the connection, see `bt_gatt_exchange_mtu` */
+	mtu = params->_mtu;
 
 	LOG_DBG("Client MTU %u", mtu);
 
@@ -3735,6 +3737,12 @@ int bt_gatt_exchange_mtu(struct bt_conn *conn,
 	if (atomic_test_and_set_bit(conn->flags, BT_CONN_ATT_MTU_EXCHANGED)) {
 		return -EALREADY;
 	}
+
+	/* The request encoder only has access to the parameters. The value is
+	 * also needed when the response is handled, see
+	 * `bt_gatt_req_exchange_mtu`, so it is only requested once.
+	 */
+	params->_mtu = bt_gatt_local_uatt_mtu(conn);
 
 	err = gatt_req_send(conn, gatt_mtu_rsp, params,
 			    gatt_exchange_mtu_encode, BT_ATT_OP_MTU_REQ,
@@ -5971,6 +5979,27 @@ void bt_gatt_att_max_mtu_changed(struct bt_conn *conn, uint16_t tx, uint16_t rx)
 	}
 }
 
+uint16_t bt_gatt_local_uatt_mtu(struct bt_conn *conn)
+{
+	struct bt_gatt_cb *cb, *tmp;
+	uint16_t mtu = BT_LOCAL_ATT_MTU_UATT;
+
+	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&callback_list, cb, tmp, node) {
+		uint16_t limit;
+
+		if (cb->att_mtu_limit == NULL) {
+			continue;
+		}
+
+		limit = cb->att_mtu_limit(conn);
+		if (limit != 0U) {
+			mtu = MIN(mtu, MAX(limit, BT_ATT_DEFAULT_LE_MTU));
+		}
+	}
+
+	return mtu;
+}
+
 void bt_gatt_encrypt_change(struct bt_conn *conn)
 {
 	struct conn_data data;
@@ -6528,6 +6557,20 @@ void bt_gatt_req_set_mtu(struct bt_att_req *req, uint16_t mtu)
 	 * just drop it here. Feel free to add this capability to other
 	 * request types if needed.
 	 */
+}
+
+uint16_t bt_gatt_req_exchange_mtu(const struct bt_att_req *req)
+{
+	IF_ENABLED(CONFIG_BT_GATT_CLIENT, ({
+		if (req->func == gatt_mtu_rsp) {
+			const struct bt_gatt_exchange_params *params = req->user_data;
+
+			__ASSERT_NO_MSG(params);
+			return params->_mtu;
+		}
+	}));
+
+	return 0U;
 }
 
 /* Descriptor of application-specific authorization callbacks that are used

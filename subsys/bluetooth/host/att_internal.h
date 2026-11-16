@@ -359,3 +359,6 @@ bool bt_att_tx_meta_data_match(const struct net_buf *buf, bt_gatt_complete_func_
 bool bt_att_chan_opt_valid(struct bt_conn *conn, enum bt_att_chan_opt chan_opt);
 
 void bt_gatt_req_set_mtu(struct bt_att_req *req, uint16_t mtu);
+
+/* Local MTU sent in @p req if it is an ATT MTU exchange request, otherwise 0 */
+uint16_t bt_gatt_req_exchange_mtu(const struct bt_att_req *req);
