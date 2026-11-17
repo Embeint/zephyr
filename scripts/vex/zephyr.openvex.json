@@ -2,8 +2,8 @@
   "@context": "https://openvex.dev/ns/v0.2.0",
   "@id": "https://github.com/Embeint/zephyr/scripts/vex/zephyr.openvex.json",
   "author": "Embeint Holdings Pty Ltd",
-  "timestamp": "2026-11-14T04:05:56Z",
-  "version": 8,
+  "timestamp": "2026-11-17T07:18:48Z",
+  "version": 9,
   "statements": [
     {
       "vulnerability": {
@@ -1600,6 +1600,133 @@
       ],
       "status": "affected",
       "status_notes": "Vulnerable code is in the Bluetooth Classic AVRCP browsing channel (CONFIG_BT_CLASSIC), which is not enabled by Infuse-IoT.",
+      "action_statement": "Fix will not be backported: not standard Infuse-IoT feature"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-93672"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed in the Embeint v4.4.2 branch by backporting v4.4-branch commit 378266c922f0 (upstream fix c8e360006acb). Fix commits: 8f40566f1db5018976d07f621f33e0f3d0a7f46b"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-93668"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "affected",
+      "status_notes": "Vulnerable code is in the Bluetooth Classic SDP server (CONFIG_BT_CLASSIC), which is not enabled by Infuse-IoT.",
+      "action_statement": "Fix will not be backported: not standard Infuse-IoT feature"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-93666"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "affected",
+      "status_notes": "Vulnerable code is in the Bluetooth Classic SDP client (CONFIG_BT_CLASSIC), which is not enabled by Infuse-IoT.",
+      "action_statement": "Fix will not be backported: not standard Infuse-IoT feature"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-93667"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "affected",
+      "status_notes": "Vulnerable code is in the Virtual L2 VLAN receive path (CONFIG_NET_L2_VIRTUAL with CONFIG_NET_VLAN), which is not enabled by Infuse-IoT.",
+      "action_statement": "Fix will not be backported: not standard Infuse-IoT feature"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-93673"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "affected",
+      "status_notes": "Vulnerable code is in the WebSocket client (CONFIG_WEBSOCKET_CLIENT), which is not enabled by Infuse-IoT.",
+      "action_statement": "Fix will not be backported: not standard Infuse-IoT feature"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-93671"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "affected",
+      "status_notes": "Vulnerable code is in the WebSocket client (CONFIG_WEBSOCKET_CLIENT), which is not enabled by Infuse-IoT.",
+      "action_statement": "Fix will not be backported: not standard Infuse-IoT feature"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-93669"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "affected",
+      "status_notes": "Vulnerable code is in the ITE IT8xxx2 SHI host-command backend, which is not used by Infuse-IoT hardware.",
+      "action_statement": "Fix will not be backported: not standard Infuse-IoT feature"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-93670"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "affected",
+      "status_notes": "Vulnerable code is in the DesignWare I3C driver, which is not used by Infuse-IoT hardware.",
       "action_statement": "Fix will not be backported: not standard Infuse-IoT feature"
     }
   ]
