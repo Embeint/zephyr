@@ -2,8 +2,8 @@
   "@context": "https://openvex.dev/ns/v0.2.0",
   "@id": "https://github.com/Embeint/zephyr/scripts/vex/zephyr.openvex.json",
   "author": "Embeint Holdings Pty Ltd",
-  "timestamp": "2026-11-17T07:18:48Z",
-  "version": 9,
+  "timestamp": "2026-11-18T00:54:49Z",
+  "version": 10,
   "statements": [
     {
       "vulnerability": {
@@ -1727,6 +1727,22 @@
       ],
       "status": "affected",
       "status_notes": "Vulnerable code is in the DesignWare I3C driver, which is not used by Infuse-IoT hardware.",
+      "action_statement": "Fix will not be backported: not standard Infuse-IoT feature"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-95822"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "affected",
+      "status_notes": "Vulnerable code is in the SOCKS5 proxy client (CONFIG_SOCKS), which is not enabled by Infuse-IoT.",
       "action_statement": "Fix will not be backported: not standard Infuse-IoT feature"
     }
   ]
