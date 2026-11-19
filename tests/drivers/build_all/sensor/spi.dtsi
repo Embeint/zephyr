@@ -521,3 +521,10 @@ test_spi_lps22hx: lps22hx@3f {
 	reg = <0x3f>;
 	spi-max-frequency = <0>;
 };
+
+test_spi_bmp384: bmp384@40 {
+	compatible = "bosch,bmp384";
+	reg = <0x40>;
+	spi-max-frequency = <0>;
+	int-gpios = <&test_gpio 0 0>;
+};
