@@ -236,7 +236,7 @@ static void slz_set_tx_power(int16_t max_power_dbm)
 	const int16_t actual_max_power_dbm = DIV_ROUND_CLOSEST(actual_max_power_cbm, 10);
 
 	if (actual_max_power_dbm != max_power_dbm) {
-		LOG_WRN("Unable to set max TX power to %d dBm, actual max is %d dBm", max_power_dbm,
+		LOG_INF("Unable to set max TX power to %d dBm, actual max is %d dBm", max_power_dbm,
 			actual_max_power_dbm);
 	}
 }
