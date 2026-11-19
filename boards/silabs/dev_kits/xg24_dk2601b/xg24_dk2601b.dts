@@ -228,6 +228,11 @@
 		compatible = "silabs,si7006";
 		reg = <0x40>;
 	};
+
+	bmp384: bmp384@77 {
+		compatible = "bosch,bmp384";
+		reg = <0x77>;
+	};
 };
 
 &gpio {
