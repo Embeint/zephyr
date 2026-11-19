@@ -759,7 +759,7 @@ static void uart_silabs_isr(const struct device *dev)
 #ifdef CONFIG_UART_SILABS_USART_ASYNC
 	const struct uart_silabs_config *config = dev->config;
 	USART_TypeDef *usart = config->base;
-	uint32_t flags = USART_IntGet(usart);
+	uint32_t flags = USART_IntGetEnabled(usart);
 	struct dma_status stat;
 #endif
 #ifdef CONFIG_UART_INTERRUPT_DRIVEN
