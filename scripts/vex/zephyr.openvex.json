@@ -1569,7 +1569,7 @@
         }
       ],
       "status": "fixed",
-      "status_notes": "Fixed in the Embeint v4.4.2 branch by backporting v4.4-branch commit 24cee0f58ae (upstream fix 5467b7a73fe0). Fix commits: 6355e9a5c589f6d4145f30720900a1ce879f8c1a"
+      "status_notes": "Fixed in the Embeint v4.4.2 branch by backporting v4.4-branch commit 24cee0f58ae (upstream fix 5467b7a73fe0). Fix commits: 9b58163a44041184d8705c064888df0dfbbe83c9"
     },
     {
       "vulnerability": {
@@ -1584,7 +1584,7 @@
         }
       ],
       "status": "fixed",
-      "status_notes": "Fixed in the Embeint v4.4.2 branch by backporting v4.4-branch commits 08b7bba9374 and 3ade8a154eb (upstream fixes 5054384e983c and c31cac727d02). Fix commits: 8df8c7569908ceb4ea4438e58ef1ba3b4f3169c8 2dd964463befa103af4573b5c173fdf10cf5803e"
+      "status_notes": "Fixed in the Embeint v4.4.2 branch by backporting v4.4-branch commits 08b7bba9374 and 3ade8a154eb (upstream fixes 5054384e983c and c31cac727d02). Fix commits: 293455f914de6cd0f044e03a34f4a884fbd536df 54f4486aff935e93ee2af0f35450cd562f33da50"
     },
     {
       "vulnerability": {
@@ -1615,7 +1615,7 @@
         }
       ],
       "status": "fixed",
-      "status_notes": "Fixed in the Embeint v4.4.2 branch by backporting v4.4-branch commit 378266c922f0 (upstream fix c8e360006acb). Fix commits: 8f40566f1db5018976d07f621f33e0f3d0a7f46b"
+      "status_notes": "Fixed in the Embeint v4.4.2 branch by backporting v4.4-branch commit 378266c922f0 (upstream fix c8e360006acb). Fix commits: 520cb7efe04afedb30e060657d84e9743ddfb5d8"
     },
     {
       "vulnerability": {
