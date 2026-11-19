@@ -1563,3 +1563,9 @@ test_i2c_lps22hx: lps22hx@ce {
 	drdy-gpios = <&test_gpio 0 0>;
 	odr = <LPS22HH_DT_ODR_75HZ>;
 };
+
+test_i2c_bmp384: bmp384@cf {
+	compatible = "bosch,bmp384";
+	reg = <0xcf>;
+	int-gpios = <&test_gpio 0 0>;
+};
