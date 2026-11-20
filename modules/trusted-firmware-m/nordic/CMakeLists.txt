@@ -82,6 +82,48 @@ if(NRF_CC3XX_PLATFORM_LIB)
         "-DNRF_CC3XX_PLATFORM_LIB=1"
     )
 endif()
+if(NRF_CC3XX_PSA_CRYPTO_LIB AND TFM_PARTITION_CRYPTO)
+    add_library(nrf_cc3xx_core STATIC IMPORTED GLOBAL)
+    set_target_properties(nrf_cc3xx_core PROPERTIES
+        IMPORTED_LOCATION "${NRF_CC3XX_CORE_LIB}"
+    )
+    target_link_libraries(nrf_cc3xx_core
+    INTERFACE
+        nrf_cc3xx_platform
+    )
+    add_library(nrf_cc3xx_psa_crypto STATIC IMPORTED GLOBAL)
+    set_target_properties(nrf_cc3xx_psa_crypto PROPERTIES
+        IMPORTED_LOCATION "${NRF_CC3XX_PSA_CRYPTO_LIB}"
+    )
+    target_link_libraries(nrf_cc3xx_psa_crypto
+    INTERFACE
+        nrf_cc3xx_core
+        nrf_cc3xx_platform
+    )
+    # Replace the Mbed TLS ChaCha20-Poly1305 implementation in the crypto partition.
+    # Applied to every user of the Mbed TLS config so that the context layout is consistent.
+    target_compile_definitions(crypto_service_mbedcrypto_config
+    INTERFACE
+        MBEDTLS_CHACHAPOLY_ALT
+    )
+    target_include_directories(crypto_service_mbedcrypto_config
+    INTERFACE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/cc3xx
+    )
+    target_sources(crypto_service_mbedcrypto
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/cc3xx_chachapoly_alt.c
+    )
+    set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/src/cc3xx_chachapoly_alt.c
+    TARGET_DIRECTORY crypto_service_mbedcrypto
+    PROPERTIES
+        INCLUDE_DIRECTORIES "${NRF_CC3XX_MBEDCRYPTO_BASE}/include"
+    )
+    target_link_libraries(crypto_service_mbedcrypto
+    PRIVATE
+        nrf_cc3xx_psa_crypto
+    )
+endif()
 if(NRF_CC3XX_EXTERNAL_RNG_ENABLED)
     target_compile_definitions(platform_s
     PRIVATE

@@ -18,6 +18,20 @@ config TFM_CRYPTO_CC3XX_EXTERNAL_RNG_ENABLED
 	select TFM_CRYPTO_CC3XX_PLATFORM_LIB
 	default y
 
+config TFM_CRYPTO_CC3XX_CHACHA20_POLY1305
+	bool "Cryptocell CC3XX accelerated ChaCha20-Poly1305"
+	depends on SOC_SERIES_NRF53 || SOC_SERIES_NRF91
+	select TFM_CRYPTO_CC3XX_PLATFORM_LIB
+	default y
+	help
+	  Offload the ChaCha20 keystream of one-shot ChaCha20-Poly1305 AEAD
+	  operations in the TF-M crypto partition to the CC3XX Cryptocell, using
+	  the nrfxlib PSA driver library. Poly1305 is computed in software, as the
+	  Cryptocell implementation has a large fixed cost per operation.
+	  Multi-part operations, and one-shot operations on buffers that the
+	  Cryptocell DMA cannot access, continue to use the Mbed TLS software
+	  implementation.
+
 config TFM_CRYPTO_NV_SEED_DEFAULT_DISABLE
 	bool "Provide a custom implementation of NV seed"
 	default y if TFM_CRYPTO_CC3XX_EXTERNAL_RNG_ENABLED
