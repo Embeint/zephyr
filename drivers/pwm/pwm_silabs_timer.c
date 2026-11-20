@@ -31,6 +31,8 @@ struct silabs_timer_pwm_config {
 };
 
 struct silabs_timer_pwm_data {
+	/* Channels that have been configured through the PWM API */
+	uint32_t active_channels;
 	pwm_flags_t flags;
 	pwm_capture_callback_handler_t cb;
 	void *user_data;
@@ -43,6 +45,7 @@ static int silabs_timer_pwm_set_cycles(const struct device *dev, uint32_t channe
 {
 	bool invert_polarity = (flags & PWM_POLARITY_MASK) == PWM_POLARITY_INVERTED;
 	const struct silabs_timer_pwm_config *config = dev->config;
+	struct silabs_timer_pwm_data *data = dev->data;
 
 	if (channel > config->num_channels) {
 		return -EINVAL;
@@ -52,6 +55,8 @@ static int silabs_timer_pwm_set_cycles(const struct device *dev, uint32_t channe
 	    LOG2(pulse_cycles) >= config->counter_size) {
 		return -ENOTSUP;
 	}
+
+	data->active_channels |= BIT(channel);
 
 	if ((config->base->CC[channel].CFG & _TIMER_CC_CFG_MODE_MASK) != TIMER_CC_CFG_MODE_PWM) {
 		sl_hal_timer_channel_config_t ch_config = SL_HAL_TIMER_CHANNEL_CONFIG_PWM;
@@ -268,9 +273,64 @@ static void silabs_timer_pwm_isr(const struct device *dev)
 }
 #endif
 
+/*
+ * Drive the outputs of channels that have not been configured through the PWM API to the
+ * idle level of their pin, as set by the default pinctrl state.
+ *
+ * While the counter is stopped, the output of a channel in PWM mode is COIST XOR OUTINV, while
+ * the output of a channel in OFF mode is not well defined. Setting OUTINV with a compare value of
+ * zero also keeps the output at the idle level once the counter is started for other channels.
+ */
+static void silabs_timer_pwm_idle_channels(const struct device *dev)
+{
+	sl_hal_timer_channel_config_t ch_config = SL_HAL_TIMER_CHANNEL_CONFIG_PWM;
+	const struct silabs_timer_pwm_config *config = dev->config;
+	struct silabs_timer_pwm_data *data = dev->data;
+	const struct pinctrl_state *state;
+
+	if (pinctrl_lookup_state(config->pcfg, PINCTRL_STATE_DEFAULT, &state) < 0) {
+		return;
+	}
+
+	for (int i = 0; i < state->pin_cnt; i++) {
+		const pinctrl_soc_pin_t *pin = &state->pins[i];
+
+		/* Route enable bits match the channel number for the compare outputs */
+		if ((pin->en_bit >= config->num_channels) ||
+		    (pin->mode < _GPIO_P_MODEL_MODE0_PUSHPULL) ||
+		    (data->active_channels & BIT(pin->en_bit))) {
+			continue;
+		}
+
+		ch_config.output_invert = pin->dout;
+		sl_hal_timer_channel_init(config->base, pin->en_bit, &ch_config);
+		sl_hal_timer_channel_set_compare(config->base, pin->en_bit, 0);
+	}
+}
+
+static bool silabs_timer_pwm_in_use(const struct device *dev)
+{
+	const struct silabs_timer_pwm_config *config = dev->config;
+	struct silabs_timer_pwm_data *data = dev->data;
+
+	if (data->active_channels != 0) {
+		return true;
+	}
+
+	for (int i = 0; i < config->num_channels; i++) {
+		if ((config->base->CC[i].CFG & _TIMER_CC_CFG_MODE_MASK) ==
+		    TIMER_CC_CFG_MODE_INPUTCAPTURE) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 static int silabs_timer_pwm_pm_action(const struct device *dev, enum pm_device_action action)
 {
 	const struct silabs_timer_pwm_config *config = dev->config;
+	struct silabs_timer_pwm_data *data = dev->data;
 	int err;
 
 	if (action == PM_DEVICE_ACTION_RESUME) {
@@ -280,22 +340,24 @@ static int silabs_timer_pwm_pm_action(const struct device *dev, enum pm_device_a
 			return err;
 		}
 
+		/* Outputs are only driven while the timer is enabled */
+		sl_hal_timer_enable(config->base);
+		silabs_timer_pwm_idle_channels(dev);
+
 		err = pinctrl_apply_state(config->pcfg, PINCTRL_STATE_DEFAULT);
 		if (err < 0 && err != -ENOENT) {
 			return err;
 		}
 
-		for (int i = 0; i < config->num_channels; i++) {
-			if ((config->base->CC[i].CFG & _TIMER_CC_CFG_MODE_MASK) !=
-			    TIMER_CC_CFG_MODE_OFF) {
-				sl_hal_timer_enable(config->base);
-				sl_hal_timer_start(config->base);
-				break;
-			}
+		if (silabs_timer_pwm_in_use(dev)) {
+			sl_hal_timer_start(config->base);
 		}
 	} else if (IS_ENABLED(CONFIG_PM_DEVICE) && (action == PM_DEVICE_ACTION_SUSPEND)) {
 		sl_hal_timer_stop(config->base);
 		sl_hal_timer_disable(config->base);
+
+		/* Channels are no longer in use, return them to idle on the next resume */
+		data->active_channels = 0;
 
 		err = clock_control_off(config->clock_dev,
 					(clock_control_subsys_t)&config->clock_cfg);
