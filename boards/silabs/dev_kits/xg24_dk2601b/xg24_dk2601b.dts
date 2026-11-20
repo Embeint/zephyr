@@ -98,6 +98,19 @@
 		startup-delay-us = <2000>;
 	};
 
+	/* Enable pins have no pull-downs, they must be driven to avoid floating */
+	mic_enable: gpio_switch_1 {
+		compatible = "regulator-fixed";
+		regulator-name = "mic_enable";
+		enable-gpios = <&gpioc 8 GPIO_ACTIVE_HIGH>;
+	};
+
+	adc_vref_enable: gpio_switch_2 {
+		compatible = "regulator-fixed";
+		regulator-name = "adc_vref_enable";
+		enable-gpios = <&gpioa 0 GPIO_ACTIVE_HIGH>;
+	};
+
 	exp_header: exp-header {
 		compatible = "silabs,exp-header";
 		#gpio-cells = <2>;
