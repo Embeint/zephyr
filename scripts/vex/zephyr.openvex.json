@@ -2,8 +2,8 @@
   "@context": "https://openvex.dev/ns/v0.2.0",
   "@id": "https://github.com/Embeint/zephyr/scripts/vex/zephyr.openvex.json",
   "author": "Embeint Holdings Pty Ltd",
-  "timestamp": "2026-11-19T00:09:29Z",
-  "version": 11,
+  "timestamp": "2026-11-22T23:14:32Z",
+  "version": 12,
   "statements": [
     {
       "vulnerability": {
@@ -1759,6 +1759,21 @@
       ],
       "status": "fixed",
       "status_notes": "Fixed in the Embeint v4.4.2 branch by backporting v4.4-branch commit 54056e9e2878 (upstream fix c66e7c6cc0c0). Fix commits: 0a20f16d39c87201e3146d2885d417eccc7e3869"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-95825"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed in the Embeint v4.4.2 branch by backporting v4.4-branch commits c4a768dab99, 45eb1f06456, 937d8f93aba and 9c96567c148 (upstream fix 6c90a4581c49 and follow-ups, v4.4-branch PR #120911), together with prerequisite adfc25b12ec. Fix commits: bafb750c69f519bd0b44b7529fc271af03a03988 314b8a6bd18106e8cf73875394ced8e6ae93cab3 55d6390fef326fe62e56857e997f61fde6b05546 7399a49ffaaca7a82c02940b2f2e3430335ffcf5"
     }
   ]
 }
