@@ -18,7 +18,6 @@ nvic: &cpuapp_nvic {};
 / {
 	chosen {
 		zephyr,bt-hci = &bt_hci_controller;
-		zephyr,entropy = &rng;
 	};
 
 	soc {
@@ -31,12 +30,24 @@ nvic: &cpuapp_nvic {};
 		compatible = "zephyr,psa-crypto-rng";
 		status = "disabled";
 	};
+};
 
-	rng: rng {
-		status = "okay";
-		compatible = "nordic,nrf-cracen-ctrdrbg";
+#ifndef USE_NON_SECURE_ADDRESS_MAP
+/ {
+	chosen {
+		zephyr,entropy = &rng;
 	};
 };
+
+&cracen {
+	status = "okay";
+
+	rng: rng {
+		compatible = "nordic,nrf-cracen-ctrdrbg";
+		status = "okay";
+	};
+};
+#endif
 
 &bt_hci_controller {
 	status = "okay";

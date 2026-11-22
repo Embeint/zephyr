@@ -63,11 +63,6 @@
 		};
 	};
 
-	rng: rng {
-		status = "okay";
-		compatible = "nordic,nrf-cracen-ctrdrbg";
-	};
-
 	psa_rng: psa-rng {
 		status = "disabled";
 	};

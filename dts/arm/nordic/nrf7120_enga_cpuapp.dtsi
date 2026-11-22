@@ -16,19 +16,10 @@ nvic: &cpuapp_nvic {};
 /delete-node/ &cpuflpr_clic;
 
 / {
-	chosen {
-		zephyr,entropy = &rng;
-	};
-
 	soc {
 		compatible = "simple-bus";
 		interrupt-parent = <&cpuapp_nvic>;
 		ranges;
-	};
-
-	rng: rng {
-		status = "okay";
-		compatible = "nordic,nrf-cracen-ctrdrbg";
 	};
 
 	psa_rng: psa-rng {
@@ -36,6 +27,23 @@ nvic: &cpuapp_nvic {};
 		status = "disabled";
 	};
 };
+
+#ifndef USE_NON_SECURE_ADDRESS_MAP
+/ {
+	chosen {
+		zephyr,entropy = &rng;
+	};
+};
+
+&cracen {
+	status = "okay";
+
+	rng: rng {
+		compatible = "nordic,nrf-cracen-ctrdrbg";
+		status = "okay";
+	};
+};
+#endif
 
 &cpuflpr_vpr {
 	cpuapp_vevif_rx: mailbox@1 {
