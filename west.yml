@@ -398,7 +398,7 @@ manifest:
         - tee
     - name: tf-psa-crypto
       remote: embeint
-      revision: ab848bb085f96ded84fee19e9019e3717cb9b64b
+      revision: 8072945cbbee16d2348d0444e464784292ac240b
       path: modules/crypto/tf-psa-crypto
       groups:
         - crypto
