@@ -327,7 +327,7 @@ static void bq2518x_int_handle(struct k_work *work)
 
 	/* Bits that have changed */
 	stat0_change = data->last_stat0 ^ stat0;
-	LOG_DBG("Changed bits: %02X", stat0_change);
+	LOG_DBG("STAT0: %02X Changed: %02X", stat0, stat0_change);
 
 	if ((stat0_change & BQ2518X_STAT0_VIN_PGOOD_STAT) && (data->charger_online_notifier)) {
 		enum charger_online online = stat0 & BQ2518X_STAT0_VIN_PGOOD_STAT
