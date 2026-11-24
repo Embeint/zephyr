@@ -233,6 +233,7 @@ int pm_device_runtime_get(const struct device *dev)
 		struct pm_device_isr *pm_sync = dev->pm_isr;
 		k_spinlock_key_t k = k_spin_lock(&pm_sync->lock);
 
+#ifdef CONFIG_PM_DEVICE_RUNTIME_ASYNC
 		/*
 		 * Check if the device has a pending suspend operation (not started
 		 * yet) and cancel it. This way we avoid unnecessary operations because
@@ -242,9 +243,11 @@ int pm_device_runtime_get(const struct device *dev)
 			((k_work_cancel_delayable(&pm->base.work) & K_WORK_RUNNING) == 0)) {
 			pm->base.state = PM_DEVICE_STATE_ACTIVE;
 			pm->base.usage++;
-		} else {
-			ret = get_sync_locked(dev);
+			k_spin_unlock(&pm_sync->lock, k);
+			goto end;
 		}
+#endif /* CONFIG_PM_DEVICE_RUNTIME_ASYNC */
+		ret = get_sync_locked(dev);
 		k_spin_unlock(&pm_sync->lock, k);
 		goto end;
 	}
@@ -357,9 +360,11 @@ static int put_sync_locked(const struct device *dev, bool async, k_timeout_t del
 	pm->base.usage--;
 	if (pm->base.usage == 0U) {
 		if (async) {
+#ifdef CONFIG_PM_DEVICE_RUNTIME_ASYNC
 			/* queue suspend */
 			pm->base.state = PM_DEVICE_STATE_SUSPENDING;
 			(void)k_work_schedule(&pm->base.work, delay);
+#endif /* CONFIG_PM_DEVICE_RUNTIME_ASYNC */
 			ret = 0;
 		} else {
 			ret = pm->base.action_cb(dev, PM_DEVICE_ACTION_SUSPEND);
@@ -506,7 +511,9 @@ int pm_device_runtime_enable(const struct device *dev)
 	/* lazy init of PM fields */
 	if (pm->base.dev == NULL) {
 		pm->base.dev = dev;
+#ifdef CONFIG_PM_DEVICE_RUNTIME_ASYNC
 		k_work_init_delayable(&pm->base.work, runtime_suspend_work);
+#endif /* CONFIG_PM_DEVICE_RUNTIME_ASYNC */
 	}
 
 	if (atomic_test_bit(&dev->pm_base->flags, PM_DEVICE_FLAG_ISR_SAFE)) {

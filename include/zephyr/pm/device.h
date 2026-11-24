@@ -264,7 +264,7 @@ BUILD_ASSERT(offsetof(struct pm_device_isr, base) == 0);
 
 /** @cond INTERNAL_HIDDEN */
 
-#ifdef CONFIG_PM_DEVICE_RUNTIME_ASYNC
+#ifdef CONFIG_PM_DEVICE_RUNTIME
 #define Z_PM_DEVICE_RUNTIME_INIT(obj)			\
 	.lock = Z_SEM_INITIALIZER(obj.lock, 1, 1),
 #else
