@@ -986,6 +986,18 @@ static inline struct arch_esf *get_esf(uint32_t msp, uint32_t psp, uint32_t exc_
 			ptr_esf = (struct arch_esf *)msp;
 			*nested_exc = true;
 		}
+
+#if defined(CONFIG_ARMV8_M_SE)
+		/* When the callee registers are already on the stack, the
+		 * additional state context (integrity signature, reserved word
+		 * and r4-r11) sits below the basic stack frame. Skip it, or
+		 * every field of the ESF is read from the wrong offset.
+		 */
+		if ((exc_return & EXC_RETURN_CALLEE_STACK_Msk) == EXC_RETURN_CALLEE_STACK_SKIPPED) {
+			ptr_esf = (struct arch_esf *)((uint32_t *)ptr_esf +
+						      ADDITIONAL_STATE_CONTEXT_WORDS);
+		}
+#endif /* CONFIG_ARMV8_M_SE */
 	}
 
 	return ptr_esf;
