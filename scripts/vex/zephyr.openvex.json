@@ -2,8 +2,8 @@
   "@context": "https://openvex.dev/ns/v0.2.0",
   "@id": "https://github.com/Embeint/zephyr/scripts/vex/zephyr.openvex.json",
   "author": "Embeint Holdings Pty Ltd",
-  "timestamp": "2026-11-22T23:14:32Z",
-  "version": 12,
+  "timestamp": "2026-11-25T06:34:43Z",
+  "version": 13,
   "statements": [
     {
       "vulnerability": {
@@ -1774,6 +1774,164 @@
       ],
       "status": "fixed",
       "status_notes": "Fixed in the Embeint v4.4.2 branch by backporting v4.4-branch commits c4a768dab99, 45eb1f06456, 937d8f93aba and 9c96567c148 (upstream fix 6c90a4581c49 and follow-ups, v4.4-branch PR #120911), together with prerequisite adfc25b12ec. Fix commits: bafb750c69f519bd0b44b7529fc271af03a03988 314b8a6bd18106e8cf73875394ced8e6ae93cab3 55d6390fef326fe62e56857e997f61fde6b05546 7399a49ffaaca7a82c02940b2f2e3430335ffcf5"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-100374"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "affected",
+      "status_notes": "Vulnerable code is in SMBus syscall handlers, only reachable from user mode threads (CONFIG_USERSPACE), which is not enabled by Infuse-IoT.",
+      "action_statement": "Fix will not be backported: not standard Infuse-IoT feature"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-102954"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "affected",
+      "status_notes": "Vulnerable code is in the STM32 SMBus driver (CONFIG_SMBUS_STM32), which is not enabled by Infuse-IoT.",
+      "action_statement": "Fix will not be backported: not standard Infuse-IoT feature"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-102951"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "affected",
+      "status_notes": "Vulnerable code is in the Intel SoC FPGA Agilex5 SoC MMU region table, which is not used by Infuse-IoT hardware.",
+      "action_statement": "Fix will not be backported: not standard Infuse-IoT feature"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-102949"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "affected",
+      "status_notes": "Vulnerable code is in the Intel SEDI I2C driver, which is not used by Infuse-IoT hardware.",
+      "action_statement": "Fix will not be backported: not standard Infuse-IoT feature"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-102953"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "affected",
+      "status_notes": "Vulnerable code is in the USB host stack, which is not enabled by Infuse-IoT.",
+      "action_statement": "Fix will not be backported: not standard Infuse-IoT feature"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-102950"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed in the Embeint v4.4.2 branch by backporting upstream fix a1fe3a123726 (v4.4-branch PR #120066). Fix commits: 07646daeac4fb48775aea8bc397a75776e056b5a"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-102948"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "affected",
+      "status_notes": "Vulnerable code is in Bluetooth LE Audio services on Bluetooth Classic connections (CONFIG_BT_AUDIO with CONFIG_BT_CLASSIC), which are not enabled by Infuse-IoT.",
+      "action_statement": "Fix will not be backported: not standard Infuse-IoT feature"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-102952"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "affected",
+      "status_notes": "Vulnerable code is in the TFTP client (CONFIG_TFTP_LIB), which is not enabled by Infuse-IoT.",
+      "action_statement": "Fix will not be backported: not standard Infuse-IoT feature"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-102955"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "affected",
+      "status_notes": "Vulnerable code is in the OpenThread PSA crypto platform backend (CONFIG_OPENTHREAD), which is not enabled by Infuse-IoT.",
+      "action_statement": "Fix will not be backported: not standard Infuse-IoT feature"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-102956"
+      },
+      "products": [
+        {
+          "@id": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*",
+          "identifiers": {
+            "cpe23": "cpe:2.3:o:zephyrproject:zephyr:4.4.2:-:*:*:*:*:*:*"
+          }
+        }
+      ],
+      "status": "fixed",
+      "status_notes": "Fixed in the Embeint v4.4.2 branch by backporting v4.4-branch commits 5ce75720911, 7a3728f7f3d, 8f5859b2e44 and 9b546000c33 (upstream fix 63ddd9d5463e and related changes, v4.4-branch PR #121140). Fix commits: 6e4c3f3b66c1ab62fed98d7c09137655d1dc9b24 08c012aa6739ab4b64e472b1015105175d510296 f59c85c2e8f6140f116838c7f1b7ea3e2a0c3cf7 550671af84b6bed64d92037276e3bdb3bda5a9c9"
     }
   ]
 }
